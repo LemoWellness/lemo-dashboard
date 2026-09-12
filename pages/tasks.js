@@ -26,6 +26,7 @@ export default function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [subtab, setSubtab] = useState('active');
   const [filterAssigned, setFilterAssigned] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -52,12 +53,16 @@ export default function Tasks() {
 
   function load() {
     setLoading(true);
+    setLoadError('');
     Promise.all([
-      authedFetch('/api/tasks').then((r) => r.json()),
-      authedFetch('/api/assignable-users').then((r) => r.json()),
+      authedFetch('/api/tasks').then((r) => { if (!r.ok) throw new Error('Could not load tasks.'); return r.json(); }),
+      authedFetch('/api/assignable-users').then((r) => { if (!r.ok) throw new Error('Could not load the assignable users list.'); return r.json(); }),
     ]).then(([t, u]) => {
       setTasks(t.tasks || []);
       setUsers(u.users || []);
+      setLoading(false);
+    }).catch((e) => {
+      setLoadError(e.message || 'Something went wrong loading this page.');
       setLoading(false);
     });
   }
@@ -133,7 +138,7 @@ export default function Tasks() {
         <button className="btn" onClick={openAdd}>+ Add Task</button>
       </div>
 
-      {loading ? <p className="muted">Loading tasks…</p> : (
+      {loading ? <p className="muted">Loading tasks…</p> : loadError ? <p className="form-error">{loadError}</p> : (
         <>
           <div className="task-subtabs">
             <button className={`task-subtab-btn ${subtab === 'active' ? 'active' : ''}`} onClick={() => setSubtab('active')}>

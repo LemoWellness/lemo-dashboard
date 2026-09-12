@@ -28,6 +28,9 @@ export default function Layout({ active, onNavigate, children }) {
 
   const visibleNav = NAV.filter((n) => session.tabs === 'all' || session.tabs.includes(n.code));
 
+  const isAdminOnlyPage = active === 'admin-users' || active === 'admin-import';
+  const hasAccess = session.role === 'Admin' || (isAdminOnlyPage ? false : (session.tabs === 'all' || session.tabs.includes(active)));
+
   return (
     <div className="app-shell">
       <nav className="sidebar">
@@ -54,7 +57,15 @@ export default function Layout({ active, onNavigate, children }) {
         </div>
         <button className="signout" onClick={() => signOut(auth)}>Sign out</button>
       </nav>
-      <main className="main">{children}</main>
+      <main className="main">
+        {hasAccess ? children : (
+          <div className="card" style={{ maxWidth: 480 }}>
+            <h2 style={{ marginTop: 0 }}>You don't have access to this section</h2>
+            <p className="muted">Contact your administrator if this seems wrong.</p>
+            {visibleNav[0] && <button className="btn" onClick={() => onNavigate(visibleNav[0].code)}>Go to {visibleNav[0].label}</button>}
+          </div>
+        )}
+      </main>
     </div>
   );
 }
