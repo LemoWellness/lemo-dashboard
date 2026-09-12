@@ -34,8 +34,12 @@ export default function Home() {
   const [accountError, setAccountError] = useState('');
   const [expForm, setExpForm] = useState({ date: '', category: '', item: '', description: '', source: '', quantity: 1, costPerUnit: '', notes: '' });
   const [incForm, setIncForm] = useState({ date: '', amount: '', notes: '' });
-  const [noteForm, setNoteForm] = useState({ note: '', channel: 'Call' });
+  const [noteForm, setNoteForm] = useState({ note: '', channel: 'Call', loggedBy: '' });
   const [formError, setFormError] = useState('');
+  const [openSections, setOpenSections] = useState({ expenses: true, income: true, commlog: true });
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
 
   function navigate(code) {
     if (code === 'admin-users') return router.push('/admin/users');
@@ -167,6 +171,7 @@ export default function Home() {
     const res = await authedFetch('/api/expenses', { method: 'POST', body: JSON.stringify({ location: selectedName, ...expForm }) });
     if (!res.ok) { setFormError((await res.json()).error); return; }
     setExpForm({ date: '', category: '', item: '', description: '', source: '', quantity: 1, costPerUnit: '', notes: '' });
+    setShowExpenseModal(false);
     loadDetail(selectedName);
   }
   async function submitIncome(e) {
@@ -175,6 +180,7 @@ export default function Home() {
     const res = await authedFetch('/api/income', { method: 'POST', body: JSON.stringify({ location: selectedName, ...incForm }) });
     if (!res.ok) { setFormError((await res.json()).error); return; }
     setIncForm({ date: '', amount: '', notes: '' });
+    setShowIncomeModal(false);
     loadDetail(selectedName);
   }
   async function submitNote(e) {
@@ -182,8 +188,50 @@ export default function Home() {
     setFormError('');
     const res = await authedFetch('/api/communication-log', { method: 'POST', body: JSON.stringify({ location: selectedName, ...noteForm }) });
     if (!res.ok) { setFormError((await res.json()).error); return; }
-    setNoteForm({ note: '', channel: 'Call' });
+    setNoteForm({ note: '', channel: 'Call', loggedBy: '' });
+    setShowNoteModal(false);
     loadDetail(selectedName);
+  }
+
+  function openExpenseModal() {
+    setExpForm({ date: new Date().toISOString().slice(0, 10), category: '', item: '', description: '', source: '', quantity: 1, costPerUnit: '', notes: '' });
+    setFormError('');
+    setShowExpenseModal(true);
+  }
+  function openIncomeModal() {
+    setIncForm({ date: new Date().toISOString().slice(0, 10), amount: '', notes: '' });
+    setFormError('');
+    setShowIncomeModal(true);
+  }
+  function openNoteModal() {
+    setNoteForm({ date: new Date().toISOString().slice(0, 10), note: '', channel: 'Call', loggedBy: '' });
+    setFormError('');
+    setShowNoteModal(true);
+  }
+
+  async function downloadExpensePdf() {
+    const { jsPDF } = await import('jspdf');
+    const autoTable = (await import('jspdf-autotable')).default;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFontSize(16);
+    doc.text('LEMO — Expense Report', 40, 40);
+    doc.setFontSize(12);
+    doc.text(selectedName, 40, 58);
+    doc.setFontSize(9);
+    doc.setTextColor(112, 107, 102);
+    doc.text(`Generated ${new Date().toLocaleString()} · ${expenses.length} expense${expenses.length === 1 ? '' : 's'} total`, 40, 72);
+    autoTable(doc, {
+      startY: 84,
+      head: [['Date', 'Category', 'Item', 'Source', 'Description', 'Cost', 'Qty', 'Notes']],
+      body: expenses.map((e) => [
+        e.date || '', e.category || '', e.item || '', e.source || '', e.description || '',
+        e.costPerUnit != null ? `$${Number(e.costPerUnit).toFixed(2)}` : '',
+        e.quantity ?? '', e.notes || '',
+      ]),
+      headStyles: { fillColor: [12, 10, 9] },
+      styles: { fontSize: 8 },
+    });
+    doc.save(`LEMO-Expenses-${selectedName}.pdf`);
   }
 
   const isAdmin = session?.role === 'Admin';
@@ -339,73 +387,134 @@ export default function Home() {
 
           {formError && <p className="form-error">{formError}</p>}
 
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>Expenses</h3>
-            {isAdmin && (
-              <form className="inline-form" onSubmit={submitExpense}>
-                <label>Date<input type="date" value={expForm.date} onChange={(e) => setExpForm({ ...expForm, date: e.target.value })} required /></label>
-                <label>Category<input value={expForm.category} onChange={(e) => setExpForm({ ...expForm, category: e.target.value })} required /></label>
-                <label>Item<input value={expForm.item} onChange={(e) => setExpForm({ ...expForm, item: e.target.value })} /></label>
-                <label>Source<input value={expForm.source} onChange={(e) => setExpForm({ ...expForm, source: e.target.value })} /></label>
-                <label>Qty<input type="number" min="0" step="1" value={expForm.quantity} onChange={(e) => setExpForm({ ...expForm, quantity: e.target.value })} required style={{ width: 70 }} /></label>
-                <label>Cost/Unit<input type="number" min="0" step="0.01" value={expForm.costPerUnit} onChange={(e) => setExpForm({ ...expForm, costPerUnit: e.target.value })} required style={{ width: 90 }} /></label>
-                <button className="btn" type="submit">+ Add Expense</button>
-              </form>
+          <Collapsible
+            title="Expenses"
+            open={openSections.expenses}
+            onToggle={() => setOpenSections({ ...openSections, expenses: !openSections.expenses })}
+            actions={isAdmin && (
+              <>
+                <button className="btn" style={{ background: 'transparent', color: 'var(--ember-muted)', border: '1px solid var(--ember-muted)' }} onClick={(e) => { e.stopPropagation(); downloadExpensePdf(); }}>Download PDF</button>
+                <button className="btn" onClick={(e) => { e.stopPropagation(); openExpenseModal(); }}>+ Add Expense</button>
+              </>
             )}
+          >
             <div className="table-wrap">
-            <table>
-              <thead><tr><th>Date</th><th>Category</th><th>Item</th><th>Amount</th></tr></thead>
-              <tbody>
-                {expenses.slice(0, 10).map((e) => (
-                  <tr key={e.id}><td>{e.date}</td><td>{e.category}</td><td>{e.item}</td><td>{fmt(e.amount)}</td></tr>
-                ))}
-                {expenses.length === 0 && <tr><td colSpan={4} className="muted">No expenses recorded.</td></tr>}
-              </tbody>
-            </table>
+              <table>
+                <thead><tr><th>Date</th><th>Category</th><th>Item</th><th>Amount</th></tr></thead>
+                <tbody>
+                  {expenses.slice(0, 10).map((e) => (
+                    <tr key={e.id}><td>{e.date}</td><td>{e.category}</td><td>{e.item}</td><td>{fmt(e.amount)}</td></tr>
+                  ))}
+                  {expenses.length === 0 && <tr><td colSpan={4} className="muted">No expenses recorded.</td></tr>}
+                </tbody>
+              </table>
             </div>
-          </div>
+          </Collapsible>
 
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>Income</h3>
-            {isAdmin && selected.businessModel === 'Corporate Wellness' ? (
-              <form className="inline-form" onSubmit={submitIncome}>
-                <label>Date<input type="date" value={incForm.date} onChange={(e) => setIncForm({ ...incForm, date: e.target.value })} required /></label>
-                <label>Amount<input type="number" min="0" step="0.01" value={incForm.amount} onChange={(e) => setIncForm({ ...incForm, amount: e.target.value })} required /></label>
-                <label>Notes<input value={incForm.notes} onChange={(e) => setIncForm({ ...incForm, notes: e.target.value })} /></label>
-                <button className="btn" type="submit">+ Add Income</button>
-              </form>
-            ) : isAdmin && (
+          <Collapsible
+            title="Income"
+            open={openSections.income}
+            onToggle={() => setOpenSections({ ...openSections, income: !openSections.income })}
+            actions={isAdmin && selected.businessModel === 'Corporate Wellness' && (
+              <button className="btn" onClick={(e) => { e.stopPropagation(); openIncomeModal(); }}>+ Add Income</button>
+            )}
+          >
+            {isAdmin && selected.businessModel !== 'Corporate Wellness' && (
               <p className="muted" style={{ fontSize: '0.8rem' }}>Adding income manually is only available for Corporate Wellness locations.</p>
             )}
             <div className="table-wrap">
-            <table>
-              <thead><tr><th>Date</th><th>Amount</th><th>Notes</th></tr></thead>
-              <tbody>
-                {income.slice(0, 10).map((i) => (
-                  <tr key={i.id}><td>{i.date}</td><td>{fmt(i.amount)}</td><td>{i.notes}</td></tr>
-                ))}
-                {income.length === 0 && <tr><td colSpan={3} className="muted">No income recorded.</td></tr>}
-              </tbody>
-            </table>
+              <table>
+                <thead><tr><th>Date</th><th>Amount</th><th>Notes</th></tr></thead>
+                <tbody>
+                  {income.slice(0, 10).map((i) => (
+                    <tr key={i.id}><td>{i.date}</td><td>{fmt(i.amount)}</td><td>{i.notes}</td></tr>
+                  ))}
+                  {income.length === 0 && <tr><td colSpan={3} className="muted">No income recorded.</td></tr>}
+                </tbody>
+              </table>
             </div>
-          </div>
+          </Collapsible>
 
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>Communication Log</h3>
-            <form className="inline-form" onSubmit={submitNote}>
-              <label style={{ flex: 1, minWidth: 220 }}>Note<input value={noteForm.note} onChange={(e) => setNoteForm({ ...noteForm, note: e.target.value })} required /></label>
-              <label>Channel
-                <select value={noteForm.channel} onChange={(e) => setNoteForm({ ...noteForm, channel: e.target.value })}>
-                  <option>Call</option><option>Email</option><option>Text</option><option>In Person</option>
-                </select>
-              </label>
-              <button className="btn" type="submit">+ Log Note</button>
-            </form>
+          <Collapsible
+            title="Communication Log"
+            open={openSections.commlog}
+            onToggle={() => setOpenSections({ ...openSections, commlog: !openSections.commlog })}
+            actions={<button className="btn" onClick={(e) => { e.stopPropagation(); openNoteModal(); }}>+ Communication Log</button>}
+          >
             {notes.map((n) => (
               <p key={n.id}><strong>{n.date}</strong> ({n.channel}) — {n.note} <span className="muted">— {n.loggedBy}</span></p>
             ))}
             {notes.length === 0 && <p className="muted">No notes logged yet.</p>}
-          </div>
+          </Collapsible>
+        </div>
+      )}
+
+      {showExpenseModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <form className="card" onSubmit={submitExpense} style={{ background: 'var(--warm-white)', width: '90%', maxWidth: 460, maxHeight: '85vh', overflowY: 'auto' }}>
+            <h3 style={{ marginTop: 0 }}>Add Expense</h3>
+            <p className="muted" style={{ fontSize: '0.75rem', marginTop: -8 }}>For: {selectedName}</p>
+            {formError && <p className="form-error">{formError}</p>}
+            <label style={{ display: 'block', marginBottom: 12 }}>Date<input type="date" value={expForm.date} onChange={(e) => setExpForm({ ...expForm, date: e.target.value })} required style={{ width: '100%', marginTop: 4 }} /></label>
+            <label style={{ display: 'block', marginBottom: 12 }}>Category<input value={expForm.category} onChange={(e) => setExpForm({ ...expForm, category: e.target.value })} required style={{ width: '100%', marginTop: 4, boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4 }} /></label>
+            <label style={{ display: 'block', marginBottom: 12 }}>Item<input value={expForm.item} onChange={(e) => setExpForm({ ...expForm, item: e.target.value })} style={{ width: '100%', marginTop: 4, boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4 }} /></label>
+            <label style={{ display: 'block', marginBottom: 12 }}>Description<input value={expForm.description} onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} style={{ width: '100%', marginTop: 4, boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4 }} /></label>
+            <label style={{ display: 'block', marginBottom: 12 }}>Source / Vendor<input value={expForm.source} onChange={(e) => setExpForm({ ...expForm, source: e.target.value })} style={{ width: '100%', marginTop: 4, boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4 }} /></label>
+            <div className="form-grid-2" style={{ marginBottom: 12 }}>
+              <label>Quantity<input type="number" min="0" step="1" value={expForm.quantity} onChange={(e) => setExpForm({ ...expForm, quantity: e.target.value })} required style={{ width: '100%', marginTop: 4, boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4 }} /></label>
+              <label>Cost / Unit<input type="number" min="0" step="0.01" value={expForm.costPerUnit} onChange={(e) => setExpForm({ ...expForm, costPerUnit: e.target.value })} required style={{ width: '100%', marginTop: 4, boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4 }} /></label>
+            </div>
+            <label style={{ display: 'block', marginBottom: 16 }}>Notes (optional)<input value={expForm.notes} onChange={(e) => setExpForm({ ...expForm, notes: e.target.value })} style={{ width: '100%', marginTop: 4, boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4 }} /></label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => setShowExpenseModal(false)}>Cancel</button>
+              <button type="submit" className="btn">Save Expense</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showIncomeModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <form className="card" onSubmit={submitIncome} style={{ background: 'var(--warm-white)', width: '90%', maxWidth: 420, maxHeight: '85vh', overflowY: 'auto' }}>
+            <h3 style={{ marginTop: 0 }}>Add Income</h3>
+            <p className="muted" style={{ fontSize: '0.75rem', marginTop: -8 }}>For: {selectedName}</p>
+            {formError && <p className="form-error">{formError}</p>}
+            <label style={{ display: 'block', marginBottom: 12 }}>Date<input type="date" value={incForm.date} onChange={(e) => setIncForm({ ...incForm, date: e.target.value })} required style={{ width: '100%', marginTop: 4 }} /></label>
+            <label style={{ display: 'block', marginBottom: 16 }}>Amount<input type="number" min="0" step="0.01" value={incForm.amount} onChange={(e) => setIncForm({ ...incForm, amount: e.target.value })} required style={{ width: '100%', marginTop: 4, boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4 }} /></label>
+            <label style={{ display: 'block', marginBottom: 16 }}>Notes<input value={incForm.notes} onChange={(e) => setIncForm({ ...incForm, notes: e.target.value })} style={{ width: '100%', marginTop: 4, boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4 }} /></label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => setShowIncomeModal(false)}>Cancel</button>
+              <button type="submit" className="btn">Save Income</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showNoteModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <form className="card" onSubmit={submitNote} style={{ background: 'var(--warm-white)', width: '90%', maxWidth: 440, maxHeight: '85vh', overflowY: 'auto' }}>
+            <h3 style={{ marginTop: 0 }}>Communication Log</h3>
+            <p className="muted" style={{ fontSize: '0.75rem', marginTop: -8 }}>For: {selectedName}</p>
+            {formError && <p className="form-error">{formError}</p>}
+            <label style={{ display: 'block', marginBottom: 12 }}>Date<input type="date" value={noteForm.date || new Date().toISOString().slice(0, 10)} onChange={(e) => setNoteForm({ ...noteForm, date: e.target.value })} style={{ width: '100%', marginTop: 4 }} /></label>
+            <label style={{ display: 'block', marginBottom: 12 }}>Note
+              <textarea value={noteForm.note} onChange={(e) => setNoteForm({ ...noteForm, note: e.target.value })} rows={4} required
+                style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4, fontFamily: 'inherit' }} />
+            </label>
+            <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: 6 }}>How did this happen</div>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 14, flexWrap: 'wrap' }}>
+              {['Call', 'Email', 'Text', 'WhatsApp'].map((ch) => (
+                <label key={ch} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <input type="radio" name="cn-channel" value={ch} checked={noteForm.channel === ch} onChange={() => setNoteForm({ ...noteForm, channel: ch })} /> {ch}
+                </label>
+              ))}
+            </div>
+            <label style={{ display: 'block', marginBottom: 16 }}>Logged By (optional)<input value={noteForm.loggedBy} onChange={(e) => setNoteForm({ ...noteForm, loggedBy: e.target.value })} style={{ width: '100%', marginTop: 4, boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4 }} /></label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => setShowNoteModal(false)}>Cancel</button>
+              <button type="submit" className="btn">Save Note</button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -461,6 +570,24 @@ function Kpi({ label, value, negative }) {
     <div className="card" style={{ marginBottom: 0 }}>
       <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>{label}</div>
       <div style={{ fontFamily: "'Lora', serif", fontSize: '1.5rem', color: negative ? 'var(--ember-muted)' : 'var(--obsidian)' }}>{value}</div>
+    </div>
+  );
+}
+
+function Collapsible({ title, open, onToggle, actions, children }) {
+  return (
+    <div className="card">
+      <div
+        onClick={onToggle}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', flexWrap: 'wrap', gap: 10, marginBottom: open ? 14 : 0 }}
+      >
+        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ display: 'inline-block', transition: 'transform 0.15s ease', transform: open ? 'rotate(90deg)' : 'rotate(0deg)', fontSize: '0.8rem' }}>▶</span>
+          {title}
+        </h3>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{actions}</div>
+      </div>
+      {open && children}
     </div>
   );
 }
