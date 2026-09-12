@@ -65,9 +65,12 @@ export default withAuth(async (req, res) => {
     const p = projectsByName[name] || {};
     const lemoIncome = perLocationIncome[name] || 0;
     const expenses = perLocationExpenses[name] || 0;
+    const chairs = p.numberOfChairs ?? null;
+    const netProfit = lemoIncome - expenses;
     return {
-      location: name, model: p.businessModel || '', chairs: p.numberOfChairs ?? null,
-      grossRevenue: perLocationGross[name] ?? null, lemoIncome, expenses, netProfit: lemoIncome - expenses,
+      location: name, model: p.businessModel || '', chairs,
+      grossRevenue: perLocationGross[name] ?? null, lemoIncome, expenses, netProfit,
+      netPerChair: chairs && Number(chairs) > 0 ? netProfit / Number(chairs) : null,
     };
   }).sort((a, b) => b.lemoIncome - a.lemoIncome);
 
@@ -90,12 +93,15 @@ export default withAuth(async (req, res) => {
   const financialsSnap = await adminDb.collection('financialReports').orderBy('periodStart', 'desc').limit(1).get();
   const expenseBreakdown = financialsSnap.empty
     ? []
-    : (financialsSnap.docs[0].data().topExpenses || []).slice(0, 3).map((e) => ({ category: e.category, total: e.amount }));
+    : (financialsSnap.docs[0].data().topExpenses || []).slice(0, 3).map((e) => ({ category: e.category, total: e.amount, percentOfTotal: e.percentOfTotal ?? null }));
 
-  // Corporate Wellness outstanding payments — uses ALL-TIME income received, not just this month
+  // Outstanding payments — general-purpose, not permanently CW-only. Right
+  // now only Corporate Wellness has a billing model (fixed monthly fee) that
+  // produces a receivable, but this is built to hold other models' balances
+  // too later (mall fees, RS amounts due, etc.) without a second table.
   const allTimeReceivedByLocation = {};
   allIncome.forEach((i) => { allTimeReceivedByLocation[i.location] = (allTimeReceivedByLocation[i.location] || 0) + (Number(i.amount) || 0); });
-  const cwPaymentStatus = Object.entries(projectsByName)
+  const outstandingPayments = Object.entries(projectsByName)
     .filter(([, p]) => p.businessModel === 'Corporate Wellness' && Number(p.monthlyFee) > 0)
     .map(([name, p]) => {
       const monthsBillable = Math.floor(Number(p.tenureMonths) || 0);
@@ -104,25 +110,40 @@ export default withAuth(async (req, res) => {
       const totalReceived = allTimeReceivedByLocation[name] || 0;
       const balanceOwed = expectedTotal - totalReceived;
       if (balanceOwed <= 0.5) return null;
-      return { location: name, monthlyFee: p.monthlyFee, monthsBillable, expectedTotal, totalReceived, balanceOwed };
+      return { location: name, model: p.businessModel, monthlyFee: p.monthlyFee, monthsBillable, expectedTotal, totalReceived, balanceOwed };
     })
     .filter(Boolean)
     .sort((a, b) => b.balanceOwed - a.balanceOwed);
 
-  // 6-month trend ending at the selected month
+  // 6-Month Financial Trend — Income / Expenses / Net, not CW/RS split
+  // (that split is already shown in the comparison cards above), since for
+  // an end-of-month read the more useful question is whether expenses are
+  // growing faster than income.
   const trend = [];
   for (let i = 5; i >= 0; i--) {
     const key = shiftMonth(monthKey, -i);
-    const monthRows = allIncome.filter((r) => (r.date || '').startsWith(key));
-    const cw = monthRows.filter((r) => modelOf(r.location) === 'Corporate Wellness').reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const rs = monthRows.filter((r) => modelOf(r.location) === 'Revenue Sharing').reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    trend.push({ month: monthLabel(key).replace(/, /, ' '), corporateWellness: cw, revenueSharing: rs, total: cw + rs });
+    const incomeTotal = allIncome.filter((r) => (r.date || '').startsWith(key)).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const expenseTotal = allExpenses.filter((r) => (r.date || '').startsWith(key)).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    trend.push({ month: monthLabel(key).replace(/, /, ' '), income: incomeTotal, expenses: expenseTotal, net: incomeTotal - expenseTotal });
   }
+
+  // This Month vs Last Month — reuses the same monthly totals, just for the
+  // previous month too, so the comparison replaces the CW/RS donut (which
+  // just repeated numbers already shown in the comparison cards above it).
+  const prevMonthKey = shiftMonth(monthKey, -1);
+  const prevIncomeRows = allIncome.filter((r) => (r.date || '').startsWith(prevMonthKey));
+  const prevExpenseRows = allExpenses.filter((r) => (r.date || '').startsWith(prevMonthKey));
+  const prevIncome = prevIncomeRows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const prevExpenses = prevExpenseRows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const monthComparison = {
+    current: { label: monthLabel(monthKey).split(' ')[0], income: totalLemoIncome, expenses: totalExpenses, net: netProfitLoss },
+    previous: { label: monthLabel(prevMonthKey).split(' ')[0], income: prevIncome, expenses: prevExpenses, net: prevIncome - prevExpenses },
+  };
 
   res.status(200).json({
     month: monthLabel(monthKey), monthKey,
     totalLemoIncome, corporateWellnessIncome, revenueSharingIncome, totalExpenses, netProfitLoss,
     activeLocations, corporateWellnessLocations, revenueSharingLocations, activeChairs,
-    comparison, trend, locationTable, expenseBreakdown, cwPaymentStatus, revenuePerChair,
+    comparison, trend, monthComparison, locationTable, expenseBreakdown, outstandingPayments, revenuePerChair,
   });
 }, { tab: 'mo' });

@@ -60,10 +60,6 @@ export default function Monthly() {
   if (!data) return null;
 
   const filteredLocations = data.locationTable.filter((l) => modelFilter === 'All' || l.model === modelFilter);
-  const donutData = [
-    { name: 'Corporate Wellness', value: data.corporateWellnessIncome },
-    { name: 'Revenue Sharing', value: data.revenueSharingIncome },
-  ].filter((d) => d.value > 0);
 
   return (
     <Layout active="mo" onNavigate={navigate}>
@@ -90,7 +86,7 @@ export default function Monthly() {
           const perChair = data.revenuePerChair.find((r) => r.model === c.model);
           return (
             <div className="card" key={c.model} style={{ marginBottom: 0 }}>
-              <h3 style={{ marginTop: 0 }}>{c.model}</h3>
+              <h3 style={{ marginTop: 0 }}>{c.model} Performance</h3>
               <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Income</span><span>{fmt(c.income)}</span></div>
               <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Expenses</span><span>{fmt(c.expenses)}</span></div>
               <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Net</span><span>{fmt(c.netProfit)}</span></div>
@@ -107,27 +103,32 @@ export default function Monthly() {
 
       <div className="grid-2">
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Corporate Wellness vs Revenue Sharing</h3>
-          {donutData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={donutData} dataKey="value" nameKey="name" innerRadius="35%" outerRadius="65%" label={(e) => e.name}>
-                  {donutData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(v) => fmt(v)} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : <p className="muted">No income this month.</p>}
+          <h3 style={{ marginTop: 0 }}>This Month vs Last Month</h3>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr><th></th><th>{data.monthComparison.current.label}</th><th>{data.monthComparison.previous.label}</th><th>Change</th></tr>
+              </thead>
+              <tbody>
+                <CompareRow label="Income" current={data.monthComparison.current.income} previous={data.monthComparison.previous.income} />
+                <CompareRow label="Expenses" current={data.monthComparison.current.expenses} previous={data.monthComparison.previous.expenses} lowerIsBetter />
+                <CompareRow label="Net P/L" current={data.monthComparison.current.net} previous={data.monthComparison.previous.net} />
+              </tbody>
+            </table>
+          </div>
         </div>
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Top expense categories</h3>
           {data.expenseBreakdown.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={data.expenseBreakdown} dataKey="total" nameKey="category" outerRadius="75%" label={(e) => e.category}>
+                <Pie
+                  data={data.expenseBreakdown} dataKey="total" nameKey="category" outerRadius="75%"
+                  label={(e) => `${e.category}${e.percentOfTotal != null ? ` (${e.percentOfTotal}%)` : ''}`}
+                >
                   {data.expenseBreakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(v) => fmt(v)} />
+                <Tooltip formatter={(v, name, entry) => [`${fmt(v)}${entry.payload.percentOfTotal != null ? ` (${entry.payload.percentOfTotal}%)` : ''}`, entry.payload.category]} />
               </PieChart>
             </ResponsiveContainer>
           ) : <p className="muted">No expenses this month.</p>}
@@ -135,7 +136,7 @@ export default function Monthly() {
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>6-month income trend</h3>
+        <h3 style={{ marginTop: 0 }}>6-Month Financial Trend</h3>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={data.trend}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} />
@@ -143,27 +144,27 @@ export default function Monthly() {
             <YAxis tick={{ fontSize: 11 }} tickFormatter={fmt} />
             <Tooltip formatter={(v) => fmt(v)} />
             <Legend />
-            <Line type="monotone" dataKey="corporateWellness" name="Corporate Wellness" stroke="#E85D20" strokeWidth={2.5} dot={false} />
-            <Line type="monotone" dataKey="revenueSharing" name="Revenue Sharing" stroke="#0C0A09" strokeWidth={2.5} dot={false} />
-            <Line type="monotone" dataKey="total" name="Total" stroke="#D9A441" strokeWidth={2.5} dot={false} />
+            <Line type="monotone" dataKey="income" name="Income" stroke="#E85D20" strokeWidth={2.5} dot={false} />
+            <Line type="monotone" dataKey="expenses" name="Expenses" stroke="#0C0A09" strokeWidth={2.5} dot={false} />
+            <Line type="monotone" dataKey="net" name="Net" stroke="#D9A441" strokeWidth={2.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Corporate Wellness — Outstanding Payments</h3>
-        {data.cwPaymentStatus.length > 0 ? (
+        <h3 style={{ marginTop: 0 }}>Outstanding Payments</h3>
+        {data.outstandingPayments.length > 0 ? (
           <div className="table-wrap wide">
           <table>
-            <thead><tr><th>Location</th><th>Fee / mo</th><th>Months billable</th><th>Expected</th><th>Received</th><th>Balance owed</th></tr></thead>
+            <thead><tr><th>Location</th><th>Business Model</th><th>Fee / mo</th><th>Months billable</th><th>Expected</th><th>Received</th><th>Balance owed</th></tr></thead>
             <tbody>
-              {data.cwPaymentStatus.map((c, i) => (
-                <tr key={i}><td>{c.location}</td><td>{fmt(c.monthlyFee)}</td><td>{c.monthsBillable}</td><td>{fmt(c.expectedTotal)}</td><td>{fmt(c.totalReceived)}</td><td style={{ color: 'var(--ember-muted)' }}>{fmt(c.balanceOwed)}</td></tr>
+              {data.outstandingPayments.map((c, i) => (
+                <tr key={i}><td>{c.location}</td><td>{c.model}</td><td>{fmt(c.monthlyFee)}</td><td>{c.monthsBillable}</td><td>{fmt(c.expectedTotal)}</td><td>{fmt(c.totalReceived)}</td><td style={{ color: 'var(--ember-muted)' }}>{fmt(c.balanceOwed)}</td></tr>
               ))}
             </tbody>
           </table>
           </div>
-        ) : <p className="muted">All Corporate Wellness accounts are current — nothing owed.</p>}
+        ) : <p className="muted">Nothing outstanding right now.</p>}
       </div>
 
       <div className="card">
@@ -177,16 +178,17 @@ export default function Monthly() {
         </div>
         <div className="table-wrap wide">
         <table>
-          <thead><tr><th>Location</th><th>Model</th><th>Chairs</th><th>Gross revenue</th><th>LEMO income</th><th>Expenses</th><th>Net</th></tr></thead>
+          <thead><tr><th>Location</th><th>Model</th><th>Chairs</th><th>Gross revenue</th><th>LEMO income</th><th>Expenses</th><th>Net</th><th>Net / Chair</th></tr></thead>
           <tbody>
             {filteredLocations.map((l, i) => (
               <tr key={i}>
                 <td>{l.location}</td><td>{l.model}</td><td>{l.chairs ?? '—'}</td>
                 <td>{l.grossRevenue != null ? fmt(l.grossRevenue) : '—'}</td>
                 <td>{fmt(l.lemoIncome)}</td><td>{fmt(l.expenses)}</td><td>{fmt(l.netProfit)}</td>
+                <td>{l.netPerChair != null ? fmt(l.netPerChair) : '—'}</td>
               </tr>
             ))}
-            {filteredLocations.length === 0 && <tr><td colSpan={7} className="muted">No location activity for this month</td></tr>}
+            {filteredLocations.length === 0 && <tr><td colSpan={8} className="muted">No location activity for this month</td></tr>}
           </tbody>
         </table>
         </div>
@@ -201,5 +203,27 @@ function Kpi({ label, value, negative }) {
       <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>{label}</div>
       <div style={{ fontFamily: "'Lora', serif", fontSize: '1.5rem', color: negative ? 'var(--ember-muted)' : 'var(--obsidian)' }}>{value}</div>
     </div>
+  );
+}
+
+function CompareRow({ label, current, previous, lowerIsBetter }) {
+  const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : '—');
+  let changeText = '—';
+  let color = 'var(--ash)';
+  if (typeof current === 'number' && typeof previous === 'number' && previous !== 0) {
+    const pct = ((current - previous) / Math.abs(previous)) * 100;
+    const isUp = pct > 0;
+    const arrow = pct === 0 ? '→' : isUp ? '↑' : '↓';
+    changeText = `${arrow} ${Math.abs(pct).toFixed(0)}%`;
+    const isGood = lowerIsBetter ? !isUp : isUp;
+    color = pct === 0 ? 'var(--ash)' : isGood ? '#16a34a' : 'var(--ember-muted)';
+  }
+  return (
+    <tr>
+      <td>{label}</td>
+      <td>{fmt(current)}</td>
+      <td>{fmt(previous)}</td>
+      <td style={{ color, fontWeight: 500 }}>{changeText}</td>
+    </tr>
   );
 }
