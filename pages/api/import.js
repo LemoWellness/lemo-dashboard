@@ -14,6 +14,14 @@
 //                           quantity, costPerUnit, notes
 //   income              -> location, date, amount, notes
 //   communicationLog    -> location, date, note, channel, loggedBy
+//   dailyRawData        -> Venue ID, Venue Name, Count Date, Outlet ID, Outlet Name,
+//                           Entry Time, Country, Province, City, Device Model, Currency,
+//                           Order Number, Device Number, Cash, POS, QR Code, Refund Number,
+//                           Refund, Total Amount, Complete Num, Net Income,
+//                           Average Running Water, Order Price, Average Number of Visitors
+//                           (headers must match the China backend export exactly, including
+//                           spaces and capitalization — this one is stored as-is, unlike the
+//                           other four which get renamed/reshaped on import)
 import Papa from 'papaparse';
 import formidable from 'formidable';
 import fs from 'fs';
@@ -27,6 +35,7 @@ const COLLECTION_BY_TYPE = {
   expenses: 'expenses',
   income: 'income',
   communicationLog: 'communicationLog',
+  dailyRawData: 'dailyRawData',
 };
 
 function num(v) {
@@ -90,6 +99,37 @@ function rowToDoc(type, row) {
         loggedBy: row.loggedBy || '',
         enteredBy: 'import',
       };
+    case 'dailyRawData':
+      // Preserved as-is from the China POS backend export — column names match
+      // the export exactly (e.g. "Venue Name", "Count Date", "POS", "QR Code").
+      // No reshaping here on purpose: this is raw data storage, not a display
+      // model. Future dashboard work can read/aggregate it as needed.
+      return {
+        venueId: row['Venue ID'] || '',
+        venueName: (row['Venue Name'] || '').trim(),
+        countDate: row['Count Date'] || '',
+        outletId: row['Outlet ID'] || '',
+        outletName: row['Outlet Name'] || '',
+        entryTime: row['Entry Time'] || '',
+        country: row['Country'] || '',
+        province: row['Province'] || '',
+        city: row['City'] || '',
+        deviceModel: row['Device Model'] || '',
+        currency: row['Currency'] || '',
+        orderNumber: num(row['Order Number']),
+        deviceNumber: num(row['Device Number']),
+        cash: num(row['Cash']),
+        pos: num(row['POS']),
+        qrCode: num(row['QR Code']),
+        refundNumber: num(row['Refund Number']),
+        refund: num(row['Refund']),
+        totalAmount: num(row['Total Amount']),
+        completeNum: num(row['Complete Num']),
+        netIncome: num(row['Net Income']),
+        avgRunningWater: num(row['Average Running Water']),
+        orderPrice: num(row['Order Price']),
+        avgVisitors: num(row['Average Number of Visitors']),
+      };
     default:
       return null;
   }
@@ -127,7 +167,8 @@ export default async function handler(req, res) {
       const chunk = parsed.data.slice(i, i + batchSize);
       chunk.forEach((row) => {
         const doc = rowToDoc(type, row);
-        if (!doc || (!doc.name && !doc.location)) {
+        const hasKey = doc && (doc.name || doc.location || doc.venueName);
+        if (!hasKey) {
           skipped++;
           return;
         }
