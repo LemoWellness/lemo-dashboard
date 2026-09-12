@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import { auth, authedFetch } from '../lib/firebaseClient';
+import { authedFetch } from '../lib/firebaseClient';
 
 const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : '—');
 const PIE_COLORS = ['#E85D20', '#0C0A09', '#706B66', '#2A1A10', '#d9a441', '#6b4c14'];
@@ -13,11 +13,7 @@ export default function Financials() {
   const { session } = useAuth();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pnlFile, setPnlFile] = useState(null);
-  const [topExpFiles, setTopExpFiles] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState(null);
-  const [uploadError, setUploadError] = useState('');
+  const [selectedId, setSelectedId] = useState(null);
 
   function navigate(code) {
     if (code === 'admin-users') return router.push('/admin/users');
@@ -32,34 +28,13 @@ export default function Financials() {
   function load() {
     setLoading(true);
     authedFetch('/api/financials').then((r) => r.json()).then((d) => {
-      setReports(d.reports || []);
+      const list = d.reports || [];
+      setReports(list);
+      setSelectedId((prev) => prev && list.some((r) => r.id === prev) ? prev : (list[0]?.id ?? null));
       setLoading(false);
     });
   }
   useEffect(() => { if (session) load(); }, [session]);
-
-  async function submitUpload(e) {
-    e.preventDefault();
-    setUploadError(''); setUploadResult(null);
-    if (!pnlFile && topExpFiles.length === 0) { setUploadError('Upload at least one file (Profit & Loss or Top Expenses).'); return; }
-    setUploading(true);
-    try {
-      const idToken = await auth.currentUser.getIdToken();
-      const formData = new FormData();
-      if (pnlFile) formData.append('pnl', pnlFile);
-      topExpFiles.forEach((f) => formData.append('topExpenses', f));
-      const res = await fetch('/api/financials/upload', { method: 'POST', headers: { Authorization: `Bearer ${idToken}` }, body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setUploadResult(data);
-      setPnlFile(null); setTopExpFiles([]);
-      load();
-    } catch (err) {
-      setUploadError(err.message);
-    } finally {
-      setUploading(false);
-    }
-  }
 
   async function deleteReport(id) {
     if (!window.confirm('Delete this report?')) return;
@@ -67,60 +42,52 @@ export default function Financials() {
     load();
   }
 
-  const latest = reports[0];
+  const selected = useMemo(() => reports.find((r) => r.id === selectedId) || null, [reports, selectedId]);
   const isAdmin = session?.role === 'Admin';
 
   return (
     <Layout active="financials" onNavigate={navigate}>
-      <h1>Financials</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+        <h1 style={{ margin: 0 }}>Financials</h1>
+        {reports.length > 0 && (
+          <label className="muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
+            Period
+            <select value={selectedId || ''} onChange={(e) => setSelectedId(e.target.value)}>
+              {reports.map((r) => <option key={r.id} value={r.id}>{r.label || `${r.periodStart} to ${r.periodEnd}`}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
 
       {isAdmin && (
-        <form className="card" onSubmit={submitUpload}>
-          <h3 style={{ marginTop: 0 }}>Upload a report</h3>
-          <p className="muted" style={{ fontSize: '0.8rem' }}>
-            Upload a Profit &amp; Loss + Top Expenses pair covering the same period, or just one or more monthly
-            Top Expenses exports (each becomes its own report, with revenue left blank since that export doesn't include it).
-            Select multiple Top Expenses files at once to upload several months in one go.
-          </p>
-          {uploadError && <p className="form-error">{uploadError}</p>}
-          {uploadResult && (
-            <p className="muted" style={{ fontSize: '0.85rem' }}>
-              {uploadResult.reportsCreated} report{uploadResult.reportsCreated === 1 ? '' : 's'} created:{' '}
-              {uploadResult.reports.map((r) => r.label).join(', ')}
-            </p>
-          )}
-          <div className="inline-form">
-            <label>Profit and Loss (.xlsx, optional)<input type="file" accept=".xlsx" onChange={(e) => setPnlFile(e.target.files[0])} /></label>
-            <label>Top Expenses (.xlsx, one or more)<input type="file" accept=".xlsx" multiple onChange={(e) => setTopExpFiles(Array.from(e.target.files))} /></label>
-            <button className="btn" type="submit" disabled={uploading}>{uploading ? 'Uploading…' : 'Upload'}</button>
-          </div>
-        </form>
+        <p className="muted" style={{ fontSize: '0.8rem' }}>
+          Upload new Profit &amp; Loss / Top Expenses reports from <a href="/admin/import">Import Data</a>.
+        </p>
       )}
 
-      {loading ? <p className="muted">Loading…</p> : !latest ? (
-        <p className="muted">No financial reports uploaded yet.</p>
+      {loading ? <p className="muted">Loading…</p> : !selected ? (
+        <p className="muted">No financial reports uploaded yet. An admin can bring one in from Import Data.</p>
       ) : (
         <>
-          <p className="muted">Most recent period: {latest.label || `${latest.periodStart} to ${latest.periodEnd}`}</p>
           <div className="grid-3">
-            <Kpi label="Revenue" value={fmt(latest.revenue)} />
-            <Kpi label="Expense" value={fmt(latest.expense)} />
-            <Kpi label="Net Profit" value={fmt(latest.netProfit)} negative={latest.netProfit < 0} />
+            <Kpi label="Revenue" value={fmt(selected.revenue)} />
+            <Kpi label="Expense" value={fmt(selected.expense)} />
+            <Kpi label="Net Profit" value={fmt(selected.netProfit)} negative={selected.netProfit < 0} />
           </div>
 
           <div className="grid-2">
             <div className="card">
               <h3 style={{ marginTop: 0 }}>Expense breakdown</h3>
-              {latest.topExpenses?.length > 0 ? (
+              {selected.topExpenses?.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
-                    <Pie data={latest.topExpenses} dataKey="amount" nameKey="category" outerRadius={100}>
-                      {latest.topExpenses.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                    <Pie data={selected.topExpenses} dataKey="amount" nameKey="category" outerRadius={100}>
+                      {selected.topExpenses.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                     </Pie>
                     <Tooltip formatter={(v) => fmt(v)} />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : <p className="muted">No category breakdown for this report.</p>}
+              ) : <p className="muted">No category breakdown for this period.</p>}
             </div>
             <div className="card">
               <h3 style={{ marginTop: 0 }}>By category</h3>
@@ -128,9 +95,10 @@ export default function Financials() {
                 <table>
                   <thead><tr><th>Category</th><th>Amount</th><th>% of Total</th></tr></thead>
                   <tbody>
-                    {(latest.topExpenses || []).map((e, i) => (
+                    {(selected.topExpenses || []).map((e, i) => (
                       <tr key={i}><td>{e.category}</td><td>{fmt(e.amount)}</td><td>{e.percentOfTotal != null ? `${e.percentOfTotal}%` : '—'}</td></tr>
                     ))}
+                    {(!selected.topExpenses || selected.topExpenses.length === 0) && <tr><td colSpan={3} className="muted">No categories for this period.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -139,16 +107,21 @@ export default function Financials() {
 
           <div className="card">
             <h3 style={{ marginTop: 0 }}>Report history</h3>
+            <p className="muted" style={{ fontSize: '0.75rem', marginTop: -8 }}>Click a row to view that period above.</p>
             <div className="table-wrap">
               <table>
                 <thead><tr><th>Period</th><th>Revenue</th><th>Expense</th><th>Net Profit</th><th>Uploaded</th>{isAdmin && <th></th>}</tr></thead>
                 <tbody>
                   {reports.map((r) => (
-                    <tr key={r.id}>
+                    <tr
+                      key={r.id}
+                      onClick={() => setSelectedId(r.id)}
+                      style={{ cursor: 'pointer', background: r.id === selectedId ? 'var(--warm-white)' : undefined }}
+                    >
                       <td>{r.label || `${r.periodStart} to ${r.periodEnd}`}</td>
                       <td>{fmt(r.revenue)}</td><td>{fmt(r.expense)}</td><td>{fmt(r.netProfit)}</td>
                       <td className="muted">{r.uploadedAt ? new Date(r.uploadedAt).toLocaleDateString() : '—'}</td>
-                      {isAdmin && <td><button className="task-delete-btn" onClick={() => deleteReport(r.id)}>Delete</button></td>}
+                      {isAdmin && <td><button className="task-delete-btn" onClick={(e) => { e.stopPropagation(); deleteReport(r.id); }}>Delete</button></td>}
                     </tr>
                   ))}
                 </tbody>
