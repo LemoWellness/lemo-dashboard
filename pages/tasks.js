@@ -1,87 +1,256 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { authedFetch } from '../lib/firebaseClient';
 
+const EMPTY_FORM = { assignedTo: '', task: '', deadline: '', priority: 'Medium', notes: '' };
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function isOverdue(t) {
+  if (!t.deadline || t.status === 'Done') return false;
+  return t.deadline < todayStr();
+}
+function formatDeadline(ymd) {
+  if (!ymd) return '—';
+  const parts = ymd.split('-');
+  return parts.length === 3 ? `${parts[1]}/${parts[2]}/${parts[0]}` : ymd;
+}
+
 export default function Tasks() {
   const router = useRouter();
   const { session } = useAuth();
   const [tasks, setTasks] = useState([]);
-  const [form, setForm] = useState({ assignedTo: '', task: '', deadline: '', priority: 'Medium', notes: '' });
-  const [error, setError] = useState('');
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [subtab, setSubtab] = useState('active');
+  const [filterAssigned, setFilterAssigned] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [sortBy, setSortBy] = useState('created_desc');
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   function navigate(code) {
     if (code === 'admin-users') return router.push('/admin/users');
     if (code === 'admin-import') return router.push('/admin/import');
     if (code === 'loc') return router.push('/');
-    if (code === 'daily') return router.push('/daily');
     if (code === 'usage') return router.push('/usage');
+    if (code === 'daily') return router.push('/daily');
     if (code === 'mo') return router.push('/monthly');
   }
 
+  function displayName(email) {
+    const match = users.find((u) => u.email.toLowerCase() === String(email || '').toLowerCase());
+    return match ? match.name : email;
+  }
+
   function load() {
-    authedFetch('/api/tasks').then((r) => r.json()).then((d) => setTasks(d.tasks || []));
+    setLoading(true);
+    Promise.all([
+      authedFetch('/api/tasks').then((r) => r.json()),
+      authedFetch('/api/assignable-users').then((r) => r.json()),
+    ]).then(([t, u]) => {
+      setTasks(t.tasks || []);
+      setUsers(u.users || []);
+      setLoading(false);
+    });
   }
   useEffect(() => { if (session) load(); }, [session]);
 
-  async function submit(e) {
+  const activeCount = tasks.filter((t) => t.status !== 'Done').length;
+  const completedCount = tasks.filter((t) => t.status === 'Done').length;
+
+  const filtered = useMemo(() => {
+    let list = tasks.filter((t) => {
+      if (subtab === 'active' && t.status === 'Done') return false;
+      if (subtab === 'completed' && t.status !== 'Done') return false;
+      if (filterAssigned && String(t.assignedTo || '').toLowerCase() !== filterAssigned.toLowerCase()) return false;
+      if (subtab === 'active' && filterStatus && t.status !== filterStatus) return false;
+      return true;
+    });
+    list = [...list].sort((a, b) => {
+      if (sortBy === 'created_desc') return new Date(b.timestamp) - new Date(a.timestamp);
+      if (sortBy === 'created_asc') return new Date(a.timestamp) - new Date(b.timestamp);
+      if (sortBy === 'deadline_asc') return (a.deadline || '9999-12-31').localeCompare(b.deadline || '9999-12-31');
+      if (sortBy === 'deadline_desc') return (b.deadline || '0000-01-01').localeCompare(a.deadline || '0000-01-01');
+      return 0;
+    });
+    return list;
+  }, [tasks, subtab, filterAssigned, filterStatus, sortBy]);
+
+  function openAdd() {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setFormError('');
+    setShowModal(true);
+  }
+  function openEdit(t) {
+    if (!t.canEdit) return;
+    setEditingId(t.id);
+    setForm({ assignedTo: t.assignedTo, task: t.task, deadline: t.deadline || '', priority: t.priority, notes: t.notes || '' });
+    setFormError('');
+    setShowModal(true);
+  }
+
+  async function submitForm(e) {
     e.preventDefault();
-    setError('');
-    const res = await authedFetch('/api/tasks', { method: 'POST', body: JSON.stringify(form) });
-    if (!res.ok) { setError((await res.json()).error); return; }
-    setForm({ assignedTo: '', task: '', deadline: '', priority: 'Medium', notes: '' });
+    setFormError('');
+    if (!form.assignedTo) { setFormError('Choose who this is assigned to.'); return; }
+    if (!form.task.trim()) { setFormError('Task description is required.'); return; }
+    setSaving(true);
+    const res = editingId
+      ? await authedFetch(`/api/tasks/${editingId}`, { method: 'PATCH', body: JSON.stringify(form) })
+      : await authedFetch('/api/tasks', { method: 'POST', body: JSON.stringify(form) });
+    setSaving(false);
+    if (!res.ok) { setFormError((await res.json()).error); return; }
+    setShowModal(false);
     load();
   }
 
-  async function updateStatus(id, status) {
+  async function changeStatus(id, status) {
     await authedFetch(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
     load();
   }
 
-  async function remove(id) {
-    await authedFetch(`/api/tasks/${id}`, { method: 'DELETE' });
+  async function confirmDelete(t) {
+    if (!window.confirm(`Delete "${t.task}"?`)) return;
+    await authedFetch(`/api/tasks/${t.id}`, { method: 'DELETE' });
     load();
   }
 
+  const sortedUsers = [...users].sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <Layout active="tasks" onNavigate={navigate}>
-      <h1>Tasks</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+        <h1 style={{ margin: 0 }}>Tasks</h1>
+        <button className="btn" onClick={openAdd}>+ Add Task</button>
+      </div>
 
-      <form className="inline-form card" onSubmit={submit}>
-        <label>Assigned To<input value={form.assignedTo} onChange={(e) => setForm({ ...form, assignedTo: e.target.value })} required /></label>
-        <label>Task<input value={form.task} onChange={(e) => setForm({ ...form, task: e.target.value })} required /></label>
-        <label>Deadline<input type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} /></label>
-        <label>Priority
-          <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
-            <option>Low</option><option>Medium</option><option>High</option>
-          </select>
-        </label>
-        <button className="btn" type="submit">Add task</button>
-      </form>
-      {error && <p className="form-error">{error}</p>}
+      {loading ? <p className="muted">Loading tasks…</p> : (
+        <>
+          <div className="task-subtabs">
+            <button className={`task-subtab-btn ${subtab === 'active' ? 'active' : ''}`} onClick={() => setSubtab('active')}>
+              Active Tasks<span className="task-subtab-count">{activeCount}</span>
+            </button>
+            <button className={`task-subtab-btn ${subtab === 'completed' ? 'active' : ''}`} onClick={() => setSubtab('completed')}>
+              Completed Tasks<span className="task-subtab-count">{completedCount}</span>
+            </button>
+          </div>
 
-      <table>
-        <thead><tr><th>Task</th><th>Assigned To</th><th>Deadline</th><th>Priority</th><th>Status</th><th></th></tr></thead>
-        <tbody>
-          {tasks.map((t) => (
-            <tr key={t.id}>
-              <td>{t.task}</td>
-              <td>{t.assignedTo}</td>
-              <td>{t.deadline}</td>
-              <td>{t.priority}</td>
-              <td>
-                {t.canEdit ? (
-                  <select value={t.status} onChange={(e) => updateStatus(t.id, e.target.value)}>
-                    <option>Not Started</option><option>In Progress</option><option>Done</option>
-                  </select>
-                ) : t.status}
-              </td>
-              <td>{t.canDelete && <button className="btn" style={{ background: 'var(--danger)' }} onClick={() => remove(t.id)}>Delete</button>}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          <div className="card" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem' }} className="muted">
+              Assigned To
+              <select value={filterAssigned} onChange={(e) => setFilterAssigned(e.target.value)} style={{ minWidth: 170 }}>
+                <option value="">All</option>
+                {sortedUsers.map((u) => <option key={u.email} value={u.email}>{u.name}</option>)}
+              </select>
+            </label>
+            {subtab === 'active' && (
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem' }} className="muted">
+                Status
+                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ minWidth: 150 }}>
+                  <option value="">All</option>
+                  <option>Not Started</option>
+                  <option>In Progress</option>
+                  <option>Done</option>
+                </select>
+              </label>
+            )}
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem' }} className="muted">
+              Sort By
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ minWidth: 170 }}>
+                <option value="created_desc">Newest Created</option>
+                <option value="created_asc">Oldest Created</option>
+                <option value="deadline_asc">Deadline (Soonest)</option>
+                <option value="deadline_desc">Deadline (Latest)</option>
+              </select>
+            </label>
+          </div>
+
+          <div>
+            {filtered.length === 0 && (
+              <p className="muted">{subtab === 'completed' ? 'No completed tasks yet.' : 'No active tasks — click "+ Add Task" to create one.'}</p>
+            )}
+            {filtered.map((t) => {
+              const overdue = isOverdue(t);
+              const done = t.status === 'Done';
+              return (
+                <div key={t.id} className={`task-card priority-${t.priority} ${overdue ? 'overdue' : ''} ${done ? 'done' : ''}`}>
+                  <div className="task-main">
+                    <div className="task-title">{t.task}</div>
+                    <div className="task-meta">
+                      <span><strong>For:</strong> {displayName(t.assignedTo)}</span>
+                      <span><strong>Added by:</strong> {displayName(t.addedBy)}</span>
+                      <span><strong>Deadline:</strong> {formatDeadline(t.deadline)}</span>
+                      <span><strong>Created:</strong> {t.timestamp ? new Date(t.timestamp).toLocaleString() : '—'}</span>
+                      <span className={`task-badge ${t.priority}`}>{t.priority}</span>
+                    </div>
+                    {t.notes && <div className="task-notes">{t.notes}</div>}
+                  </div>
+                  <div className="task-actions">
+                    <select className="task-status-select" disabled={!t.canEdit} value={t.status} onChange={(e) => changeStatus(t.id, e.target.value)}>
+                      <option>Not Started</option>
+                      <option>In Progress</option>
+                      <option>Done</option>
+                    </select>
+                    <div className="task-btn-row">
+                      {t.canEdit && <button type="button" className="task-edit-btn" onClick={() => openEdit(t)}>Edit</button>}
+                      {t.canDelete && <button type="button" className="task-delete-btn" onClick={() => confirmDelete(t)}>Delete</button>}
+                    </div>
+                    {!t.canEdit && !t.canDelete && <span className="task-locked-note">View only</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {showModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <form className="card" onSubmit={submitForm} style={{ background: 'var(--warm-white)', width: '90%', maxWidth: 440, maxHeight: '88vh', overflowY: 'auto' }}>
+            <h3 style={{ marginTop: 0 }}>{editingId ? 'Edit Task' : 'Add a Task'}</h3>
+            <p className="muted" style={{ fontSize: '0.75rem', marginTop: -8 }}>
+              {editingId ? 'Only the creator, the assignee, or an Admin can change this.' : 'This will be logged under your account automatically.'}
+            </p>
+            {formError && <p className="form-error">{formError}</p>}
+
+            <label style={{ display: 'block', marginBottom: 12 }}>Assigned To
+              <select value={form.assignedTo} onChange={(e) => setForm({ ...form, assignedTo: e.target.value })} style={{ width: '100%', marginTop: 4 }}>
+                <option value="">Select…</option>
+                {sortedUsers.map((u) => <option key={u.email} value={u.email}>{u.name}</option>)}
+              </select>
+            </label>
+            <label style={{ display: 'block', marginBottom: 12 }}>Task
+              <textarea value={form.task} onChange={(e) => setForm({ ...form, task: e.target.value })} rows={3} placeholder="What needs to get done?"
+                style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4, fontFamily: 'inherit' }} />
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <label>Deadline<input type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} style={{ width: '100%', marginTop: 4 }} /></label>
+              <label>Priority
+                <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} style={{ width: '100%', marginTop: 4 }}>
+                  <option>Low</option><option>Medium</option><option>High</option>
+                </select>
+              </label>
+            </div>
+            <label style={{ display: 'block', marginBottom: 16 }}>Notes
+              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2}
+                style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4, fontFamily: 'inherit' }} />
+            </label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => setShowModal(false)}>Cancel</button>
+              <button type="submit" className="btn" disabled={saving}>{saving ? 'Saving…' : editingId ? 'Save Changes' : 'Save Task'}</button>
+            </div>
+          </form>
+        </div>
+      )}
     </Layout>
   );
 }
