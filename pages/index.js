@@ -41,11 +41,11 @@ export default function Home() {
 
   return (
     <Layout active={tab} onNavigate={navigate}>
-      <h1>Locations</h1>
+      <h1>Installations</h1>
       {loading && <p className="muted">Loading…</p>}
       {!loading && projects.length === 0 && (
         <p className="muted">
-          No locations yet. An admin can bring in the old Project Details sheet from{' '}
+          No installations yet. An admin can bring in the old Project Details sheet from{' '}
           <a href="/admin/import">Import Data</a>.
         </p>
       )}
@@ -68,7 +68,7 @@ export default function Home() {
         </table>
       ) : (
         <div>
-          <button className="btn" style={{ marginBottom: 16 }} onClick={() => setSelected(null)}>← Back to all locations</button>
+          <button className="btn" style={{ marginBottom: 16 }} onClick={() => setSelected(null)}>← Back to all installations</button>
           <h2>{selected.name}</h2>
 
           <div className="card">

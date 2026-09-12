@@ -5,7 +5,7 @@ import { auth } from '../lib/firebaseClient';
 import { useAuth } from '../context/AuthContext';
 
 const NAV = [
-  { code: 'loc', label: 'Locations' },
+  { code: 'loc', label: 'Installations' },
   { code: 'tasks', label: 'Tasks' },
 ];
 const ADMIN_NAV = [{ code: 'admin-users', label: 'Manage Users' }, { code: 'admin-import', label: 'Import Data' }];

@@ -1,15 +1,28 @@
+/* LEMO brand palette + type, matching the original Dashboard.html playbook */
 :root {
-  --ink: #1B1F23;
-  --paper: #FAFAF8;
-  --line: #DDD9D0;
-  --accent: #2E5339; /* deep green — company/ops tool, not a marketing accent */
-  --muted: #6B6F76;
-  --danger: #B3261E;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --obsidian: #0C0A09;
+  --ember: #E85D20;
+  --ember-muted: #C24A10;
+  --copper-tint: #2A1A10;
+  --warm-white: #F2EDE6;
+  --charcoal: #1C1916;
+  --ash: #706B66;
+  --iron: #2E2B28;
+
+  /* aliases used throughout this file */
+  --ink: var(--obsidian);
+  --paper: var(--warm-white);
+  --line: var(--iron);
+  --accent: var(--ember);
+  --muted: var(--ash);
+  --danger: var(--ember-muted);
+  font-family: 'Poppins', sans-serif;
+  font-weight: 300;
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--paper); color: var(--ink); }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Poppins', sans-serif; font-weight: 300; }
+h1, h2, h3 { font-family: 'Lora', serif; font-weight: 400; letter-spacing: -0.01em; }
 
 .auth-screen {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
@@ -32,16 +45,18 @@ body { margin: 0; background: var(--paper); color: var(--ink); }
 
 .app-shell { display: flex; min-height: 100vh; }
 .sidebar {
-  width: 200px; border-right: 1px solid var(--line); padding: 20px 12px; background: white;
+  width: 200px; border-right: 1px solid var(--iron); padding: 20px 12px; background: var(--charcoal);
 }
-.sidebar h2 { font-size: 1rem; margin: 0 0 20px; }
+.sidebar h2 { font-size: 1rem; margin: 0 0 20px; color: var(--warm-white); font-family: 'Lora', serif; }
 .sidebar button {
   display: block; width: 100%; text-align: left; padding: 8px 10px; margin-bottom: 4px;
-  border: none; background: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; color: var(--ink);
+  border: 1px solid transparent; background: none; border-radius: 3px; cursor: pointer;
+  font-size: 0.85rem; font-family: 'Poppins', sans-serif; font-weight: 500; color: var(--warm-white);
 }
-.sidebar button.active { background: var(--accent); color: white; }
-.sidebar .who { font-size: 0.75rem; color: var(--muted); margin-top: 20px; }
-.sidebar .signout { color: var(--danger); margin-top: 8px; }
+.sidebar button:hover { border-color: var(--ember-muted); }
+.sidebar button.active { background: var(--ember); color: #fff; }
+.sidebar .who { font-size: 0.75rem; color: var(--ash); margin-top: 20px; }
+.sidebar .signout { color: var(--ember-muted); margin-top: 8px; }
 
 .main { flex: 1; padding: 28px 36px; }
 .main h1 { font-size: 1.3rem; margin-top: 0; }
@@ -50,7 +65,8 @@ table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
 th { color: var(--muted); font-weight: 500; }
 
-.card { background: white; border: 1px solid var(--line); border-radius: 6px; padding: 20px; margin-bottom: 20px; }
+.card { background: white; border: 1px solid var(--iron); border-left: 3px solid var(--ember); border-radius: 3px; padding: 20px; margin-bottom: 20px; }
+.card h2, .card h3 { color: var(--obsidian); }
 .inline-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
 .inline-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--muted); }
 .inline-form input, .inline-form select {

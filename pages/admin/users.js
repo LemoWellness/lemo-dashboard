@@ -4,7 +4,7 @@ import Layout from '../../components/Layout';
 import { useAuth } from '../../context/AuthContext';
 import { authedFetch } from '../../lib/firebaseClient';
 
-const ALL_TABS = [{ code: 'loc', label: 'Locations' }, { code: 'tasks', label: 'Tasks' }];
+const ALL_TABS = [{ code: 'loc', label: 'Installations' }, { code: 'tasks', label: 'Tasks' }];
 
 export default function ManageUsers() {
   const router = useRouter();

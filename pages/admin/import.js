@@ -4,7 +4,7 @@ import Layout from '../../components/Layout';
 import { auth } from '../../lib/firebaseClient';
 
 const TYPES = [
-  { value: 'projects', label: 'Project Details (locations / company info)' },
+  { value: 'projects', label: 'Project Details (installations / company info)' },
   { value: 'expenses', label: 'Expenses' },
   { value: 'income', label: 'Income' },
   { value: 'communicationLog', label: 'Communication Log' },
