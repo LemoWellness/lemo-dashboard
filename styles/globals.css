@@ -172,8 +172,9 @@ select option:hover {
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 18px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-4 > *, .grid-3 > *, .grid-2 > * { min-width: 0; }
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.table-wrap table { min-width: 560px; }
+.table-wrap.wide table { min-width: 560px; }
 
 .mobile-topbar { display: none; }
 .sidebar-backdrop { display: none; }
