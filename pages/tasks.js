@@ -15,6 +15,7 @@ export default function Tasks() {
     if (code === 'admin-users') return router.push('/admin/users');
     if (code === 'admin-import') return router.push('/admin/import');
     if (code === 'loc') return router.push('/');
+    if (code === 'daily') return router.push('/daily');
   }
 
   function load() {

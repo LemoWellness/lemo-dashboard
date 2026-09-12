@@ -14,6 +14,7 @@
     "firebase": "10.12.4",
     "firebase-admin": "12.3.0",
     "papaparse": "5.4.1",
-    "formidable": "3.5.1"
+    "formidable": "3.5.1",
+    "recharts": "2.12.7"
   }
 }
