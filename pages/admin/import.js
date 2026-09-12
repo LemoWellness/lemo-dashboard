@@ -25,6 +25,7 @@ export default function ImportData() {
     if (code === 'loc') return router.push('/');
     if (code === 'tasks') return router.push('/tasks');
     if (code === 'daily') return router.push('/daily');
+    if (code === 'usage') return router.push('/usage');
   }
 
   async function submit(e) {

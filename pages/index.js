@@ -42,6 +42,7 @@ export default function Home() {
     if (code === 'admin-import') return router.push('/admin/import');
     if (code === 'tasks') return router.push('/tasks');
     if (code === 'daily') return router.push('/daily');
+    if (code === 'usage') return router.push('/usage');
     setTab(code);
   }
 

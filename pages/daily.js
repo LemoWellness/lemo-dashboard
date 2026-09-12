@@ -21,6 +21,7 @@ export default function Daily() {
     if (code === 'admin-import') return router.push('/admin/import');
     if (code === 'loc') return router.push('/');
     if (code === 'tasks') return router.push('/tasks');
+    if (code === 'usage') return router.push('/usage');
   }
 
   function load(dateKey) {

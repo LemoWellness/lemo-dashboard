@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 
 const NAV = [
   { code: 'loc', label: 'Installations' },
+  { code: 'usage', label: 'Usage' },
   { code: 'daily', label: 'Daily' },
   { code: 'tasks', label: 'Tasks' },
 ];
