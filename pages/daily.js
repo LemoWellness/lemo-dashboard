@@ -56,7 +56,7 @@ export default function Daily() {
 
   return (
     <Layout active="daily" onNavigate={navigate}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <h1>Daily</h1>
         <label className="muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
           Select day
@@ -89,15 +89,15 @@ export default function Daily() {
         <h3 style={{ marginTop: 0 }}>Orders &amp; Revenue Sharing income (last 30 days)</h3>
         <ResponsiveContainer width="100%" height={280}>
           <LineChart data={data.trend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} />
             <XAxis dataKey="date" tick={{ fontSize: 11 }} />
             <YAxis yAxisId="left" tick={{ fontSize: 11 }} label={{ value: 'Orders', angle: -90, position: 'insideLeft', fontSize: 11 }} />
             <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} label={{ value: 'RS Income ($)', angle: 90, position: 'insideRight', fontSize: 11 }} />
             <Tooltip />
             <Legend />
-            <Line yAxisId="left" type="monotone" dataKey="corporateWellnessOrders" name="Corporate Wellness orders" stroke="#E85D20" dot={false} />
-            <Line yAxisId="left" type="monotone" dataKey="revenueSharingOrders" name="Revenue Sharing orders" stroke="#1C1916" dot={false} />
-            <Line yAxisId="right" type="monotone" dataKey="revenueSharingIncome" name="Revenue Sharing income" stroke="#706B66" strokeDasharray="4 4" dot={false} />
+            <Line yAxisId="left" type="monotone" dataKey="corporateWellnessOrders" name="Corporate Wellness orders" stroke="#E85D20" strokeWidth={2.5} dot={false} />
+            <Line yAxisId="left" type="monotone" dataKey="revenueSharingOrders" name="Revenue Sharing orders" stroke="#1C1916" strokeWidth={2.5} dot={false} />
+            <Line yAxisId="right" type="monotone" dataKey="revenueSharingIncome" name="Revenue Sharing income" stroke="#D9A441" strokeWidth={2.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>

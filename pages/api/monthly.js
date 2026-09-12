@@ -106,9 +106,9 @@ export default withAuth(async (req, res) => {
     .filter(Boolean)
     .sort((a, b) => b.balanceOwed - a.balanceOwed);
 
-  // 12-month trend ending at the selected month
+  // 6-month trend ending at the selected month
   const trend = [];
-  for (let i = 11; i >= 0; i--) {
+  for (let i = 5; i >= 0; i--) {
     const key = shiftMonth(monthKey, -i);
     const monthRows = allIncome.filter((r) => (r.date || '').startsWith(key));
     const cw = monthRows.filter((r) => modelOf(r.location) === 'Corporate Wellness').reduce((s, r) => s + (Number(r.amount) || 0), 0);

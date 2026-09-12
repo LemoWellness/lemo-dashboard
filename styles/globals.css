@@ -76,24 +76,33 @@ th { color: var(--muted); font-weight: 500; }
 .btn:disabled { opacity: 0.6; cursor: default; }
 .muted { color: var(--muted); font-size: 0.85rem; }
 
-/* Modern select styling, applied site-wide (custom arrow, no native browser chrome) */
+/* Modern select styling, applied site-wide — dark background, terracotta accent */
 select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  background-color: #fff;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0L5 6L10 0Z' fill='%23706B66'/></svg>");
+  background-color: var(--charcoal);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0L5 6L10 0Z' fill='%23F2EDE6'/></svg>");
   background-repeat: no-repeat;
   background-position: right 12px center;
   border: 1px solid var(--iron);
   border-radius: 5px;
-  padding: 8px 32px 8px 12px;
+  padding: 9px 32px 9px 12px;
   font-family: 'Poppins', sans-serif;
   font-size: 0.85rem;
-  color: var(--obsidian);
+  color: var(--warm-white);
   cursor: pointer;
   transition: border-color 0.15s ease;
 }
-select:hover { border-color: var(--ember-muted); }
+select:hover { border-color: var(--ember); }
 select:focus { outline: none; border-color: var(--ember); }
 select::-ms-expand { display: none; }
+select option {
+  background: var(--charcoal);
+  color: var(--warm-white);
+}
+select option:checked,
+select option:hover {
+  background: var(--ember);
+  color: #fff;
+}

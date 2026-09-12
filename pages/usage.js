@@ -47,7 +47,7 @@ export default function Usage() {
 
   return (
     <Layout active="usage" onNavigate={navigate}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <h1>Usage</h1>
         <label className="muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
           Month
@@ -83,14 +83,14 @@ export default function Usage() {
         <h3 style={{ marginTop: 0 }}>Company-wide usage trend</h3>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={data.companyTrend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} />
             <XAxis dataKey="period" tick={{ fontSize: 10 }} />
             <YAxis yAxisId="left" tick={{ fontSize: 11 }} label={{ value: 'Orders', angle: -90, position: 'insideLeft', fontSize: 11 }} />
             <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={pct} label={{ value: 'H5 conversion', angle: 90, position: 'insideRight', fontSize: 11 }} />
             <Tooltip formatter={(v, name) => (name === 'h5ConversionRate' ? pct(v) : v)} />
             <Legend />
-            <Line yAxisId="left" type="monotone" dataKey="totalOrders" name="Total orders" stroke="#E85D20" dot={false} />
-            <Line yAxisId="right" type="monotone" dataKey="h5ConversionRate" name="H5 conversion rate" stroke="#D9A441" dot={false} />
+            <Line yAxisId="left" type="monotone" dataKey="totalOrders" name="Total orders" stroke="#E85D20" strokeWidth={2.5} dot={false} />
+            <Line yAxisId="right" type="monotone" dataKey="h5ConversionRate" name="H5 conversion rate" stroke="#D9A441" strokeWidth={2.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>

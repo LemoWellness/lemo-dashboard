@@ -8,6 +8,18 @@ import { authedFetch } from '../lib/firebaseClient';
 const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : '—');
 const PIE_COLORS = ['#E85D20', '#0C0A09', '#706B66', '#2A1A10'];
 
+function buildMonthOptions() {
+  const opts = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    opts.push({ value, label });
+  }
+  return opts;
+}
+
 export default function Monthly() {
   const router = useRouter();
   const { session } = useAuth();
@@ -16,6 +28,7 @@ export default function Monthly() {
   const [error, setError] = useState('');
   const [modelFilter, setModelFilter] = useState('All');
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const monthOptions = buildMonthOptions();
 
   function navigate(code) {
     if (code === 'admin-users') return router.push('/admin/users');
@@ -53,11 +66,13 @@ export default function Monthly() {
 
   return (
     <Layout active="mo" onNavigate={navigate}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <h1>Monthly Overview</h1>
         <label className="muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
           Month
-          <input type="month" value={month} onChange={onMonthChange} />
+          <select value={month} onChange={onMonthChange}>
+            {monthOptions.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
         </label>
       </div>
       <p className="muted">{data.month}</p>
@@ -119,17 +134,17 @@ export default function Monthly() {
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>12-month income trend</h3>
+        <h3 style={{ marginTop: 0 }}>6-month income trend</h3>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={data.trend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} />
             <XAxis dataKey="month" tick={{ fontSize: 10 }} />
             <YAxis tick={{ fontSize: 11 }} tickFormatter={fmt} />
             <Tooltip formatter={(v) => fmt(v)} />
             <Legend />
-            <Line type="monotone" dataKey="corporateWellness" name="Corporate Wellness" stroke="#E85D20" dot={false} />
-            <Line type="monotone" dataKey="revenueSharing" name="Revenue Sharing" stroke="#0C0A09" dot={false} />
-            <Line type="monotone" dataKey="total" name="Total" stroke="#D9A441" dot={false} />
+            <Line type="monotone" dataKey="corporateWellness" name="Corporate Wellness" stroke="#E85D20" strokeWidth={2.5} dot={false} />
+            <Line type="monotone" dataKey="revenueSharing" name="Revenue Sharing" stroke="#0C0A09" strokeWidth={2.5} dot={false} />
+            <Line type="monotone" dataKey="total" name="Total" stroke="#D9A441" strokeWidth={2.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
