@@ -129,7 +129,7 @@ export default function Monthly() {
             <Legend />
             <Line type="monotone" dataKey="corporateWellness" name="Corporate Wellness" stroke="#E85D20" dot={false} />
             <Line type="monotone" dataKey="revenueSharing" name="Revenue Sharing" stroke="#0C0A09" dot={false} />
-            <Line type="monotone" dataKey="total" name="Total" stroke="#706B66" strokeDasharray="4 4" dot={false} />
+            <Line type="monotone" dataKey="total" name="Total" stroke="#D9A441" dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>

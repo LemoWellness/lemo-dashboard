@@ -90,7 +90,7 @@ export default function Usage() {
             <Tooltip formatter={(v, name) => (name === 'h5ConversionRate' ? pct(v) : v)} />
             <Legend />
             <Line yAxisId="left" type="monotone" dataKey="totalOrders" name="Total orders" stroke="#E85D20" dot={false} />
-            <Line yAxisId="right" type="monotone" dataKey="h5ConversionRate" name="H5 conversion rate" stroke="#706B66" strokeDasharray="4 4" dot={false} />
+            <Line yAxisId="right" type="monotone" dataKey="h5ConversionRate" name="H5 conversion rate" stroke="#D9A441" dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
