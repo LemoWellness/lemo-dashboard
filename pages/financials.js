@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { authedFetch } from '../lib/firebaseClient';
@@ -75,35 +75,37 @@ export default function Financials() {
             <Kpi label="Net Profit" value={fmt(selected.netProfit)} negative={selected.netProfit < 0} />
           </div>
 
-          <div className="grid-2">
-            <div className="card">
-              <h3 style={{ marginTop: 0 }}>Expense breakdown</h3>
-              {selected.topExpenses?.length > 0 ? (
-                <ResponsiveContainer width="100%" height={280}>
-                  <PieChart>
-                    <Pie data={selected.topExpenses} dataKey="amount" nameKey="category" outerRadius={100}>
-                      {selected.topExpenses.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(v) => fmt(v)} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : <p className="muted">No category breakdown for this period.</p>}
-            </div>
-            <div className="card">
-              <h3 style={{ marginTop: 0 }}>By category</h3>
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>Category</th><th>Amount</th><th>% of Total</th></tr></thead>
-                  <tbody>
-                    {(selected.topExpenses || []).map((e, i) => (
-                      <tr key={i}><td>{e.category}</td><td>{fmt(e.amount)}</td><td>{e.percentOfTotal != null ? `${e.percentOfTotal}%` : '—'}</td></tr>
-                    ))}
-                    {(!selected.topExpenses || selected.topExpenses.length === 0) && <tr><td colSpan={3} className="muted">No categories for this period.</td></tr>}
-                  </tbody>
+          <div className="card">
+            <h3 style={{ marginTop: 0 }}>Expense breakdown</h3>
+            {selected.topExpenses?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={Math.max(220, selected.topExpenses.length * 34 + 20)}>
+                <BarChart data={selected.topExpenses} layout="vertical" margin={{ left: 10, right: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} horizontal={false} />
+                  <XAxis type="number" tickFormatter={fmt} tick={{ fontSize: 10 }} />
+                  <YAxis type="category" dataKey="category" width={220} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v) => fmt(v)} />
+                  <Bar dataKey="amount" barSize={18}>
+                    {selected.topExpenses.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : <p className="muted">No category breakdown for this period.</p>}
+          </div>
+
+          <div className="card">
+            <h3 style={{ marginTop: 0 }}>By category</h3>
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Category</th><th>Amount</th><th>% of Total</th></tr></thead>
+                <tbody>
+                  {(selected.topExpenses || []).map((e, i) => (
+                    <tr key={i}><td>{e.category}</td><td>{fmt(e.amount)}</td><td>{e.percentOfTotal != null ? `${e.percentOfTotal}%` : '—'}</td></tr>
+                  ))}
+                  {(!selected.topExpenses || selected.topExpenses.length === 0) && <tr><td colSpan={3} className="muted">No categories for this period.</td></tr>}
+                </tbody>
                 </table>
               </div>
             </div>
-          </div>
 
           <div className="card">
             <h3 style={{ marginTop: 0 }}>Report history</h3>

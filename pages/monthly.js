@@ -109,9 +109,9 @@ export default function Monthly() {
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Corporate Wellness vs Revenue Sharing</h3>
           {donutData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={donutData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} label={(e) => e.name}>
+                <Pie data={donutData} dataKey="value" nameKey="name" innerRadius="35%" outerRadius="65%" label={(e) => e.name}>
                   {donutData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v) => fmt(v)} />
@@ -122,9 +122,9 @@ export default function Monthly() {
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Top expense categories</h3>
           {data.expenseBreakdown.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={data.expenseBreakdown} dataKey="total" nameKey="category" outerRadius={80} label={(e) => e.category}>
+                <Pie data={data.expenseBreakdown} dataKey="total" nameKey="category" outerRadius="75%" label={(e) => e.category}>
                   {data.expenseBreakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v) => fmt(v)} />
@@ -153,7 +153,7 @@ export default function Monthly() {
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Corporate Wellness — Outstanding Payments</h3>
         {data.cwPaymentStatus.length > 0 ? (
-          <div className="table-wrap">
+          <div className="table-wrap wide">
           <table>
             <thead><tr><th>Location</th><th>Fee / mo</th><th>Months billable</th><th>Expected</th><th>Received</th><th>Balance owed</th></tr></thead>
             <tbody>
@@ -175,7 +175,7 @@ export default function Monthly() {
             <option value="Revenue Sharing">Revenue Sharing</option>
           </select>
         </div>
-        <div className="table-wrap">
+        <div className="table-wrap wide">
         <table>
           <thead><tr><th>Location</th><th>Model</th><th>Chairs</th><th>Gross revenue</th><th>LEMO income</th><th>Expenses</th><th>Net</th></tr></thead>
           <tbody>

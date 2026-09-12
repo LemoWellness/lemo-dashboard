@@ -359,9 +359,9 @@ export default function Home() {
                 <div className="card">
                   <h3 style={{ marginTop: 0 }}>Expense categories (all-time)</h3>
                   {metrics.expenseBreakdown.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={220}>
+                    <ResponsiveContainer width="100%" height={200}>
                       <PieChart>
-                        <Pie data={metrics.expenseBreakdown} dataKey="total" nameKey="category" outerRadius={80} label={(e) => e.category}>
+                        <Pie data={metrics.expenseBreakdown} dataKey="total" nameKey="category" outerRadius="75%" label={(e) => e.category}>
                           {metrics.expenseBreakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                         </Pie>
                         <Tooltip formatter={(v) => fmt(v)} />
