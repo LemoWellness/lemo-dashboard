@@ -79,10 +79,10 @@ export default function Monthly() {
       <p className="muted">{data.month}</p>
 
       <div className="grid-4">
-        <Kpi label="Total LEMO income" value={fmt(data.totalLemoIncome)} />
-        <Kpi label="Corporate wellness income" value={fmt(data.corporateWellnessIncome)} />
-        <Kpi label="Revenue sharing income" value={fmt(data.revenueSharingIncome)} />
+        <Kpi label="Total income" value={fmt(data.totalLemoIncome)} />
+        <Kpi label="Total expenses" value={fmt(data.totalExpenses)} />
         <Kpi label="Net profit / loss" value={fmt(data.netProfitLoss)} negative={data.netProfitLoss < 0} />
+        <Kpi label="Active chairs" value={data.activeChairs?.toLocaleString() ?? '—'} />
       </div>
 
       <div className="grid-2">

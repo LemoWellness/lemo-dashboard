@@ -81,6 +81,7 @@ export default withAuth(async (req, res) => {
   const revenuePerChair = Object.entries(perChair).map(([model, v]) => ({
     model, chairs: v.totalChairs, revenuePerChair: v.totalChairs > 0 ? v.totalIncome / v.totalChairs : 0,
   }));
+  const activeChairs = locationTable.reduce((s, l) => s + (Number(l.chairs) || 0), 0);
 
   // Top expense categories now come from the uploaded Profit & Loss / Top
   // Expenses reports (real accounting categories), not from summing the
@@ -121,7 +122,7 @@ export default withAuth(async (req, res) => {
   res.status(200).json({
     month: monthLabel(monthKey), monthKey,
     totalLemoIncome, corporateWellnessIncome, revenueSharingIncome, totalExpenses, netProfitLoss,
-    activeLocations, corporateWellnessLocations, revenueSharingLocations,
+    activeLocations, corporateWellnessLocations, revenueSharingLocations, activeChairs,
     comparison, trend, locationTable, expenseBreakdown, cwPaymentStatus, revenuePerChair,
   });
 }, { tab: 'mo' });
