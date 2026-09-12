@@ -23,6 +23,13 @@
 //                           (headers must match the China backend export exactly, including
 //                           spaces and capitalization — this one is stored as-is, unlike the
 //                           other four which get renamed/reshaped on import)
+//   usageRawData        -> Date, Outlet ID, Outlet Name, Province, Province Name, City,
+//                           City Name, Venue name, Channel, Seat Num, Idle number,
+//                           Occupy number, Scan number, Pay number, Order number,
+//                           Seat conversion rate, H5 conversion rate, First gear rate,
+//                           Second gear rate, Third gear rate, Place count, Area count,
+//                           Currency (headers must match the China backend's weekly
+//                           venue-level export exactly; also stored as-is, no dashboard yet)
 import Papa from 'papaparse';
 import formidable from 'formidable';
 import fs from 'fs';
@@ -37,6 +44,7 @@ const COLLECTION_BY_TYPE = {
   income: 'income',
   communicationLog: 'communicationLog',
   dailyRawData: 'dailyRawData',
+  usageRawData: 'usageRawData',
 };
 
 function num(v) {
@@ -133,6 +141,35 @@ function rowToDoc(type, row) {
         avgRunningWater: num(row['Average Running Water']),
         orderPrice: num(row['Order Price']),
         avgVisitors: num(row['Average Number of Visitors']),
+      };
+    case 'usageRawData':
+      // Weekly venue-level usage export from the China backend. Preserved
+      // as-is, matching the dailyRawData approach — no dashboard reads this
+      // yet, this is safe storage only.
+      return {
+        period: row['Date'] || '', // e.g. "2026-08-01~2026-08-31"
+        outletId: row['Outlet ID'] || '',
+        outletName: row['Outlet Name'] || '',
+        province: row['Province'] || '',
+        provinceName: row['Province Name'] || '',
+        city: row['City'] || '',
+        cityName: row['City Name'] || '',
+        venueName: (row['Venue name'] || '').trim(),
+        channel: row['Channel'] || '',
+        seatNum: num(row['Seat Num']),
+        idleNumber: num(row['Idle number']),
+        occupyNumber: num(row['Occupy number']),
+        scanNumber: num(row['Scan number']),
+        payNumber: num(row['Pay number']),
+        orderNumber: num(row['Order number']),
+        seatConversionRate: num(row['Seat conversion rate']),
+        h5ConversionRate: num(row['H5 conversion rate']),
+        firstGearRate: num(row['First gear rate']),
+        secondGearRate: num(row['Second gear rate']),
+        thirdGearRate: num(row['Third gear rate']),
+        placeCount: num(row['Place count']),
+        areaCount: num(row['Area count']),
+        currency: row['Currency'] || '',
       };
     default:
       return null;

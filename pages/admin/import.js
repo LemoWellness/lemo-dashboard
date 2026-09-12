@@ -9,6 +9,7 @@ const TYPES = [
   { value: 'income', label: 'Income' },
   { value: 'communicationLog', label: 'Communication Log' },
   { value: 'dailyRawData', label: 'Daily Raw Data (POS export)' },
+  { value: 'usageRawData', label: 'Usage Raw Data (weekly venue export)' },
 ];
 
 export default function ImportData() {
