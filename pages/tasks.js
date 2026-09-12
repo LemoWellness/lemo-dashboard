@@ -140,19 +140,19 @@ export default function Tasks() {
 
       {loading ? <p className="muted">Loading tasks…</p> : loadError ? <p className="form-error">{loadError}</p> : (
         <>
-          <div className="task-subtabs">
-            <button className={`task-subtab-btn ${subtab === 'active' ? 'active' : ''}`} onClick={() => setSubtab('active')}>
-              Active Tasks<span className="task-subtab-count">{activeCount}</span>
+          <div className="seg-tabs">
+            <button className={`seg-tab ${subtab === 'active' ? 'active' : ''}`} onClick={() => setSubtab('active')}>
+              Active ({activeCount})
             </button>
-            <button className={`task-subtab-btn ${subtab === 'completed' ? 'active' : ''}`} onClick={() => setSubtab('completed')}>
-              Completed Tasks<span className="task-subtab-count">{completedCount}</span>
+            <button className={`seg-tab ${subtab === 'completed' ? 'active' : ''}`} onClick={() => setSubtab('completed')}>
+              Completed ({completedCount})
             </button>
           </div>
 
-          <div className="card" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="card" style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem' }} className="muted">
               Assigned To
-              <select value={filterAssigned} onChange={(e) => setFilterAssigned(e.target.value)} style={{ minWidth: 170 }}>
+              <select value={filterAssigned} onChange={(e) => setFilterAssigned(e.target.value)} style={{ minWidth: 150 }}>
                 <option value="">All</option>
                 {sortedUsers.map((u) => <option key={u.email} value={u.email}>{u.name}</option>)}
               </select>
@@ -160,7 +160,7 @@ export default function Tasks() {
             {subtab === 'active' && (
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem' }} className="muted">
                 Status
-                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ minWidth: 150 }}>
+                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ minWidth: 130 }}>
                   <option value="">All</option>
                   <option>Not Started</option>
                   <option>In Progress</option>
@@ -170,7 +170,7 @@ export default function Tasks() {
             )}
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem' }} className="muted">
               Sort By
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ minWidth: 170 }}>
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ minWidth: 150 }}>
                 <option value="created_desc">Newest Created</option>
                 <option value="created_asc">Oldest Created</option>
                 <option value="deadline_asc">Deadline (Soonest)</option>
@@ -179,41 +179,55 @@ export default function Tasks() {
             </label>
           </div>
 
-          <div>
-            {filtered.length === 0 && (
-              <p className="muted">{subtab === 'completed' ? 'No completed tasks yet.' : 'No active tasks — click "+ Add Task" to create one.'}</p>
-            )}
-            {filtered.map((t) => {
-              const overdue = isOverdue(t);
-              const done = t.status === 'Done';
-              return (
-                <div key={t.id} className={`task-card priority-${t.priority} ${overdue ? 'overdue' : ''} ${done ? 'done' : ''}`}>
-                  <div className="task-main">
-                    <div className="task-title">{t.task}</div>
-                    <div className="task-meta">
-                      <span><strong>For:</strong> {displayName(t.assignedTo)}</span>
-                      <span><strong>Added by:</strong> {displayName(t.addedBy)}</span>
-                      <span><strong>Deadline:</strong> {formatDeadline(t.deadline)}</span>
-                      <span><strong>Created:</strong> {t.timestamp ? new Date(t.timestamp).toLocaleString() : '—'}</span>
-                      <span className={`task-badge ${t.priority}`}>{t.priority}</span>
-                    </div>
-                    {t.notes && <div className="task-notes">{t.notes}</div>}
-                  </div>
-                  <div className="task-actions">
-                    <select className="task-status-select" disabled={!t.canEdit} value={t.status} onChange={(e) => changeStatus(t.id, e.target.value)}>
-                      <option>Not Started</option>
-                      <option>In Progress</option>
-                      <option>Done</option>
-                    </select>
-                    <div className="task-btn-row">
-                      {t.canEdit && <button type="button" className="task-edit-btn" onClick={() => openEdit(t)}>Edit</button>}
-                      {t.canDelete && <button type="button" className="task-delete-btn" onClick={() => confirmDelete(t)}>Delete</button>}
-                    </div>
-                    {!t.canEdit && !t.canDelete && <span className="task-locked-note">View only</span>}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th>Notes</th>
+                  <th>For</th>
+                  <th>Added By</th>
+                  <th>Deadline</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((t) => {
+                  const overdue = isOverdue(t);
+                  const done = t.status === 'Done';
+                  return (
+                    <tr key={t.id} style={done ? { opacity: 0.55 } : overdue ? { background: '#fdeceb' } : undefined}>
+                      <td style={done ? { textDecoration: 'line-through' } : undefined}>{t.task}</td>
+                      <td className="muted" style={{ fontStyle: t.notes ? 'italic' : 'normal' }}>{t.notes || '—'}</td>
+                      <td>{displayName(t.assignedTo)}</td>
+                      <td>{displayName(t.addedBy)}</td>
+                      <td>{formatDeadline(t.deadline)}</td>
+                      <td><span className={`task-badge ${t.priority}`}>{t.priority}</span></td>
+                      <td>
+                        <select className="task-status-select" disabled={!t.canEdit} value={t.status} onChange={(e) => changeStatus(t.id, e.target.value)}>
+                          <option>Not Started</option>
+                          <option>In Progress</option>
+                          <option>Done</option>
+                        </select>
+                      </td>
+                      <td>
+                        {t.canEdit || t.canDelete ? (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            {t.canEdit && <button type="button" className="task-edit-btn" onClick={() => openEdit(t)}>Edit</button>}
+                            {t.canDelete && <button type="button" className="task-delete-btn" onClick={() => confirmDelete(t)}>Delete</button>}
+                          </div>
+                        ) : <span className="task-locked-note">View only</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={8} className="muted">{subtab === 'completed' ? 'No completed tasks yet.' : 'No active tasks — click "+ Add Task" to create one.'}</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </>
       )}
