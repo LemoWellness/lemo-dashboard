@@ -7,7 +7,8 @@
 // Expected CSV headers per `type` (case-insensitive, extra columns ignored):
 //   projects            -> name, businessModel, numberOfChairs, goLiveDate, monthlyFee,
 //                           revenueSharePercent, streetAddress, city, state, zipCode,
-//                           tenureMonths, avgMonthlyRevenue, bdConsultantName,
+//                           tenureMonths, avgMonthlyRevenue, customerContactName,
+//                           customerContactPhone, customerContactEmail, bdConsultantName,
 //                           bdConsultantPhone, bdConsultantEmail, contact2Name,
 //                           contact2Phone, contact2Email, editNotes
 //   expenses            -> location, date, category, item, description, source,
@@ -60,6 +61,9 @@ function rowToDoc(type, row) {
         zipCode: row.zipCode || '',
         tenureMonths: num(row.tenureMonths),
         avgMonthlyRevenue: num(row.avgMonthlyRevenue),
+        customerContactName: row.customerContactName || '',
+        customerContactPhone: row.customerContactPhone || '',
+        customerContactEmail: row.customerContactEmail || '',
         bdConsultantName: row.bdConsultantName || '',
         bdConsultantPhone: row.bdConsultantPhone || '',
         bdConsultantEmail: row.bdConsultantEmail || '',
