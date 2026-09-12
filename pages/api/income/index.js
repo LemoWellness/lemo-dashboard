@@ -16,7 +16,7 @@ export default withAuth(async (req, res, session) => {
     if (session.role !== 'Admin') {
       return res.status(403).json({ error: 'Only an administrator can do that.' });
     }
-    const { location, date, amount, notes } = req.body || {};
+    const { location, date, amount, notes, grossRevenue } = req.body || {};
     if (!location) return res.status(400).json({ error: 'No location specified.' });
     const amt = Number(amount);
     if (!amount || isNaN(amt) || amt <= 0) return res.status(400).json({ error: 'Amount must be a positive number.' });
@@ -35,6 +35,7 @@ export default withAuth(async (req, res, session) => {
       date,
       businessModel,
       amount: amt,
+      grossRevenue: grossRevenue != null && grossRevenue !== '' ? Number(grossRevenue) : null,
       notes: notes || '',
       addedBy: session.email,
       createdAt: new Date().toISOString(),

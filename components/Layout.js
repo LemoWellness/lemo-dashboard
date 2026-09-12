@@ -5,6 +5,7 @@ import { auth } from '../lib/firebaseClient';
 import { useAuth } from '../context/AuthContext';
 
 const NAV = [
+  { code: 'mo', label: 'Monthly Overview' },
   { code: 'loc', label: 'Installations' },
   { code: 'usage', label: 'Usage' },
   { code: 'daily', label: 'Daily' },

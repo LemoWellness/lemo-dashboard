@@ -22,6 +22,7 @@ export default function Daily() {
     if (code === 'loc') return router.push('/');
     if (code === 'tasks') return router.push('/tasks');
     if (code === 'usage') return router.push('/usage');
+    if (code === 'mo') return router.push('/monthly');
   }
 
   function load(dateKey) {

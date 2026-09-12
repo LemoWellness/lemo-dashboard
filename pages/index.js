@@ -43,6 +43,7 @@ export default function Home() {
     if (code === 'tasks') return router.push('/tasks');
     if (code === 'daily') return router.push('/daily');
     if (code === 'usage') return router.push('/usage');
+    if (code === 'mo') return router.push('/monthly');
     setTab(code);
   }
 

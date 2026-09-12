@@ -17,6 +17,7 @@ export default function Tasks() {
     if (code === 'loc') return router.push('/');
     if (code === 'daily') return router.push('/daily');
     if (code === 'usage') return router.push('/usage');
+    if (code === 'mo') return router.push('/monthly');
   }
 
   function load() {

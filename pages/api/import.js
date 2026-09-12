@@ -13,7 +13,7 @@
 //                           contact2Phone, contact2Email, editNotes
 //   expenses            -> location, date, category, item, description, source,
 //                           quantity, costPerUnit, notes
-//   income              -> location, date, amount, notes
+//   income              -> location, date, amount, notes, grossRevenue (optional)
 //   communicationLog    -> location, date, note, channel, loggedBy
 //   dailyRawData        -> Venue ID, Venue Name, Count Date, Outlet ID, Outlet Name,
 //                           Entry Time, Country, Province, City, Device Model, Currency,
@@ -99,6 +99,7 @@ function rowToDoc(type, row) {
         location: row.location?.trim(),
         date: row.date || '',
         amount: num(row.amount),
+        grossRevenue: num(row.grossRevenue),
         notes: row.notes || '',
         addedBy: 'import',
       };

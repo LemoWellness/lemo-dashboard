@@ -26,6 +26,7 @@ export default function ImportData() {
     if (code === 'tasks') return router.push('/tasks');
     if (code === 'daily') return router.push('/daily');
     if (code === 'usage') return router.push('/usage');
+    if (code === 'mo') return router.push('/monthly');
   }
 
   async function submit(e) {
