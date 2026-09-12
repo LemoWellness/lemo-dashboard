@@ -57,14 +57,14 @@ export default function Usage() {
         </label>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 18 }}>
+      <div className="grid-4">
         <Kpi label="Orders (sessions)" value={count(data.selectedOrders)} />
         <Kpi label="Seating count" value={count(data.selectedSeating)} />
         <Kpi label="Idle count" value={count(data.selectedIdle)} />
         <Kpi label="Occupied count" value={count(data.selectedOccupied)} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 18 }}>
+      <div className="grid-2">
         <div className="card" style={{ marginBottom: 0 }}>
           <h3 style={{ marginTop: 0 }}>Scanned count (selected month)</h3>
           <div style={{ fontFamily: "'Lora', serif", fontSize: '1.6rem' }}>{count(data.selectedScanned)}</div>
@@ -97,6 +97,7 @@ export default function Usage() {
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Venue activity — selected month (ranked by orders)</h3>
+        <div className="table-wrap">
         <table>
           <thead><tr><th>Venue</th><th>Orders</th><th>Seating</th><th>Idle</th><th>Occupied</th><th>Scanned</th></tr></thead>
           <tbody>
@@ -106,6 +107,7 @@ export default function Usage() {
             {data.venues.length === 0 && <tr><td colSpan={6} className="muted">No venue activity for this period</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </Layout>
   );

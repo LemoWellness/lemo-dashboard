@@ -77,14 +77,14 @@ export default function Monthly() {
       </div>
       <p className="muted">{data.month}</p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 18 }}>
+      <div className="grid-4">
         <Kpi label="Total LEMO income" value={fmt(data.totalLemoIncome)} />
         <Kpi label="Corporate wellness income" value={fmt(data.corporateWellnessIncome)} />
         <Kpi label="Revenue sharing income" value={fmt(data.revenueSharingIncome)} />
         <Kpi label="Net profit / loss" value={fmt(data.netProfitLoss)} negative={data.netProfitLoss < 0} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 18 }}>
+      <div className="grid-2">
         {data.comparison.map((c) => {
           const perChair = data.revenuePerChair.find((r) => r.model === c.model);
           return (
@@ -104,7 +104,7 @@ export default function Monthly() {
         })}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="grid-2">
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Corporate Wellness vs Revenue Sharing</h3>
           {donutData.length > 0 ? (
@@ -152,6 +152,7 @@ export default function Monthly() {
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Corporate Wellness — Outstanding Payments</h3>
         {data.cwPaymentStatus.length > 0 ? (
+          <div className="table-wrap">
           <table>
             <thead><tr><th>Location</th><th>Fee / mo</th><th>Months billable</th><th>Expected</th><th>Received</th><th>Balance owed</th></tr></thead>
             <tbody>
@@ -160,6 +161,7 @@ export default function Monthly() {
               ))}
             </tbody>
           </table>
+          </div>
         ) : <p className="muted">All Corporate Wellness accounts are current — nothing owed.</p>}
       </div>
 
@@ -172,6 +174,7 @@ export default function Monthly() {
             <option value="Revenue Sharing">Revenue Sharing</option>
           </select>
         </div>
+        <div className="table-wrap">
         <table>
           <thead><tr><th>Location</th><th>Model</th><th>Chairs</th><th>Gross revenue</th><th>LEMO income</th><th>Expenses</th><th>Net</th></tr></thead>
           <tbody>
@@ -185,6 +188,7 @@ export default function Monthly() {
             {filteredLocations.length === 0 && <tr><td colSpan={7} className="muted">No location activity for this month</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </Layout>
   );

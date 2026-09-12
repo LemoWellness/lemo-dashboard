@@ -75,7 +75,7 @@ export default function Daily() {
 
       {data.dataHealthIssues?.count > 0 && <HealthBanner issues={data.dataHealthIssues} />}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 18 }}>
+      <div className="grid-4">
         <Kpi label="Orders" value={count(data.totals.orders)} />
         <Kpi label="Income (Revenue Sharing)" value={fmt(data.totals.netIncome)} />
         <Kpi label="Refunds" value={fmt(data.totals.refunds)} />
@@ -154,6 +154,7 @@ export default function Daily() {
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Venue activity — selected day (ranked by orders)</h3>
+        <div className="table-wrap">
         <table>
           <thead><tr><th>Venue</th><th>Orders</th><th>Net income</th><th>Refunds</th><th>Completed</th><th>Avg order price</th><th>Avg visitors</th></tr></thead>
           <tbody>
@@ -166,6 +167,7 @@ export default function Daily() {
             {data.venueTable.length === 0 && <tr><td colSpan={7} className="muted">No venue activity for this day</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </Layout>
   );

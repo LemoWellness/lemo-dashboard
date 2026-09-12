@@ -180,6 +180,7 @@ export default function Tasks() {
           </div>
 
           <div className="card">
+            <div className="table-wrap">
             <table>
               <thead>
                 <tr>
@@ -228,6 +229,7 @@ export default function Tasks() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </>
       )}
@@ -251,7 +253,7 @@ export default function Tasks() {
               <textarea value={form.task} onChange={(e) => setForm({ ...form, task: e.target.value })} rows={3} placeholder="What needs to get done?"
                 style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4, fontFamily: 'inherit' }} />
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div className="form-grid-2" style={{ marginBottom: 12 }}>
               <label>Deadline<input type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} style={{ width: '100%', marginTop: 4 }} /></label>
               <label>Priority
                 <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} style={{ width: '100%', marginTop: 4 }}>

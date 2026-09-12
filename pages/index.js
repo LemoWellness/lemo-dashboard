@@ -219,6 +219,7 @@ export default function Home() {
             </p>
           )}
           {!loading && filteredProjects.length > 0 && (
+            <div className="table-wrap">
             <table>
               <thead><tr><th>Name</th><th>Business Model</th><th>State</th><th>Monthly Fee</th></tr></thead>
               <tbody>
@@ -230,6 +231,7 @@ export default function Home() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </>
       ) : (
@@ -243,7 +245,7 @@ export default function Home() {
           <h2>{selected.name}</h2>
 
           <div className="card">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+            <div className="grid-3">
               <div>
                 <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Install Date</div>
                 <div>{selected.goLiveDate || '—'}</div>
@@ -275,14 +277,14 @@ export default function Home() {
 
           {metrics && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 18 }}>
+              <div className="grid-4">
                 <Kpi label="Current monthly revenue" value={fmt(metrics.currentMonthlyRevenue)} />
                 <Kpi label="Total LEMO income" value={fmt(metrics.totalLemoIncome)} />
                 <Kpi label="Total expenses" value={fmt(metrics.totalExpenses)} />
                 <Kpi label="Net profit / loss" value={fmt(metrics.netProfitLoss)} negative={metrics.netProfitLoss < 0} />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+              <div className="grid-3">
                 <div className="card">
                   <h3 style={{ marginTop: 0 }}>ROI progress</h3>
                   <div style={{ background: 'var(--warm-white)', border: '1px solid var(--iron)', borderRadius: 99, height: 10, overflow: 'hidden', marginBottom: 10 }}>
@@ -350,6 +352,7 @@ export default function Home() {
                 <button className="btn" type="submit">+ Add Expense</button>
               </form>
             )}
+            <div className="table-wrap">
             <table>
               <thead><tr><th>Date</th><th>Category</th><th>Item</th><th>Amount</th></tr></thead>
               <tbody>
@@ -359,6 +362,7 @@ export default function Home() {
                 {expenses.length === 0 && <tr><td colSpan={4} className="muted">No expenses recorded.</td></tr>}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="card">
@@ -373,6 +377,7 @@ export default function Home() {
             ) : isAdmin && (
               <p className="muted" style={{ fontSize: '0.8rem' }}>Adding income manually is only available for Corporate Wellness locations.</p>
             )}
+            <div className="table-wrap">
             <table>
               <thead><tr><th>Date</th><th>Amount</th><th>Notes</th></tr></thead>
               <tbody>
@@ -382,6 +387,7 @@ export default function Home() {
                 {income.length === 0 && <tr><td colSpan={3} className="muted">No income recorded.</td></tr>}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="card">
@@ -408,7 +414,7 @@ export default function Home() {
           <form className="card" onSubmit={submitAccount} style={{ background: 'var(--warm-white)', width: '90%', maxWidth: 640, maxHeight: '85vh', overflowY: 'auto' }}>
             <h3 style={{ marginTop: 0 }}>{editingAccount ? 'Edit Company' : 'Add New Account'}</h3>
             {accountError && <p className="form-error">{accountError}</p>}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2">
               <label>Name<input value={accountForm.name} onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })} disabled={editingAccount} required /></label>
               <label>Business Model
                 <select value={accountForm.businessModel} onChange={(e) => setAccountForm({ ...accountForm, businessModel: e.target.value })}>

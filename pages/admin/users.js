@@ -78,6 +78,7 @@ export default function ManageUsers() {
         {error && <p className="form-error">{error}</p>}
       </form>
 
+      <div className="table-wrap">
       <table>
         <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tabs</th><th>Status</th><th></th></tr></thead>
         <tbody>
@@ -93,6 +94,7 @@ export default function ManageUsers() {
           ))}
         </tbody>
       </table>
+      </div>
     </Layout>
   );
 }
