@@ -4,7 +4,7 @@ import Layout from '../../components/Layout';
 import { useAuth } from '../../context/AuthContext';
 import { authedFetch } from '../../lib/firebaseClient';
 
-const ALL_TABS = [{ code: 'mo', label: 'Monthly Overview' }, { code: 'loc', label: 'Installations' }, { code: 'usage', label: 'Usage' }, { code: 'daily', label: 'Daily' }, { code: 'tasks', label: 'Tasks' }];
+const ALL_TABS = [{ code: 'mo', label: 'Monthly Overview' }, { code: 'loc', label: 'Installations' }, { code: 'usage', label: 'Usage' }, { code: 'daily', label: 'Daily' }, { code: 'tasks', label: 'Tasks' }, { code: 'financials', label: 'Financials' }];
 
 export default function ManageUsers() {
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function ManageUsers() {
     if (code === 'daily') return router.push('/daily');
     if (code === 'usage') return router.push('/usage');
     if (code === 'mo') return router.push('/monthly');
+    if (code === 'financials') return router.push('/financials');
   }
 
   function load() {

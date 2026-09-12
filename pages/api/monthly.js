@@ -82,12 +82,14 @@ export default withAuth(async (req, res) => {
     model, chairs: v.totalChairs, revenuePerChair: v.totalChairs > 0 ? v.totalIncome / v.totalChairs : 0,
   }));
 
-  const byCategory = {};
-  monthExpenses.forEach((e) => { if (e.category) byCategory[e.category] = (byCategory[e.category] || 0) + (Number(e.amount) || 0); });
-  const catEntries = Object.entries(byCategory).map(([category, total]) => ({ category, total })).sort((a, b) => b.total - a.total);
-  const top3 = catEntries.slice(0, 3);
-  const otherTotal = catEntries.slice(3).reduce((s, e) => s + e.total, 0);
-  const expenseBreakdown = otherTotal > 0 ? [...top3, { category: 'Other', total: otherTotal }] : top3;
+  // Top expense categories now come from the uploaded Profit & Loss / Top
+  // Expenses reports (real accounting categories), not from summing the
+  // per-location Expenses collection — per Gloria's request, since the
+  // accounting export is the authoritative source for this breakdown.
+  const financialsSnap = await adminDb.collection('financialReports').orderBy('periodStart', 'desc').limit(1).get();
+  const expenseBreakdown = financialsSnap.empty
+    ? []
+    : (financialsSnap.docs[0].data().topExpenses || []).slice(0, 3).map((e) => ({ category: e.category, total: e.amount }));
 
   // Corporate Wellness outstanding payments — uses ALL-TIME income received, not just this month
   const allTimeReceivedByLocation = {};

@@ -23,6 +23,7 @@ export default function Daily() {
     if (code === 'tasks') return router.push('/tasks');
     if (code === 'usage') return router.push('/usage');
     if (code === 'mo') return router.push('/monthly');
+    if (code === 'financials') return router.push('/financials');
   }
 
   function load(dateKey) {
