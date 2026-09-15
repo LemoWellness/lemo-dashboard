@@ -20,6 +20,20 @@ function buildMonthOptions() {
   return opts;
 }
 
+function Hint({ text }) {
+  return (
+    <span
+      title={text}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: 14, height: 14, marginLeft: 6, borderRadius: '50%',
+        border: '1px solid var(--iron)', fontSize: 10, lineHeight: '14px',
+        color: 'var(--ash)', cursor: 'help', verticalAlign: 'middle',
+      }}
+    >?</span>
+  );
+}
+
 export default function Monthly() {
   const router = useRouter();
   const { session } = useAuth();
@@ -75,22 +89,44 @@ export default function Monthly() {
       <p className="muted">{data.month}</p>
 
       <div className="grid-4">
-        <Kpi label="Total income" value={fmt(data.totalLemoIncome)} />
-        <Kpi label="Total expenses" value={fmt(data.totalExpenses)} />
-        <Kpi label="Net profit / loss" value={fmt(data.netProfitLoss)} negative={data.netProfitLoss < 0} />
-        <Kpi label="Active chairs" value={data.activeChairs?.toLocaleString() ?? '—'} />
+        <Kpi
+          label="Total income"
+          value={fmt(data.totalLemoIncome)}
+          hint="Corporate Wellness: contracted monthly fee for live sites this month (whether paid or not). Revenue Sharing: LEMO share actually recorded this month."
+        />
+        <Kpi
+          label="Total expenses"
+          value={fmt(data.totalExpenses)}
+          hint="Company-wide expenses from Financials for this month. Not the same as per-location direct expenses."
+        />
+        <Kpi
+          label="Net profit / loss"
+          value={fmt(data.netProfitLoss)}
+          negative={data.netProfitLoss < 0}
+          hint="Total income minus company-wide expenses for this month."
+        />
+        <Kpi
+          label="Active chairs"
+          value={data.activeChairs?.toLocaleString() ?? '—'}
+          hint="Chairs at locations with activity this month, using the installation chair count (default 2)."
+        />
       </div>
 
       <div className="grid-2">
         {data.comparison.map((c) => {
           const chairs = c.revenueGeneratingChairs ?? 0;
           const perChair = chairs > 0 ? c.income / chairs : null;
+          const isCw = c.model === 'Corporate Wellness';
           return (
-            <div className="card" key={c.model} style={{ marginBottom: 0 }}>
-              <h3 style={{ marginTop: 0 }}>{c.model} Performance</h3>
-              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Income</span><span>{fmt(c.income)}</span></div>
-              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Direct expenses</span><span>{fmt(c.expenses)}</span></div>
-              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Contribution</span><span>{fmt(c.netProfit)}</span></div>
+            <div className="card" key={c.model} style={{ marginBottom: 0 }} title={isCw
+              ? 'Corporate Wellness performance uses the contracted monthly fee, not cash received.'
+              : 'Revenue Sharing performance uses LEMO share recorded from that model this month.'}>
+              <h3 style={{ marginTop: 0 }}>{c.model} Performance <Hint text={isCw
+                ? 'Income = sum of each live CW site monthly contract. Contribution = that income minus direct expenses tagged to CW sites. Does not mean the client has paid.'
+                : 'Income = LEMO share recorded this month. Contribution = that income minus direct expenses tagged to RS sites.'} /></h3>
+              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Income <Hint text={isCw ? 'Contracted fees this month, not cash collected.' : 'LEMO share recorded this month.'} /></span><span>{fmt(c.income)}</span></div>
+              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Direct expenses <Hint text="Expenses entered on those locations this month." /></span><span>{fmt(c.expenses)}</span></div>
+              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Contribution <Hint text="Income minus those locations’ direct expenses. Not cash in the bank." /></span><span>{fmt(c.netProfit)}</span></div>
               <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Active locations</span><span>{c.activeLocations}</span></div>
               <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span>Revenue-generating chairs</span><span>{chairs || '—'}</span></div>
               <div className="muted" style={{ fontSize: '0.75rem', fontStyle: 'italic', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--warm-white)' }}>
@@ -105,7 +141,7 @@ export default function Monthly() {
 
       <div className="grid-2">
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>This Month vs Last Month</h3>
+          <h3 style={{ marginTop: 0 }}>This Month vs Last Month <Hint text="Income here uses the same rules as Total income. Expenses come from Financials." /></h3>
           <div className="table-wrap">
             <table>
               <thead>
@@ -120,7 +156,7 @@ export default function Monthly() {
           </div>
         </div>
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Top 3 expense categories</h3>
+          <h3 style={{ marginTop: 0 }}>Top 3 expense categories <Hint text="Largest expense categories from the Financials report for this month." /></h3>
           {data.expenseBreakdown.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -138,7 +174,7 @@ export default function Monthly() {
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>6-Month Financial Trend</h3>
+        <h3 style={{ marginTop: 0 }}>6-Month Financial Trend <Hint text="Income and expenses by calendar month. Trend income currently follows recorded income rows, not CW contracts." /></h3>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={data.trend}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} />
@@ -154,7 +190,10 @@ export default function Monthly() {
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Outstanding Payments</h3>
+        <h3 style={{ marginTop: 0 }}>Outstanding Payments <Hint text="Cash view. Expected = monthly fee × months billable. Received = income rows posted on the venue. Balance = still unpaid." /></h3>
+        <p className="muted" style={{ fontSize: '0.8rem', marginTop: -6 }}>
+          This is cash collected vs billed. It is separate from LEMO income below, which is the contract for the selected month.
+        </p>
         {data.outstandingPayments.length > 0 ? (
           <div className="table-wrap wide">
           <table>
@@ -170,7 +209,7 @@ export default function Monthly() {
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>Location performance — selected month</h3>
           <select value={modelFilter} onChange={(e) => setModelFilter(e.target.value)}>
             <option value="All">All models</option>
@@ -178,9 +217,23 @@ export default function Monthly() {
             <option value="Revenue Sharing">Revenue Sharing</option>
           </select>
         </div>
+        <p className="muted" style={{ fontSize: '0.8rem' }}>
+          Corporate Wellness LEMO income is the monthly contract (LT Foods $400 even if they have not paid). Cash received is only in Outstanding Payments.
+        </p>
         <div className="table-wrap wide">
         <table>
-          <thead><tr><th>Location</th><th>Model</th><th>Chairs</th><th>Gross revenue</th><th>LEMO income</th><th>Direct expenses</th><th>Contribution</th><th>Net / Chair</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Model</th>
+              <th title="Chairs on the installation record">Chairs</th>
+              <th title="Venue gross sales this month, when recorded. Usually Revenue Sharing only.">Gross revenue</th>
+              <th title="CW: contracted monthly fee. RS: LEMO share recorded this month. Not cash received.">LEMO income</th>
+              <th title="Expenses entered on this location this month.">Direct expenses</th>
+              <th title="LEMO income minus direct expenses. What this site contributed this month, not cash in bank.">Contribution</th>
+              <th title="Contribution divided by chairs. Hidden for internal or demo sites.">Net / Chair</th>
+            </tr>
+          </thead>
           <tbody>
             {filteredLocations.map((l, i) => (
               <tr key={i}>
@@ -201,10 +254,12 @@ export default function Monthly() {
   );
 }
 
-function Kpi({ label, value, negative }) {
+function Kpi({ label, value, negative, hint }) {
   return (
-    <div className="card" style={{ marginBottom: 0 }}>
-      <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>{label}</div>
+    <div className="card" style={{ marginBottom: 0 }} title={hint || ''}>
+      <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+        {label}{hint ? <Hint text={hint} /> : null}
+      </div>
       <div style={{ fontFamily: "'Lora', serif", fontSize: '1.5rem', color: negative ? 'var(--ember-muted)' : 'var(--obsidian)' }}>{value}</div>
     </div>
   );
