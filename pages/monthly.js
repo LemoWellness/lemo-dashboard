@@ -53,7 +53,18 @@ export default function Monthly() {
 
   function load(m) {
     setLoading(true); setError('');
-    authedFetch(`/api/monthly?month=${m}`).then((r) => r.json()).then((d) => { setData(d); setLoading(false); }).catch((e) => { setError(e.message); setLoading(false); });
+    authedFetch(`/api/monthly?month=${m}`)
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || d.error || !Array.isArray(d.locationTable)) {
+          setError(d.error || `Monthly data failed to load (${r.status}).`);
+          setData(null);
+        } else {
+          setData(d);
+        }
+        setLoading(false);
+      })
+      .catch((e) => { setError(e.message); setData(null); setLoading(false); });
   }
   useEffect(() => { if (session) load(month); }, [session]); // eslint-disable-line
   function onMonthChange(e) { setMonth(e.target.value); load(e.target.value); }
@@ -64,7 +75,11 @@ export default function Monthly() {
 
   const earned = data.totalEarned ?? data.totalLemoIncome;
   const cash = data.totalCashCollected ?? 0;
-  const filteredLocations = data.locationTable.filter((l) => modelFilter === 'All' || l.model === modelFilter);
+  const filteredLocations = (data.locationTable || []).filter((l) => modelFilter === 'All' || l.model === modelFilter);
+  const comparison = data.comparison || [];
+  const breakdown = data.expenseBreakdown || [];
+  const outstanding = data.outstandingPayments || [];
+  const cmp = data.monthComparison || { current: {}, previous: {} };
 
   return (
     <Layout active="mo" onNavigate={navigate}>
@@ -85,7 +100,7 @@ export default function Monthly() {
       </div>
 
       <div className="grid-2">
-        {data.comparison.map((c) => {
+        {comparison.map((c) => {
           const chairs = c.revenueGeneratingChairs ?? 0;
           const perChair = chairs > 0 ? c.income / chairs : null;
           const isCw = c.model === 'Corporate Wellness';
@@ -110,22 +125,22 @@ export default function Monthly() {
         <div className="card">
           <h3 style={{ marginTop: 0 }}>This Month vs Last Month</h3>
           <div className="table-wrap"><table>
-            <thead><tr><th></th><th>{data.monthComparison.current.label}</th><th>{data.monthComparison.previous.label}</th><th>Change</th></tr></thead>
+            <thead><tr><th></th><th>{cmp.current?.label}</th><th>{cmp.previous?.label}</th><th>Change</th></tr></thead>
             <tbody>
-              <CompareRow label="Revenue earned" current={data.monthComparison.current.earned ?? data.monthComparison.current.income} previous={data.monthComparison.previous.earned ?? data.monthComparison.previous.income} />
-              <CompareRow label="Cash collected" current={data.monthComparison.current.cash} previous={data.monthComparison.previous.cash} />
-              <CompareRow label="Expenses" current={data.monthComparison.current.expenses} previous={data.monthComparison.previous.expenses} lowerIsBetter />
-              <CompareRow label="Contribution" current={data.monthComparison.current.net} previous={data.monthComparison.previous.net} />
+              <CompareRow label="Revenue earned" current={cmp.current?.earned ?? cmp.current?.income} previous={cmp.previous?.earned ?? cmp.previous?.income} />
+              <CompareRow label="Cash collected" current={cmp.current?.cash} previous={cmp.previous?.cash} />
+              <CompareRow label="Expenses" current={cmp.current?.expenses} previous={cmp.previous?.expenses} lowerIsBetter />
+              <CompareRow label="Contribution" current={cmp.current?.net} previous={cmp.previous?.net} />
             </tbody>
           </table></div>
         </div>
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Top 3 expense categories</h3>
-          {data.expenseBreakdown.length > 0 ? (
+          {breakdown.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={data.expenseBreakdown} dataKey="total" nameKey="category" outerRadius="75%" label={(e) => `${e.category}${e.percentOfTotal != null ? ` (${e.percentOfTotal}%)` : ''}`}>
-                  {data.expenseBreakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                <Pie data={breakdown} dataKey="total" nameKey="category" outerRadius="75%" label={(e) => `${e.category}${e.percentOfTotal != null ? ` (${e.percentOfTotal}%)` : ''}`}>
+                  {breakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v, name, entry) => [`${fmt(v)}${entry.payload.percentOfTotal != null ? ` (${entry.payload.percentOfTotal}%)` : ''}`, entry.payload.category]} />
               </PieChart>
@@ -137,7 +152,7 @@ export default function Monthly() {
       <div className="card">
         <h3 style={{ marginTop: 0 }}>6-Month Trend</h3>
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={data.trend}>
+          <LineChart data={data.trend || []}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} />
             <XAxis dataKey="month" tick={{ fontSize: 10 }} />
             <YAxis tick={{ fontSize: 11 }} tickFormatter={fmt} />
@@ -156,11 +171,11 @@ export default function Monthly() {
           Cumulative billed vs cash received as of {data.asOfLabel || data.month} — not this month’s performance.
           Months billable is tenure to date, not the selected month only.
         </p>
-        {data.outstandingPayments.length > 0 ? (
+        {outstanding.length > 0 ? (
           <div className="table-wrap wide"><table>
             <thead><tr><th>Location</th><th>Business Model</th><th>Fee / mo</th><th>Months billable (to date)</th><th>Billed to date</th><th>Cash received to date</th><th>Balance owed</th></tr></thead>
             <tbody>
-              {data.outstandingPayments.map((c, i) => (
+              {outstanding.map((c, i) => (
                 <tr key={i}><td>{c.location}</td><td>{c.model}</td><td>{fmt(c.monthlyFee)}</td><td>{c.monthsBillable}</td><td>{fmt(c.expectedTotal)}</td><td>{fmt(c.totalReceived)}</td><td style={{ color: 'var(--ember-muted)' }}>{fmt(c.balanceOwed)}</td></tr>
               ))}
             </tbody>
