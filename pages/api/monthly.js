@@ -1,6 +1,4 @@
 // Monthly overview.
-// Revenue earned = CW monthly contract + RS LEMO share recorded that month.
-// Cash collected = income rows dated in that month.
 import { adminDb } from '../../lib/firebaseAdmin';
 import { withAuth } from '../../lib/auth';
 
@@ -132,7 +130,7 @@ export default withAuth(async (req, res) => {
   const totalLemoIncome = totalEarned;
   const totalCashCollected = cashInMonth(allIncome, monthKey);
   const totalExpenses = expenseTotalFromReports(financialReports, monthKey, monthExpenses);
-  const netProfitLoss = totalEarned - totalExpenses;
+  const netProfitLoss = totalCashCollected - totalExpenses;
   const perLocationIncome = {}; monthIncome.forEach((i) => { perLocationIncome[i.location] = (perLocationIncome[i.location] || 0) + (Number(i.amount) || 0); });
   const perLocationExpenses = {}; monthExpenses.forEach((e) => { perLocationExpenses[e.location] = (perLocationExpenses[e.location] || 0) + (Number(e.amount) || 0); });
   const dailyActive = new Set(); dailySnap.forEach((doc) => { const row = doc.data(); const venue = String(row.venueName || '').trim(); if (venue && (row.countDate || '').startsWith(monthKey)) dailyActive.add(venue); });
@@ -175,13 +173,11 @@ export default withAuth(async (req, res) => {
   const trend = [];
   for (let i = 5; i >= 0; i--) {
     const key = shiftMonth(monthKey, -i);
-    const earned = cwEarned(key) + rsEarned(key);
-    const cash = cashInMonth(allIncome, key);
+    const income = cashInMonth(allIncome, key);
     const expenseTotal = expenseTotalFromReports(financialReports, key, allExpenses.filter((r) => (r.date || '').startsWith(key)));
-    trend.push({ month: monthLabel(key).replace(/, /, ' '), earned, cash, income: earned, expenses: expenseTotal, net: earned - expenseTotal });
+    trend.push({ month: monthLabel(key).replace(/, /, ' '), income, expenses: expenseTotal, net: income - expenseTotal });
   }
   const prevMonthKey = shiftMonth(monthKey, -1);
-  const prevEarned = cwEarned(prevMonthKey) + rsEarned(prevMonthKey);
   const prevCash = cashInMonth(allIncome, prevMonthKey);
   const prevExpenses = expenseTotalFromReports(financialReports, prevMonthKey, allExpenses.filter((r) => (r.date || '').startsWith(prevMonthKey)));
   res.status(200).json({
@@ -192,8 +188,8 @@ export default withAuth(async (req, res) => {
     revenueSharingLocations: activeLocationNames.filter((n) => modelOf(n) === 'Revenue Sharing').length,
     activeChairs, comparison, trend,
     monthComparison: {
-      current: { label: monthLabel(monthKey).split(' ')[0], earned: totalEarned, cash: totalCashCollected, income: totalEarned, expenses: totalExpenses, net: netProfitLoss },
-      previous: { label: monthLabel(prevMonthKey).split(' ')[0], earned: prevEarned, cash: prevCash, income: prevEarned, expenses: prevExpenses, net: prevEarned - prevExpenses },
+      current: { label: monthLabel(monthKey).split(' ')[0], cash: totalCashCollected, income: totalCashCollected, expenses: totalExpenses, net: netProfitLoss },
+      previous: { label: monthLabel(prevMonthKey).split(' ')[0], cash: prevCash, income: prevCash, expenses: prevExpenses, net: prevCash - prevExpenses },
     },
     locationTable, expenseBreakdown, outstandingPayments,
   });
