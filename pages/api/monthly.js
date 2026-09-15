@@ -4,6 +4,7 @@ import { adminDb } from '../../lib/firebaseAdmin';
 import { withAuth } from '../../lib/auth';
 
 const DEVICES_PER_VENUE = 2;
+const COMMERCIAL_MODELS = new Set(['Corporate Wellness', 'Revenue Sharing']);
 
 function monthLabel(monthKey) {
   const [y, m] = monthKey.split('-').map(Number);
@@ -72,7 +73,7 @@ function breakdownFromReports(reports, monthKey, monthExpenses) {
       if (!byCat[c.category]) byCat[c.category] = { category: c.category, total: 0, percentOfTotal: c.percentOfTotal };
       byCat[c.category].total += c.total;
     });
-    return Object.values(byCat).sort((a, b) => b.total - a.total).slice(0, 8);
+    return Object.values(byCat).sort((a, b) => b.total - a.total).slice(0, 3);
   }
   const byCat = {};
   monthExpenses.forEach((e) => {
@@ -83,7 +84,7 @@ function breakdownFromReports(reports, monthKey, monthExpenses) {
   return Object.entries(byCat)
     .map(([category, amount]) => ({ category, total: amount, percentOfTotal: total ? Math.round((amount / total) * 100) : null }))
     .sort((a, b) => b.total - a.total)
-    .slice(0, 8);
+    .slice(0, 3);
 }
 function findProject(projectsByName, projectsByLower, name) {
   if (!name) return { key: name, data: {} };
@@ -92,6 +93,15 @@ function findProject(projectsByName, projectsByLower, name) {
   const key = projectsByLower[lower];
   if (key) return { key, data: projectsByName[key] || {} };
   return { key: name, data: {} };
+}
+function isCommercialSite(name, project) {
+  const model = project?.businessModel || '';
+  if (project && project.commercial === false) return false;
+  const n = String(name || project?.name || '').trim().toLowerCase();
+  if (/\b(demo|internal|test|non[- ]?commercial)\b/.test(n)) return false;
+  if (n === 'lemo wellness' || n.startsWith('lemo wellness')) return false;
+  if (!COMMERCIAL_MODELS.has(model)) return false;
+  return true;
 }
 
 export default withAuth(async (req, res) => {
@@ -171,31 +181,47 @@ export default withAuth(async (req, res) => {
   const corporateWellnessLocations = activeLocationNames.filter((n) => modelOf(n) === 'Corporate Wellness').length;
   const revenueSharingLocations = activeLocationNames.filter((n) => modelOf(n) === 'Revenue Sharing').length;
 
-  const comparison = ['Corporate Wellness', 'Revenue Sharing'].map((model) => {
-    const income = monthIncome.filter((i) => modelOf(i.location) === model).reduce((s, i) => s + (Number(i.amount) || 0), 0);
-    const expenses = monthExpenses.filter((e) => modelOf(e.location) === model).reduce((s, e) => s + (Number(e.amount) || 0), 0);
-    return { model, income, expenses, netProfit: income - expenses, activeLocations: activeLocationNames.filter((n) => modelOf(n) === model).length };
-  });
-
   const perLocationGross = {};
   monthIncome.forEach((i) => { if (i.grossRevenue != null) perLocationGross[i.location] = (perLocationGross[i.location] || 0) + Number(i.grossRevenue); });
 
   const locationTable = activeLocationNames.map((name) => {
     const p = findProject(projectsByName, projectsByLower, name).data;
+    const commercial = isCommercialSite(name, p);
     const lemoIncome = perLocationIncome[name] || perLocationIncome[p.name] || 0;
     const expenses = perLocationExpenses[name] || perLocationExpenses[p.name] || 0;
     const chairs = DEVICES_PER_VENUE;
     const netProfit = lemoIncome - expenses;
     return {
-      location: name, model: p.businessModel || '', chairs,
-      grossRevenue: perLocationGross[name] ?? perLocationGross[p.name] ?? null, lemoIncome, expenses, netProfit,
-      netPerChair: netProfit / chairs,
+      location: name,
+      model: p.businessModel || '',
+      chairs,
+      commercial,
+      grossRevenue: perLocationGross[name] ?? perLocationGross[p.name] ?? null,
+      lemoIncome,
+      expenses,
+      netProfit,
+      netPerChair: commercial ? netProfit / chairs : null,
     };
   }).sort((a, b) => b.lemoIncome - a.lemoIncome);
 
+  const comparison = ['Corporate Wellness', 'Revenue Sharing'].map((model) => {
+    const rows = locationTable.filter((l) => l.model === model && l.commercial !== false);
+    const income = monthIncome.filter((i) => modelOf(i.location) === model).reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    const expenses = monthExpenses.filter((e) => modelOf(e.location) === model).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    const revenueGeneratingChairs = rows.length * DEVICES_PER_VENUE;
+    return {
+      model,
+      income,
+      expenses,
+      netProfit: income - expenses,
+      activeLocations: activeLocationNames.filter((n) => modelOf(n) === model).length,
+      revenueGeneratingChairs,
+    };
+  });
+
   const perChair = {};
   locationTable.forEach((l) => {
-    if (!l.model) return;
+    if (!l.commercial || !l.model) return;
     if (!perChair[l.model]) perChair[l.model] = { totalIncome: 0, totalChairs: 0 };
     perChair[l.model].totalIncome += l.lemoIncome;
     perChair[l.model].totalChairs += DEVICES_PER_VENUE;
