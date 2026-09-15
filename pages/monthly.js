@@ -73,8 +73,8 @@ export default function Monthly() {
   if (error) return <Layout active="mo" onNavigate={navigate}><p className="form-error">{error}</p></Layout>;
   if (!data) return null;
 
-  const earned = data.totalEarned ?? data.totalLemoIncome;
-  const cash = data.totalCashCollected ?? 0;
+  const totalIncome = data.totalCashCollected ?? 0;
+  const net = totalIncome - (Number(data.totalExpenses) || 0);
   const filteredLocations = (data.locationTable || []).filter((l) => modelFilter === 'All' || l.model === modelFilter);
   const comparison = data.comparison || [];
   const breakdown = data.expenseBreakdown || [];
@@ -93,10 +93,10 @@ export default function Monthly() {
       <p className="muted">{data.month} performance · AR balances as of {data.asOfLabel || data.month}</p>
 
       <div className="grid-4">
-        <Kpi label="Revenue earned" value={fmt(earned)} hint="What LEMO billed / is entitled to this month. CW = monthly contract. RS = LEMO share recorded. Not the same as cash collected." />
-        <Kpi label="Cash collected" value={fmt(cash)} hint="Income rows dated in this month — money that actually came in, including CW payments posted this month." />
+        <Kpi label="Total income" value={fmt(totalIncome)} hint="Cash received this month from income records. Unpaid CW contracts are not included." />
         <Kpi label="Total expenses" value={fmt(data.totalExpenses)} hint="Company-wide expenses from Financials for this month." />
-        <Kpi label="Contribution" value={fmt(data.netProfitLoss)} negative={data.netProfitLoss < 0} hint="Revenue earned minus company-wide expenses. Uses billed revenue, not cash." />
+        <Kpi label="Net profit / loss" value={fmt(net)} negative={net < 0} hint="Total income minus company-wide expenses." />
+        <Kpi label="Active chairs" value={data.activeChairs?.toLocaleString() ?? '—'} hint="Chairs at locations with activity this month." />
       </div>
 
       <div className="grid-2">
@@ -106,15 +106,14 @@ export default function Monthly() {
           const isCw = c.model === 'Corporate Wellness';
           return (
             <div className="card" key={c.model} style={{ marginBottom: 0 }}>
-              <h3 style={{ marginTop: 0 }}>{c.model} Performance <Hint text={isCw ? 'Earned = live CW contracts this month. Cash = payments posted this month.' : 'Earned and cash are the LEMO share recorded this month.'} /></h3>
-              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Revenue earned</span><span>{fmt(c.income)}</span></div>
-              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Cash collected</span><span>{fmt(c.cash ?? 0)}</span></div>
+              <h3 style={{ marginTop: 0 }}>{c.model} Performance</h3>
+              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Income</span><span>{fmt(c.income)}</span></div>
               <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Direct expenses</span><span>{fmt(c.expenses)}</span></div>
               <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Contribution</span><span>{fmt(c.netProfit)}</span></div>
               <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Active locations</span><span>{c.activeLocations}</span></div>
               <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span>Revenue-generating chairs</span><span>{chairs || '—'}</span></div>
               <div className="muted" style={{ fontSize: '0.75rem', fontStyle: 'italic', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--warm-white)' }}>
-                {perChair != null ? `${fmt(perChair)} earned / chair across ${chairs} chair${chairs === 1 ? '' : 's'}` : 'No revenue-generating chairs in this model this month'}
+                {perChair != null ? `${fmt(perChair)}/chair across ${chairs} revenue-generating chair${chairs === 1 ? '' : 's'}` : 'No revenue-generating chairs in this model this month'}
               </div>
             </div>
           );
@@ -127,10 +126,9 @@ export default function Monthly() {
           <div className="table-wrap"><table>
             <thead><tr><th></th><th>{cmp.current?.label}</th><th>{cmp.previous?.label}</th><th>Change</th></tr></thead>
             <tbody>
-              <CompareRow label="Revenue earned" current={cmp.current?.earned ?? cmp.current?.income} previous={cmp.previous?.earned ?? cmp.previous?.income} />
-              <CompareRow label="Cash collected" current={cmp.current?.cash} previous={cmp.previous?.cash} />
+              <CompareRow label="Income" current={cmp.current?.cash ?? cmp.current?.income} previous={cmp.previous?.cash ?? cmp.previous?.income} />
               <CompareRow label="Expenses" current={cmp.current?.expenses} previous={cmp.previous?.expenses} lowerIsBetter />
-              <CompareRow label="Contribution" current={cmp.current?.net} previous={cmp.previous?.net} />
+              <CompareRow label="Net P/L" current={(cmp.current?.cash ?? 0) - (cmp.current?.expenses ?? 0)} previous={(cmp.previous?.cash ?? 0) - (cmp.previous?.expenses ?? 0)} />
             </tbody>
           </table></div>
         </div>
@@ -150,7 +148,7 @@ export default function Monthly() {
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>6-Month Trend</h3>
+        <h3 style={{ marginTop: 0 }}>6-Month Financial Trend</h3>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={data.trend || []}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} />
@@ -158,9 +156,9 @@ export default function Monthly() {
             <YAxis tick={{ fontSize: 11 }} tickFormatter={fmt} />
             <Tooltip formatter={(v) => fmt(v)} />
             <Legend />
-            <Line type="monotone" dataKey="earned" name="Revenue earned" stroke="#E85D20" strokeWidth={2.5} dot={false} />
-            <Line type="monotone" dataKey="cash" name="Cash collected" stroke="#2A1A10" strokeWidth={2.5} dot={false} />
+            <Line type="monotone" dataKey="cash" name="Income" stroke="#E85D20" strokeWidth={2.5} dot={false} />
             <Line type="monotone" dataKey="expenses" name="Expenses" stroke="#0C0A09" strokeWidth={2.5} dot={false} />
+            <Line type="monotone" dataKey="net" name="Net" stroke="#D9A441" strokeWidth={2.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -169,7 +167,6 @@ export default function Monthly() {
         <h3 style={{ marginTop: 0 }}>Accounts Receivable — Outstanding Balance</h3>
         <p className="muted" style={{ fontSize: '0.8rem', marginTop: -6 }}>
           Cumulative billed vs cash received as of {data.asOfLabel || data.month} — not this month’s performance.
-          Months billable is tenure to date, not the selected month only.
         </p>
         {outstanding.length > 0 ? (
           <div className="table-wrap wide"><table>
@@ -192,17 +189,14 @@ export default function Monthly() {
             <option value="Revenue Sharing">Revenue Sharing</option>
           </select>
         </div>
-        <p className="muted" style={{ fontSize: '0.8rem' }}>
-          Selected month only. Contribution* = billable revenue minus that site’s direct expenses (not cash).
-        </p>
         <div className="table-wrap wide"><table>
           <thead><tr>
             <th>Location</th><th>Model</th><th>Chairs</th>
-            <th title="CW: monthly contract. RS: LEMO share recorded this month.">Billable revenue</th>
-            <th title="Cash posted on this location during the selected month.">Received</th>
-            <th title="Expenses entered on this location this month.">Direct expenses</th>
-            <th title="Billable revenue minus direct expenses.">Contribution*</th>
-            <th title="Contribution divided by chairs.">Net / Chair</th>
+            <th>Billable revenue</th>
+            <th>Received</th>
+            <th>Direct expenses</th>
+            <th>Contribution*</th>
+            <th>Net / Chair</th>
           </tr></thead>
           <tbody>
             {filteredLocations.map((l, i) => (
