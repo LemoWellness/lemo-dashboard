@@ -1,7 +1,9 @@
 // Monthly overview. Expense totals come from Financials reports when present.
-// Active locations/chairs come from Daily + Usage activity for the selected month.
+// Active locations come from Daily + Usage activity. Each venue is 2 devices for now.
 import { adminDb } from '../../lib/firebaseAdmin';
 import { withAuth } from '../../lib/auth';
+
+const DEVICES_PER_VENUE = 2;
 
 function monthLabel(monthKey) {
   const [y, m] = monthKey.split('-').map(Number);
@@ -134,7 +136,6 @@ export default withAuth(async (req, res) => {
   const perLocationExpenses = {};
   monthExpenses.forEach((e) => { perLocationExpenses[e.location] = (perLocationExpenses[e.location] || 0) + (Number(e.amount) || 0); });
 
-  const dailyChairsByVenue = {};
   const dailyActive = new Set();
   dailySnap.forEach((doc) => {
     const row = doc.data();
@@ -143,13 +144,8 @@ export default withAuth(async (req, res) => {
     const dateKey = row.countDate || '';
     if (!dateKey.startsWith(monthKey)) return;
     dailyActive.add(venue);
-    const devices = Number(row.deviceNumber);
-    if (!isNaN(devices) && devices > 0) {
-      dailyChairsByVenue[venue] = Math.max(dailyChairsByVenue[venue] || 0, devices);
-    }
   });
 
-  const usageChairsByVenue = {};
   const usageActive = new Set();
   usageSnap.forEach((doc) => {
     const row = doc.data();
@@ -157,10 +153,6 @@ export default withAuth(async (req, res) => {
     if (!venue) return;
     if (!usagePeriodOverlapsMonth(row.period, monthKey)) return;
     usageActive.add(venue);
-    const seats = Number(row.seatNum);
-    if (!isNaN(seats) && seats > 0) {
-      usageChairsByVenue[venue] = Math.max(usageChairsByVenue[venue] || 0, seats);
-    }
   });
 
   const displayNames = {};
@@ -173,9 +165,6 @@ export default withAuth(async (req, res) => {
   Object.keys(perLocationExpenses).forEach(remember);
   dailyActive.forEach(remember);
   usageActive.forEach(remember);
-  Object.keys(projectsByName).forEach((n) => {
-    // keep project canonical names when we already saw activity under an alias
-  });
 
   const activeLocationNames = Array.from(new Set(Object.values(displayNames).filter(Boolean)));
   const activeLocations = activeLocationNames.length;
@@ -191,47 +180,30 @@ export default withAuth(async (req, res) => {
   const perLocationGross = {};
   monthIncome.forEach((i) => { if (i.grossRevenue != null) perLocationGross[i.location] = (perLocationGross[i.location] || 0) + Number(i.grossRevenue); });
 
-  function chairsFor(name) {
-    const { data } = findProject(projectsByName, projectsByLower, name);
-    if (data.numberOfChairs != null && Number(data.numberOfChairs) > 0) return Number(data.numberOfChairs);
-    const lower = String(name).trim().toLowerCase();
-    let usageSeats = 0;
-    let dailyDevices = 0;
-    Object.keys(usageChairsByVenue).forEach((v) => {
-      if (v.trim().toLowerCase() === lower) usageSeats = Math.max(usageSeats, usageChairsByVenue[v]);
-    });
-    Object.keys(dailyChairsByVenue).forEach((v) => {
-      if (v.trim().toLowerCase() === lower) dailyDevices = Math.max(dailyDevices, dailyChairsByVenue[v]);
-    });
-    if (usageSeats > 0) return usageSeats;
-    if (dailyDevices > 0) return dailyDevices;
-    return null;
-  }
-
   const locationTable = activeLocationNames.map((name) => {
     const p = findProject(projectsByName, projectsByLower, name).data;
     const lemoIncome = perLocationIncome[name] || perLocationIncome[p.name] || 0;
     const expenses = perLocationExpenses[name] || perLocationExpenses[p.name] || 0;
-    const chairs = chairsFor(name);
+    const chairs = DEVICES_PER_VENUE;
     const netProfit = lemoIncome - expenses;
     return {
       location: name, model: p.businessModel || '', chairs,
       grossRevenue: perLocationGross[name] ?? perLocationGross[p.name] ?? null, lemoIncome, expenses, netProfit,
-      netPerChair: chairs && Number(chairs) > 0 ? netProfit / Number(chairs) : null,
+      netPerChair: netProfit / chairs,
     };
   }).sort((a, b) => b.lemoIncome - a.lemoIncome);
 
   const perChair = {};
   locationTable.forEach((l) => {
-    if (!l.model || !l.chairs) return;
+    if (!l.model) return;
     if (!perChair[l.model]) perChair[l.model] = { totalIncome: 0, totalChairs: 0 };
     perChair[l.model].totalIncome += l.lemoIncome;
-    perChair[l.model].totalChairs += Number(l.chairs) || 0;
+    perChair[l.model].totalChairs += DEVICES_PER_VENUE;
   });
   const revenuePerChair = Object.entries(perChair).map(([model, v]) => ({
     model, chairs: v.totalChairs, revenuePerChair: v.totalChairs > 0 ? v.totalIncome / v.totalChairs : 0,
   }));
-  const activeChairs = locationTable.reduce((s, l) => s + (Number(l.chairs) || 0), 0);
+  const activeChairs = activeLocations * DEVICES_PER_VENUE;
 
   const expenseBreakdown = breakdownFromReports(financialReports, monthKey, monthExpenses);
 
