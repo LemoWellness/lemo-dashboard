@@ -59,9 +59,7 @@ export default function Monthly() {
         if (!r.ok || d.error || !Array.isArray(d.locationTable)) {
           setError(d.error || `Monthly data failed to load (${r.status}).`);
           setData(null);
-        } else {
-          setData(d);
-        }
+        } else setData(d);
         setLoading(false);
       })
       .catch((e) => { setError(e.message); setData(null); setLoading(false); });
@@ -103,7 +101,6 @@ export default function Monthly() {
         {comparison.map((c) => {
           const chairs = c.revenueGeneratingChairs ?? 0;
           const perChair = chairs > 0 ? c.income / chairs : null;
-          const isCw = c.model === 'Corporate Wellness';
           return (
             <div className="card" key={c.model} style={{ marginBottom: 0 }}>
               <h3 style={{ marginTop: 0 }}>{c.model} Performance</h3>
@@ -126,9 +123,9 @@ export default function Monthly() {
           <div className="table-wrap"><table>
             <thead><tr><th></th><th>{cmp.current?.label}</th><th>{cmp.previous?.label}</th><th>Change</th></tr></thead>
             <tbody>
-              <CompareRow label="Income" current={cmp.current?.cash ?? cmp.current?.income} previous={cmp.previous?.cash ?? cmp.previous?.income} />
+              <CompareRow label="Income" current={cmp.current?.income} previous={cmp.previous?.income} />
               <CompareRow label="Expenses" current={cmp.current?.expenses} previous={cmp.previous?.expenses} lowerIsBetter />
-              <CompareRow label="Net P/L" current={(cmp.current?.cash ?? 0) - (cmp.current?.expenses ?? 0)} previous={(cmp.previous?.cash ?? 0) - (cmp.previous?.expenses ?? 0)} />
+              <CompareRow label="Net P/L" current={cmp.current?.net} previous={cmp.previous?.net} />
             </tbody>
           </table></div>
         </div>
@@ -156,7 +153,7 @@ export default function Monthly() {
             <YAxis tick={{ fontSize: 11 }} tickFormatter={fmt} />
             <Tooltip formatter={(v) => fmt(v)} />
             <Legend />
-            <Line type="monotone" dataKey="cash" name="Income" stroke="#E85D20" strokeWidth={2.5} dot={false} />
+            <Line type="monotone" dataKey="income" name="Income" stroke="#E85D20" strokeWidth={2.5} dot={false} />
             <Line type="monotone" dataKey="expenses" name="Expenses" stroke="#0C0A09" strokeWidth={2.5} dot={false} />
             <Line type="monotone" dataKey="net" name="Net" stroke="#D9A441" strokeWidth={2.5} dot={false} />
           </LineChart>
