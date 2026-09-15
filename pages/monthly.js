@@ -73,7 +73,12 @@ export default function Monthly() {
 
   const totalIncome = data.totalCashCollected ?? 0;
   const net = totalIncome - (Number(data.totalExpenses) || 0);
-  const filteredLocations = (data.locationTable || []).filter((l) => modelFilter === 'All' || l.model === modelFilter);
+  const HIDDEN_FROM_LOCATION_TABLE = new Set(['lemo wellness', 'lemo inc office1', 'lemo inc office2']);
+  const filteredLocations = (data.locationTable || []).filter((l) => {
+    const name = String(l.location || '').trim().toLowerCase();
+    if (HIDDEN_FROM_LOCATION_TABLE.has(name)) return false;
+    return modelFilter === 'All' || l.model === modelFilter;
+  });
   const comparison = data.comparison || [];
   const breakdown = data.expenseBreakdown || [];
   const outstanding = data.outstandingPayments || [];
