@@ -12,6 +12,9 @@ export default function ManageUsers() {
   const [users, setUsers] = useState([]);
   const [form, setForm] = useState({ email: '', name: '', password: '', role: 'Viewer', tabs: [] });
   const [error, setError] = useState('');
+  const [editing, setEditing] = useState(null);
+  const [editError, setEditError] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
 
   function navigate(code) {
     if (code === 'admin-import') return router.push('/admin/import');
@@ -49,10 +52,48 @@ export default function ManageUsers() {
     }));
   }
 
+  function startEdit(u) {
+    setEditError('');
+    setEditing({
+      uid: u.uid,
+      name: u.name || '',
+      email: u.email || '',
+      role: u.role === 'Admin' ? 'Admin' : 'Viewer',
+      tabs: u.tabs === 'all' ? ALL_TABS.map((t) => t.code) : [...(u.tabs || [])],
+      newPassword: '',
+    });
+  }
+
+  function toggleEditTab(code) {
+    setEditing((f) => ({
+      ...f,
+      tabs: f.tabs.includes(code) ? f.tabs.filter((t) => t !== code) : [...f.tabs, code],
+    }));
+  }
+
+  async function saveEdit(e) {
+    e.preventDefault();
+    if (!editing) return;
+    setEditError('');
+    setEditBusy(true);
+    try {
+      const payload = { role: editing.role, tabs: editing.role === 'Admin' ? 'all' : editing.tabs };
+      if (editing.newPassword) payload.newPassword = editing.newPassword;
+      const res = await authedFetch(`/api/users/${editing.uid}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not update user.');
+      setEditing(null);
+      load();
+    } catch (err) {
+      setEditError(err.message);
+    } finally {
+      setEditBusy(false);
+    }
+  }
+
   return (
     <Layout active="admin-users" onNavigate={navigate}>
       <h1>Manage Users</h1>
-
       <form className="card" onSubmit={createUser}>
         <h3 style={{ marginTop: 0 }}>Add user</h3>
         <div className="inline-form">
@@ -78,7 +119,34 @@ export default function ManageUsers() {
         <button className="btn" type="submit">Create user</button>
         {error && <p className="form-error">{error}</p>}
       </form>
-
+      {editing && (
+        <form className="card" onSubmit={saveEdit}>
+          <h3 style={{ marginTop: 0 }}>Edit {editing.name || editing.email}</h3>
+          <div className="inline-form">
+            <label>Role
+              <select value={editing.role} onChange={(e) => setEditing({ ...editing, role: e.target.value })}>
+                <option>Viewer</option><option>Admin</option>
+              </select>
+            </label>
+            <label>New password (optional)<input type="text" value={editing.newPassword} onChange={(e) => setEditing({ ...editing, newPassword: e.target.value })} placeholder="Leave blank to keep" /></label>
+          </div>
+          {editing.role === 'Viewer' && (
+            <div style={{ margin: '10px 0' }}>
+              <span className="muted">Tabs: </span>
+              {ALL_TABS.map((t) => (
+                <label key={t.code} style={{ marginRight: 12 }}>
+                  <input type="checkbox" checked={editing.tabs.includes(t.code)} onChange={() => toggleEditTab(t.code)} /> {t.label}
+                </label>
+              ))}
+            </div>
+          )}
+          {editError && <p className="form-error">{editError}</p>}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn" type="submit" disabled={editBusy}>{editBusy ? 'Saving…' : 'Save role'}</button>
+            <button className="btn" type="button" onClick={() => setEditing(null)}>Cancel</button>
+          </div>
+        </form>
+      )}
       <div className="table-wrap">
       <table>
         <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tabs</th><th>Status</th><th></th></tr></thead>
@@ -90,7 +158,10 @@ export default function ManageUsers() {
               <td>{u.role}</td>
               <td>{u.tabs === 'all' ? 'all' : (u.tabs || []).join(', ')}</td>
               <td>{u.active === false ? 'Deactivated' : 'Active'}</td>
-              <td><button className="btn" onClick={() => toggleActive(u)}>{u.active === false ? 'Reactivate' : 'Deactivate'}</button></td>
+              <td style={{ whiteSpace: 'nowrap' }}>
+                <button className="btn" type="button" onClick={() => startEdit(u)} style={{ marginRight: 8 }}>Edit</button>
+                <button className="btn" type="button" onClick={() => toggleActive(u)}>{u.active === false ? 'Reactivate' : 'Deactivate'}</button>
+              </td>
             </tr>
           ))}
         </tbody>
