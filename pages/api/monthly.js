@@ -1,5 +1,5 @@
 // Monthly overview. Expense totals come from Financials reports when present.
-// CW income = installation monthlyFee (per chair) x numberOfChairs.
+// CW income = installation monthlyFee (monthly contract total, not per-chair).
 import { adminDb } from '../../lib/firebaseAdmin';
 import { withAuth } from '../../lib/auth';
 
@@ -100,8 +100,7 @@ function chairsOf(project) {
   return DEVICES_PER_VENUE;
 }
 function cwContractMonthly(project) {
-  const fee = Number(project?.monthlyFee) || 0;
-  return fee * chairsOf(project);
+  return Number(project?.monthlyFee) || 0;
 }
 function liveInMonth(project, monthKey) {
   const go = project?.goLiveDate || '';
