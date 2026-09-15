@@ -188,27 +188,28 @@ export default function Monthly() {
         </div>
         <div className="table-wrap wide"><table>
           <thead><tr>
-            <th>Location</th><th>Model</th><th>Chairs</th>
-            <th>Billable revenue</th>
-            <th>Received</th>
-            <th>Direct expenses</th>
-            <th>Contribution*</th>
-            <th>Net / Chair</th>
+            <th>Location</th>
+            <th>Model</th>
+            <th>Chairs</th>
+            <th>Expected</th>
+            <th>Received / Revenue</th>
           </tr></thead>
           <tbody>
-            {filteredLocations.map((l, i) => (
+            {filteredLocations.map((l, i) => {
+              const isCw = l.model === 'Corporate Wellness';
+              const expected = isCw && l.commercial !== false ? fmt(l.billableRevenue ?? l.lemoIncome) : '—';
+              const received = l.commercial === false ? '—' : fmt(l.received ?? 0);
+              return (
               <tr key={i}>
                 <td>{l.location}</td>
-                <td>{l.model === 'Corporate Wellness' ? 'CW' : l.model === 'Revenue Sharing' ? 'RS' : (l.model || '—')}</td>
+                <td>{isCw ? 'CW' : l.model === 'Revenue Sharing' ? 'RS' : (l.model || '—')}</td>
                 <td>{l.chairs ?? '—'}</td>
-                <td>{l.commercial === false ? '—' : fmt(l.billableRevenue ?? l.lemoIncome)}</td>
-                <td>{l.commercial === false ? '—' : fmt(l.received ?? 0)}</td>
-                <td>{fmt(l.expenses)}</td>
-                <td>{l.commercial === false ? '—' : fmt(l.netProfit)}</td>
-                <td>{l.commercial === false || l.netPerChair == null ? '—' : fmt(l.netPerChair)}</td>
+                <td>{expected}</td>
+                <td>{received}</td>
               </tr>
-            ))}
-            {filteredLocations.length === 0 && <tr><td colSpan={8} className="muted">No location activity for this month</td></tr>}
+              );
+            })}
+            {filteredLocations.length === 0 && <tr><td colSpan={5} className="muted">No location activity for this month</td></tr>}
           </tbody>
         </table></div>
       </div>
