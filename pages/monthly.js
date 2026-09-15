@@ -83,19 +83,21 @@ export default function Monthly() {
 
       <div className="grid-2">
         {data.comparison.map((c) => {
-          const perChair = data.revenuePerChair.find((r) => r.model === c.model);
+          const chairs = c.revenueGeneratingChairs ?? 0;
+          const perChair = chairs > 0 ? c.income / chairs : null;
           return (
             <div className="card" key={c.model} style={{ marginBottom: 0 }}>
               <h3 style={{ marginTop: 0 }}>{c.model} Performance</h3>
               <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Income</span><span>{fmt(c.income)}</span></div>
-              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Expenses</span><span>{fmt(c.expenses)}</span></div>
-              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Net</span><span>{fmt(c.netProfit)}</span></div>
-              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span>Active locations</span><span>{c.activeLocations}</span></div>
-              {perChair && perChair.chairs > 0 && (
-                <div className="muted" style={{ fontSize: '0.75rem', fontStyle: 'italic', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--warm-white)' }}>
-                  {fmt(perChair.revenuePerChair)}/chair across {perChair.chairs} chairs
-                </div>
-              )}
+              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Direct expenses</span><span>{fmt(c.expenses)}</span></div>
+              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Contribution</span><span>{fmt(c.netProfit)}</span></div>
+              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Active locations</span><span>{c.activeLocations}</span></div>
+              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span>Revenue-generating chairs</span><span>{chairs || '—'}</span></div>
+              <div className="muted" style={{ fontSize: '0.75rem', fontStyle: 'italic', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--warm-white)' }}>
+                {perChair != null
+                  ? `${fmt(perChair)}/chair across ${chairs} revenue-generating chair${chairs === 1 ? '' : 's'}`
+                  : 'No revenue-generating chairs in this model this month'}
+              </div>
             </div>
           );
         })}
@@ -118,7 +120,7 @@ export default function Monthly() {
           </div>
         </div>
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Top expense categories</h3>
+          <h3 style={{ marginTop: 0 }}>Top 3 expense categories</h3>
           {data.expenseBreakdown.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -178,14 +180,16 @@ export default function Monthly() {
         </div>
         <div className="table-wrap wide">
         <table>
-          <thead><tr><th>Location</th><th>Model</th><th>Chairs</th><th>Gross revenue</th><th>LEMO income</th><th>Expenses</th><th>Net</th><th>Net / Chair</th></tr></thead>
+          <thead><tr><th>Location</th><th>Model</th><th>Chairs</th><th>Gross revenue</th><th>LEMO income</th><th>Direct expenses</th><th>Contribution</th><th>Net / Chair</th></tr></thead>
           <tbody>
             {filteredLocations.map((l, i) => (
               <tr key={i}>
-                <td>{l.location}</td><td>{l.model}</td><td>{l.chairs ?? '—'}</td>
-                <td>{l.grossRevenue != null ? fmt(l.grossRevenue) : '—'}</td>
-                <td>{fmt(l.lemoIncome)}</td><td>{fmt(l.expenses)}</td><td>{fmt(l.netProfit)}</td>
-                <td>{l.netPerChair != null ? fmt(l.netPerChair) : '—'}</td>
+                <td>{l.location}</td><td>{l.model || '—'}</td><td>{l.chairs ?? '—'}</td>
+                <td>{l.commercial === false ? '—' : (l.grossRevenue != null ? fmt(l.grossRevenue) : '—')}</td>
+                <td>{l.commercial === false ? '—' : fmt(l.lemoIncome)}</td>
+                <td>{fmt(l.expenses)}</td>
+                <td>{l.commercial === false ? '—' : fmt(l.netProfit)}</td>
+                <td>{l.commercial === false || l.netPerChair == null ? '—' : fmt(l.netPerChair)}</td>
               </tr>
             ))}
             {filteredLocations.length === 0 && <tr><td colSpan={8} className="muted">No location activity for this month</td></tr>}
