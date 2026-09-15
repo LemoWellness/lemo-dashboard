@@ -1,5 +1,5 @@
 // Monthly overview. Expense totals come from Financials reports when present.
-// Active locations come from Daily + Usage activity. Each venue is 2 devices for now.
+// CW income = installation monthlyFee (per chair) x numberOfChairs.
 import { adminDb } from '../../lib/firebaseAdmin';
 import { withAuth } from '../../lib/auth';
 
@@ -94,6 +94,20 @@ function findProject(projectsByName, projectsByLower, name) {
   if (key) return { key, data: projectsByName[key] || {} };
   return { key: name, data: {} };
 }
+function chairsOf(project) {
+  const n = Number(project?.numberOfChairs);
+  if (!isNaN(n) && n > 0) return n;
+  return DEVICES_PER_VENUE;
+}
+function cwContractMonthly(project) {
+  const fee = Number(project?.monthlyFee) || 0;
+  return fee * chairsOf(project);
+}
+function liveInMonth(project, monthKey) {
+  const go = project?.goLiveDate || '';
+  if (!go) return true;
+  return String(go).slice(0, 10) <= monthEnd(monthKey);
+}
 function isCommercialSite(name, project) {
   const model = project?.businessModel || '';
   if (project && project.commercial === false) return false;
@@ -135,9 +149,12 @@ export default withAuth(async (req, res) => {
   const monthIncome = allIncome.filter((i) => (i.date || '').startsWith(monthKey));
   const monthExpenses = allExpenses.filter((e) => (e.date || '').startsWith(monthKey));
 
-  const totalLemoIncome = monthIncome.reduce((s, i) => s + (Number(i.amount) || 0), 0);
-  const corporateWellnessIncome = monthIncome.filter((i) => modelOf(i.location) === 'Corporate Wellness').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const cwSites = Object.entries(projectsByName)
+    .map(([name, data]) => ({ name: data.name || name, data }))
+    .filter(({ name, data }) => data.businessModel === 'Corporate Wellness' && isCommercialSite(name, data) && liveInMonth(data, monthKey));
+  const corporateWellnessIncome = cwSites.reduce((s, { data }) => s + cwContractMonthly(data), 0);
   const revenueSharingIncome = monthIncome.filter((i) => modelOf(i.location) === 'Revenue Sharing').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const totalLemoIncome = corporateWellnessIncome + revenueSharingIncome;
   const totalExpenses = expenseTotalFromReports(financialReports, monthKey, monthExpenses);
   const netProfitLoss = totalLemoIncome - totalExpenses;
 
@@ -175,6 +192,7 @@ export default withAuth(async (req, res) => {
   Object.keys(perLocationExpenses).forEach(remember);
   dailyActive.forEach(remember);
   usageActive.forEach(remember);
+  cwSites.forEach(({ name }) => remember(name));
 
   const activeLocationNames = Array.from(new Set(Object.values(displayNames).filter(Boolean)));
   const activeLocations = activeLocationNames.length;
@@ -187,36 +205,28 @@ export default withAuth(async (req, res) => {
   const locationTable = activeLocationNames.map((name) => {
     const p = findProject(projectsByName, projectsByLower, name).data;
     const commercial = isCommercialSite(name, p);
-    const lemoIncome = perLocationIncome[name] || perLocationIncome[p.name] || 0;
+    const chairs = chairsOf(p);
+    const lemoIncome = p.businessModel === 'Corporate Wellness'
+      ? (commercial ? cwContractMonthly(p) : 0)
+      : (perLocationIncome[name] || perLocationIncome[p.name] || 0);
     const expenses = perLocationExpenses[name] || perLocationExpenses[p.name] || 0;
-    const chairs = DEVICES_PER_VENUE;
     const netProfit = lemoIncome - expenses;
     return {
-      location: name,
-      model: p.businessModel || '',
-      chairs,
-      commercial,
+      location: name, model: p.businessModel || '', chairs, commercial,
       grossRevenue: perLocationGross[name] ?? perLocationGross[p.name] ?? null,
-      lemoIncome,
-      expenses,
-      netProfit,
+      lemoIncome, expenses, netProfit,
       netPerChair: commercial ? netProfit / chairs : null,
     };
   }).sort((a, b) => b.lemoIncome - a.lemoIncome);
 
   const comparison = ['Corporate Wellness', 'Revenue Sharing'].map((model) => {
     const rows = locationTable.filter((l) => l.model === model && l.commercial !== false);
-    const income = monthIncome.filter((i) => modelOf(i.location) === model).reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    const income = model === 'Corporate Wellness'
+      ? corporateWellnessIncome
+      : monthIncome.filter((i) => modelOf(i.location) === model).reduce((s, i) => s + (Number(i.amount) || 0), 0);
     const expenses = monthExpenses.filter((e) => modelOf(e.location) === model).reduce((s, e) => s + (Number(e.amount) || 0), 0);
-    const revenueGeneratingChairs = rows.length * DEVICES_PER_VENUE;
-    return {
-      model,
-      income,
-      expenses,
-      netProfit: income - expenses,
-      activeLocations: activeLocationNames.filter((n) => modelOf(n) === model).length,
-      revenueGeneratingChairs,
-    };
+    const revenueGeneratingChairs = rows.reduce((s, l) => s + (Number(l.chairs) || DEVICES_PER_VENUE), 0);
+    return { model, income, expenses, netProfit: income - expenses, activeLocations: activeLocationNames.filter((n) => modelOf(n) === model).length, revenueGeneratingChairs };
   });
 
   const perChair = {};
@@ -224,12 +234,12 @@ export default withAuth(async (req, res) => {
     if (!l.commercial || !l.model) return;
     if (!perChair[l.model]) perChair[l.model] = { totalIncome: 0, totalChairs: 0 };
     perChair[l.model].totalIncome += l.lemoIncome;
-    perChair[l.model].totalChairs += DEVICES_PER_VENUE;
+    perChair[l.model].totalChairs += Number(l.chairs) || DEVICES_PER_VENUE;
   });
   const revenuePerChair = Object.entries(perChair).map(([model, v]) => ({
     model, chairs: v.totalChairs, revenuePerChair: v.totalChairs > 0 ? v.totalIncome / v.totalChairs : 0,
   }));
-  const activeChairs = activeLocations * DEVICES_PER_VENUE;
+  const activeChairs = locationTable.reduce((s, l) => s + (Number(l.chairs) || 0), 0);
 
   const expenseBreakdown = breakdownFromReports(financialReports, monthKey, monthExpenses);
 
@@ -240,7 +250,7 @@ export default withAuth(async (req, res) => {
     .map(([name, p]) => {
       const monthsBillable = Math.floor(Number(p.tenureMonths) || 0);
       if (monthsBillable <= 0) return null;
-      const expectedTotal = monthsBillable * Number(p.monthlyFee);
+      const expectedTotal = monthsBillable * cwContractMonthly(p);
       const totalReceived = allTimeReceivedByLocation[name] || 0;
       const balanceOwed = expectedTotal - totalReceived;
       if (balanceOwed <= 0.5) return null;
