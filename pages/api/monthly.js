@@ -1,8 +1,5 @@
-// Direct port of getMonthlyOverview() + getCorporateWellnessPaymentStatus_()
-// from the old Code.gs/Monthly Overview sheet formulas. Same math: this
-// month's income/expenses split by business model, a location performance
-// table, revenue-per-chair, expense category breakdown, a 12-month trend,
-// and outstanding Corporate Wellness payment tracking.
+// Monthly overview. Expense totals come from Financials reports when present.
+// Active locations/chairs come from Daily + Usage activity for the selected month.
 import { adminDb } from '../../lib/firebaseAdmin';
 import { withAuth } from '../../lib/auth';
 
@@ -15,7 +12,6 @@ function shiftMonth(monthKey, delta) {
   const d = new Date(y, m - 1 + delta, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
-
 function monthStart(monthKey) {
   return `${monthKey}-01`;
 }
@@ -24,7 +20,6 @@ function monthEnd(monthKey) {
   const last = new Date(y, m, 0).getDate();
   return `${monthKey}-${String(last).padStart(2, '0')}`;
 }
-
 function reportCoversMonth(report, monthKey) {
   const start = report.periodStart || '';
   const end = report.periodEnd || '';
@@ -35,7 +30,17 @@ function reportCoversMonth(report, monthKey) {
   const e = end || start || me;
   return s <= me && e >= ms;
 }
-
+function usagePeriodOverlapsMonth(period, monthKey) {
+  const raw = String(period || '');
+  const parts = raw.includes('~') ? raw.split('~') : raw.includes(' to ') ? raw.split(' to ') : [raw];
+  const start = (parts[0] || '').trim().slice(0, 10);
+  const end = (parts[1] || parts[0] || '').trim().slice(0, 10);
+  if (!start) return false;
+  const ms = monthStart(monthKey);
+  const me = monthEnd(monthKey);
+  const e = end || start;
+  return start <= me && e >= ms;
+}
 function expenseTotalFromReports(reports, monthKey, fallbackRows) {
   const matches = reports.filter((r) => reportCoversMonth(r, monthKey));
   if (matches.length) {
@@ -51,7 +56,6 @@ function expenseTotalFromReports(reports, monthKey, fallbackRows) {
   }
   return fallbackRows.reduce((s, e) => s + (Number(e.amount) || 0), 0);
 }
-
 function breakdownFromReports(reports, monthKey, monthExpenses) {
   const matches = reports.filter((r) => reportCoversMonth(r, monthKey));
   const cats = [];
@@ -79,22 +83,38 @@ function breakdownFromReports(reports, monthKey, monthExpenses) {
     .sort((a, b) => b.total - a.total)
     .slice(0, 8);
 }
+function findProject(projectsByName, projectsByLower, name) {
+  if (!name) return { key: name, data: {} };
+  if (projectsByName[name]) return { key: name, data: projectsByName[name] };
+  const lower = String(name).trim().toLowerCase();
+  const key = projectsByLower[lower];
+  if (key) return { key, data: projectsByName[key] || {} };
+  return { key: name, data: {} };
+}
 
 export default withAuth(async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed.' });
 
   const monthKey = req.query.month || new Date().toISOString().slice(0, 7);
 
-  const [projectsSnap, expensesSnap, incomeSnap, financialsSnap] = await Promise.all([
+  const [projectsSnap, expensesSnap, incomeSnap, financialsSnap, dailySnap, usageSnap] = await Promise.all([
     adminDb.collection('projects').get(),
     adminDb.collection('expenses').get(),
     adminDb.collection('income').get(),
     adminDb.collection('financialReports').get(),
+    adminDb.collection('dailyRawData').get(),
+    adminDb.collection('usageRawData').get(),
   ]);
 
   const projectsByName = {};
-  projectsSnap.forEach((doc) => { projectsByName[doc.id] = doc.data(); });
-  const modelOf = (loc) => projectsByName[loc]?.businessModel || null;
+  const projectsByLower = {};
+  projectsSnap.forEach((doc) => {
+    const data = doc.data();
+    const name = data.name || doc.id;
+    projectsByName[doc.id] = data;
+    if (name) projectsByLower[String(name).trim().toLowerCase()] = doc.id;
+  });
+  const modelOf = (loc) => findProject(projectsByName, projectsByLower, loc).data.businessModel || null;
 
   const allExpenses = expensesSnap.docs.map((d) => d.data());
   const allIncome = incomeSnap.docs.map((d) => d.data());
@@ -113,10 +133,51 @@ export default withAuth(async (req, res) => {
   monthIncome.forEach((i) => { perLocationIncome[i.location] = (perLocationIncome[i.location] || 0) + (Number(i.amount) || 0); });
   const perLocationExpenses = {};
   monthExpenses.forEach((e) => { perLocationExpenses[e.location] = (perLocationExpenses[e.location] || 0) + (Number(e.amount) || 0); });
-  const activeLocationNames = Array.from(new Set([
-    ...Object.keys(perLocationIncome).filter((n) => perLocationIncome[n] !== 0),
-    ...Object.keys(perLocationExpenses).filter((n) => perLocationExpenses[n] !== 0),
-  ]));
+
+  const dailyChairsByVenue = {};
+  const dailyActive = new Set();
+  dailySnap.forEach((doc) => {
+    const row = doc.data();
+    const venue = String(row.venueName || '').trim();
+    if (!venue) return;
+    const dateKey = row.countDate || '';
+    if (!dateKey.startsWith(monthKey)) return;
+    dailyActive.add(venue);
+    const devices = Number(row.deviceNumber);
+    if (!isNaN(devices) && devices > 0) {
+      dailyChairsByVenue[venue] = Math.max(dailyChairsByVenue[venue] || 0, devices);
+    }
+  });
+
+  const usageChairsByVenue = {};
+  const usageActive = new Set();
+  usageSnap.forEach((doc) => {
+    const row = doc.data();
+    const venue = String(row.venueName || '').trim();
+    if (!venue) return;
+    if (!usagePeriodOverlapsMonth(row.period, monthKey)) return;
+    usageActive.add(venue);
+    const seats = Number(row.seatNum);
+    if (!isNaN(seats) && seats > 0) {
+      usageChairsByVenue[venue] = Math.max(usageChairsByVenue[venue] || 0, seats);
+    }
+  });
+
+  const displayNames = {};
+  function remember(name) {
+    if (!name) return;
+    const { key } = findProject(projectsByName, projectsByLower, name);
+    displayNames[String(key).trim().toLowerCase()] = key || name;
+  }
+  Object.keys(perLocationIncome).forEach(remember);
+  Object.keys(perLocationExpenses).forEach(remember);
+  dailyActive.forEach(remember);
+  usageActive.forEach(remember);
+  Object.keys(projectsByName).forEach((n) => {
+    // keep project canonical names when we already saw activity under an alias
+  });
+
+  const activeLocationNames = Array.from(new Set(Object.values(displayNames).filter(Boolean)));
   const activeLocations = activeLocationNames.length;
   const corporateWellnessLocations = activeLocationNames.filter((n) => modelOf(n) === 'Corporate Wellness').length;
   const revenueSharingLocations = activeLocationNames.filter((n) => modelOf(n) === 'Revenue Sharing').length;
@@ -130,15 +191,32 @@ export default withAuth(async (req, res) => {
   const perLocationGross = {};
   monthIncome.forEach((i) => { if (i.grossRevenue != null) perLocationGross[i.location] = (perLocationGross[i.location] || 0) + Number(i.grossRevenue); });
 
+  function chairsFor(name) {
+    const { data } = findProject(projectsByName, projectsByLower, name);
+    if (data.numberOfChairs != null && Number(data.numberOfChairs) > 0) return Number(data.numberOfChairs);
+    const lower = String(name).trim().toLowerCase();
+    let usageSeats = 0;
+    let dailyDevices = 0;
+    Object.keys(usageChairsByVenue).forEach((v) => {
+      if (v.trim().toLowerCase() === lower) usageSeats = Math.max(usageSeats, usageChairsByVenue[v]);
+    });
+    Object.keys(dailyChairsByVenue).forEach((v) => {
+      if (v.trim().toLowerCase() === lower) dailyDevices = Math.max(dailyDevices, dailyChairsByVenue[v]);
+    });
+    if (usageSeats > 0) return usageSeats;
+    if (dailyDevices > 0) return dailyDevices;
+    return null;
+  }
+
   const locationTable = activeLocationNames.map((name) => {
-    const p = projectsByName[name] || {};
-    const lemoIncome = perLocationIncome[name] || 0;
-    const expenses = perLocationExpenses[name] || 0;
-    const chairs = p.numberOfChairs ?? null;
+    const p = findProject(projectsByName, projectsByLower, name).data;
+    const lemoIncome = perLocationIncome[name] || perLocationIncome[p.name] || 0;
+    const expenses = perLocationExpenses[name] || perLocationExpenses[p.name] || 0;
+    const chairs = chairsFor(name);
     const netProfit = lemoIncome - expenses;
     return {
       location: name, model: p.businessModel || '', chairs,
-      grossRevenue: perLocationGross[name] ?? null, lemoIncome, expenses, netProfit,
+      grossRevenue: perLocationGross[name] ?? perLocationGross[p.name] ?? null, lemoIncome, expenses, netProfit,
       netPerChair: chairs && Number(chairs) > 0 ? netProfit / Number(chairs) : null,
     };
   }).sort((a, b) => b.lemoIncome - a.lemoIncome);
