@@ -1,35 +1,4 @@
-// Admin-only. Accepts a CSV file exported from one of the old Google Sheets
-// tabs and writes it into the matching Firestore collection. This is how
-// Project Details / Expenses / Income / Communication Log (and later, Daily
-// Raw Data / Usage Data) get preserved without a one-time manual migration —
-// upload the export whenever you're ready.
-//
-// Expected CSV headers per `type` (case-insensitive, extra columns ignored):
-//   projects            -> name, businessModel, numberOfChairs, goLiveDate, monthlyFee,
-//                           revenueSharePercent, streetAddress, city, state, zipCode,
-//                           tenureMonths, avgMonthlyRevenue, customerContactName,
-//                           customerContactPhone, customerContactEmail, bdConsultantName,
-//                           bdConsultantPhone, bdConsultantEmail, contact2Name,
-//                           contact2Phone, contact2Email, editNotes
-//   expenses            -> location, date, category, item, description, source,
-//                           quantity, costPerUnit, notes
-//   income              -> location, date, amount, notes, grossRevenue (optional)
-//   communicationLog    -> location, date, note, channel, loggedBy
-//   dailyRawData        -> Venue ID, Venue Name, Count Date, Outlet ID, Outlet Name,
-//                           Entry Time, Country, Province, City, Device Model, Currency,
-//                           Order Number, Device Number, Cash, POS, QR Code, Refund Number,
-//                           Refund, Total Amount, Complete Num, Net Income,
-//                           Average Running Water, Order Price, Average Number of Visitors
-//                           (headers must match the China backend export exactly, including
-//                           spaces and capitalization — this one is stored as-is, unlike the
-//                           other four which get renamed/reshaped on import)
-//   usageRawData        -> Date, Outlet ID, Outlet Name, Province, Province Name, City,
-//                           City Name, Venue name, Channel, Seat Num, Idle number,
-//                           Occupy number, Scan number, Pay number, Order number,
-//                           Seat conversion rate, H5 conversion rate, First gear rate,
-//                           Second gear rate, Third gear rate, Place count, Area count,
-//                           Currency (headers must match the China backend's weekly
-//                           venue-level export exactly; also stored as-is, no dashboard yet)
+// Admin-only CSV import into Firestore.
 import Papa from 'papaparse';
 import formidable from 'formidable';
 import fs from 'fs';
@@ -49,128 +18,135 @@ const COLLECTION_BY_TYPE = {
 
 function num(v) {
   if (v === '' || v === undefined || v === null) return null;
-  const n = Number(v);
+  const n = Number(String(v).replace(/,/g, '').trim());
   return isNaN(n) ? null : n;
+}
+
+function normKey(k) {
+  return String(k || '').replace(/^\uFEFF/, '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+}
+
+function pick(row, ...names) {
+  const map = {};
+  Object.keys(row || {}).forEach((k) => { map[normKey(k)] = row[k]; });
+  for (const name of names) {
+    const v = map[normKey(name)];
+    if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+  }
+  return '';
 }
 
 function rowToDoc(type, row) {
   switch (type) {
     case 'projects':
       return {
-        name: row.name?.trim(),
-        businessModel: row.businessModel || '',
-        numberOfChairs: num(row.numberOfChairs),
-        goLiveDate: row.goLiveDate || '',
-        monthlyFee: num(row.monthlyFee),
-        revenueSharePercent: num(row.revenueSharePercent),
-        streetAddress: row.streetAddress || '',
-        city: row.city || '',
-        state: row.state || '',
-        zipCode: row.zipCode || '',
-        tenureMonths: num(row.tenureMonths),
-        avgMonthlyRevenue: num(row.avgMonthlyRevenue),
-        customerContactName: row.customerContactName || '',
-        customerContactPhone: row.customerContactPhone || '',
-        customerContactEmail: row.customerContactEmail || '',
-        bdConsultantName: row.bdConsultantName || '',
-        bdConsultantPhone: row.bdConsultantPhone || '',
-        bdConsultantEmail: row.bdConsultantEmail || '',
-        contact2Name: row.contact2Name || '',
-        contact2Phone: row.contact2Phone || '',
-        contact2Email: row.contact2Email || '',
-        editNotes: row.editNotes || '',
+        name: String(pick(row, 'name') || '').trim(),
+        businessModel: pick(row, 'businessModel') || '',
+        numberOfChairs: num(pick(row, 'numberOfChairs')),
+        goLiveDate: pick(row, 'goLiveDate') || '',
+        monthlyFee: num(pick(row, 'monthlyFee')),
+        revenueSharePercent: num(pick(row, 'revenueSharePercent')),
+        streetAddress: pick(row, 'streetAddress') || '',
+        city: pick(row, 'city') || '',
+        state: pick(row, 'state') || '',
+        zipCode: pick(row, 'zipCode') || '',
+        tenureMonths: num(pick(row, 'tenureMonths')),
+        avgMonthlyRevenue: num(pick(row, 'avgMonthlyRevenue')),
+        customerContactName: pick(row, 'customerContactName') || '',
+        customerContactPhone: pick(row, 'customerContactPhone') || '',
+        customerContactEmail: pick(row, 'customerContactEmail') || '',
+        bdConsultantName: pick(row, 'bdConsultantName') || '',
+        bdConsultantPhone: pick(row, 'bdConsultantPhone') || '',
+        bdConsultantEmail: pick(row, 'bdConsultantEmail') || '',
+        contact2Name: pick(row, 'contact2Name') || '',
+        contact2Phone: pick(row, 'contact2Phone') || '',
+        contact2Email: pick(row, 'contact2Email') || '',
+        editNotes: pick(row, 'editNotes') || '',
       };
     case 'expenses':
       return {
-        location: row.location?.trim(),
-        date: row.date || '',
-        category: row.category || '',
-        item: row.item || '',
-        description: row.description || '',
-        source: row.source || '',
-        quantity: num(row.quantity),
-        costPerUnit: num(row.costPerUnit),
-        amount: num(row.quantity) != null && num(row.costPerUnit) != null ? num(row.quantity) * num(row.costPerUnit) : null,
-        notes: row.notes || '',
+        location: String(pick(row, 'location') || '').trim(),
+        date: pick(row, 'date') || '',
+        category: pick(row, 'category') || '',
+        item: pick(row, 'item') || '',
+        description: pick(row, 'description') || '',
+        source: pick(row, 'source') || '',
+        quantity: num(pick(row, 'quantity')),
+        costPerUnit: num(pick(row, 'costPerUnit')),
+        amount: num(pick(row, 'quantity')) != null && num(pick(row, 'costPerUnit')) != null ? num(pick(row, 'quantity')) * num(pick(row, 'costPerUnit')) : num(pick(row, 'amount')),
+        notes: pick(row, 'notes') || '',
         addedBy: 'import',
       };
     case 'income':
       return {
-        location: row.location?.trim(),
-        date: row.date || '',
-        amount: num(row.amount),
-        grossRevenue: num(row.grossRevenue),
-        notes: row.notes || '',
+        location: String(pick(row, 'location') || '').trim(),
+        date: pick(row, 'date') || '',
+        amount: num(pick(row, 'amount')),
+        grossRevenue: num(pick(row, 'grossRevenue')),
+        notes: pick(row, 'notes') || '',
         addedBy: 'import',
       };
     case 'communicationLog':
       return {
-        location: row.location?.trim(),
-        date: row.date || '',
-        note: row.note || '',
-        channel: row.channel || '',
-        loggedBy: row.loggedBy || '',
+        location: String(pick(row, 'location') || '').trim(),
+        date: pick(row, 'date') || '',
+        note: pick(row, 'note') || '',
+        channel: pick(row, 'channel') || '',
+        loggedBy: pick(row, 'loggedBy') || '',
         enteredBy: 'import',
       };
     case 'dailyRawData':
-      // Preserved as-is from the China POS backend export — column names match
-      // the export exactly (e.g. "Venue Name", "Count Date", "POS", "QR Code").
-      // No reshaping here on purpose: this is raw data storage, not a display
-      // model. Future dashboard work can read/aggregate it as needed.
       return {
-        venueId: row['Venue ID'] || '',
-        venueName: (row['Venue Name'] || '').trim(),
-        countDate: row['Count Date'] || '',
-        outletId: row['Outlet ID'] || '',
-        outletName: row['Outlet Name'] || '',
-        entryTime: row['Entry Time'] || '',
-        country: row['Country'] || '',
-        province: row['Province'] || '',
-        city: row['City'] || '',
-        deviceModel: row['Device Model'] || '',
-        currency: row['Currency'] || '',
-        orderNumber: num(row['Order Number']),
-        deviceNumber: num(row['Device Number']),
-        cash: num(row['Cash']),
-        pos: num(row['POS']),
-        qrCode: num(row['QR Code']),
-        refundNumber: num(row['Refund Number']),
-        refund: num(row['Refund']),
-        totalAmount: num(row['Total Amount']),
-        completeNum: num(row['Complete Num']),
-        netIncome: num(row['Net Income']),
-        avgRunningWater: num(row['Average Running Water']),
-        orderPrice: num(row['Order Price']),
-        avgVisitors: num(row['Average Number of Visitors']),
+        venueId: pick(row, 'Venue ID'),
+        venueName: String(pick(row, 'Venue Name', 'Venue name') || '').trim(),
+        countDate: pick(row, 'Count Date', 'Count date'),
+        outletId: pick(row, 'Outlet ID'),
+        outletName: pick(row, 'Outlet Name', 'Outlet name'),
+        entryTime: pick(row, 'Entry Time', 'Entry time'),
+        country: pick(row, 'Country'),
+        province: pick(row, 'Province'),
+        city: pick(row, 'City'),
+        deviceModel: pick(row, 'Device Model', 'Device model'),
+        currency: pick(row, 'Currency'),
+        orderNumber: num(pick(row, 'Order Number', 'Order number')),
+        deviceNumber: num(pick(row, 'Device Number', 'Device number')),
+        cash: num(pick(row, 'Cash')),
+        pos: num(pick(row, 'POS', 'Pos')),
+        qrCode: num(pick(row, 'QR Code', 'QR code')),
+        refundNumber: num(pick(row, 'Refund Number', 'Refund number')),
+        refund: num(pick(row, 'Refund')),
+        totalAmount: num(pick(row, 'Total Amount')),
+        completeNum: num(pick(row, 'Complete Num', 'complete num')),
+        netIncome: num(pick(row, 'Net Income')),
+        avgRunningWater: num(pick(row, 'Average Running Water', 'Average running water')),
+        orderPrice: num(pick(row, 'Order Price', 'Order price')),
+        avgVisitors: num(pick(row, 'Average Number of Visitors', 'Average number of visitors')),
       };
     case 'usageRawData':
-      // Weekly venue-level usage export from the China backend. Preserved
-      // as-is, matching the dailyRawData approach — no dashboard reads this
-      // yet, this is safe storage only.
       return {
-        period: row['Date'] || '', // e.g. "2026-08-01~2026-08-31"
-        outletId: row['Outlet ID'] || '',
-        outletName: row['Outlet Name'] || '',
-        province: row['Province'] || '',
-        provinceName: row['Province Name'] || '',
-        city: row['City'] || '',
-        cityName: row['City Name'] || '',
-        venueName: (row['Venue name'] || '').trim(),
-        channel: row['Channel'] || '',
-        seatNum: num(row['Seat Num']),
-        idleNumber: num(row['Idle number']),
-        occupyNumber: num(row['Occupy number']),
-        scanNumber: num(row['Scan number']),
-        payNumber: num(row['Pay number']),
-        orderNumber: num(row['Order number']),
-        seatConversionRate: num(row['Seat conversion rate']),
-        h5ConversionRate: num(row['H5 conversion rate']),
-        firstGearRate: num(row['First gear rate']),
-        secondGearRate: num(row['Second gear rate']),
-        thirdGearRate: num(row['Third gear rate']),
-        placeCount: num(row['Place count']),
-        areaCount: num(row['Area count']),
-        currency: row['Currency'] || '',
+        period: pick(row, 'Date'),
+        outletId: pick(row, 'Outlet ID'),
+        outletName: pick(row, 'Outlet Name'),
+        province: pick(row, 'Province'),
+        provinceName: pick(row, 'Province Name'),
+        city: pick(row, 'City'),
+        cityName: pick(row, 'City Name'),
+        venueName: String(pick(row, 'Venue name', 'Venue Name') || '').trim(),
+        channel: pick(row, 'Channel'),
+        seatNum: num(pick(row, 'Seat Num')),
+        idleNumber: num(pick(row, 'Idle number')),
+        occupyNumber: num(pick(row, 'Occupy number')),
+        scanNumber: num(pick(row, 'Scan number')),
+        payNumber: num(pick(row, 'Pay number')),
+        orderNumber: num(pick(row, 'Order number')),
+        seatConversionRate: num(pick(row, 'Seat conversion rate')),
+        h5ConversionRate: num(pick(row, 'H5 conversion rate')),
+        firstGearRate: num(pick(row, 'First gear rate')),
+        secondGearRate: num(pick(row, 'Second gear rate')),
+        thirdGearRate: num(pick(row, 'Third gear rate')),
+        placeCount: num(pick(row, 'Place count')),
+        areaCount: num(pick(row, 'Area count')),
+        currency: pick(row, 'Currency'),
       };
     default:
       return null;
@@ -195,7 +171,7 @@ export default async function handler(req, res) {
     const fileObj = Array.isArray(files.file) ? files.file[0] : files.file;
     if (!fileObj) return res.status(400).json({ error: 'No file uploaded.' });
 
-    const csvText = fs.readFileSync(fileObj.filepath, 'utf8');
+    const csvText = fs.readFileSync(fileObj.filepath, 'utf8').replace(/^\uFEFF/, '');
     const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
     if (parsed.errors.length) {
       return res.status(400).json({ error: `CSV parse error: ${parsed.errors[0].message}` });
@@ -203,13 +179,13 @@ export default async function handler(req, res) {
 
     let written = 0;
     let skipped = 0;
-    const batchSize = 400; // Firestore batch limit is 500 writes
+    const batchSize = 400;
     for (let i = 0; i < parsed.data.length; i += batchSize) {
       const batch = adminDb.batch();
       const chunk = parsed.data.slice(i, i + batchSize);
       chunk.forEach((row) => {
         const doc = rowToDoc(type, row);
-        const hasKey = doc && (doc.name || doc.location || doc.venueName);
+        const hasKey = doc && (doc.name || doc.location || doc.venueName || doc.outletId || doc.venueId);
         if (!hasKey) {
           skipped++;
           return;
