@@ -168,7 +168,7 @@ export default withAuth(async (req, res) => {
   const activeChairs = locationTable.reduce((s, l) => s + (Number(l.chairs) || 0), 0);
   const expenseBreakdown = breakdownFromReports(financialReports, monthKey, monthExpenses);
   const allTimeReceivedByLocation = {}; allIncome.forEach((i) => { if (i.location) allTimeReceivedByLocation[i.location] = (allTimeReceivedByLocation[i.location] || 0) + (Number(i.amount) || 0); });
-  const outstandingPayments = Object.entries(projectsByName).filter(([, p]) => p.businessModel === 'Corporate Wellness' && Number(p.monthlyFee) > 0).map(([name, p]) => {
+  const outstandingPayments = Object.entries(projectsByName).filter(([, p]) => p.businessModel === 'Corporate Wellness' && Number(p.monthlyFee) > 0 && liveInMonth(p, monthKey)).map(([name, p]) => {
     const monthsBillable = Math.floor(Number(p.tenureMonths) || 0);
     if (monthsBillable <= 0) return null;
     const expectedTotal = monthsBillable * cwContractMonthly(p);
