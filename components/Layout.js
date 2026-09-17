@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { signOut } from 'firebase/auth';
 import { auth } from '../lib/firebaseClient';
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from './NotificationBell';
 
 const NAV = [
   { code: 'mo', label: 'Monthly Overview' },
@@ -46,6 +47,7 @@ export default function Layout({ active, onNavigate, children }) {
       <div className="mobile-topbar">
         <button onClick={() => setMenuOpen((o) => !o)} aria-label="Menu">☰</button>
         <h2>LEMO</h2>
+        <div style={{ marginLeft: 'auto' }}><NotificationBell /></div>
       </div>
       <div className={`sidebar-backdrop ${menuOpen ? 'show' : ''}`} onClick={() => setMenuOpen(false)} />
       <nav className={`sidebar ${menuOpen ? 'open' : ''}`}>
@@ -65,6 +67,7 @@ export default function Layout({ active, onNavigate, children }) {
             ))}
           </>
         )}
+        <NotificationBell />
         <div className="who">
           {session.name}
           <br />
