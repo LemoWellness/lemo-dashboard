@@ -13,6 +13,7 @@ function typeLabel(type) {
   if (type === 'assigned') return 'New Task Assigned';
   if (type === 'dueToday') return 'Task Due Today';
   if (type === 'dueSoon') return 'Task Due Soon';
+  if (type === 'overdue') return 'Task Overdue';
   return type || 'Notification';
 }
 
