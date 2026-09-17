@@ -1,5 +1,6 @@
 import { adminDb } from '../../../lib/firebaseAdmin';
 import { withAuth } from '../../../lib/auth';
+import { notifyTaskAssigned } from '../../../lib/notifications';
 
 function canModify(session, task) {
   if (session.role === 'Admin') return true;
@@ -29,13 +30,25 @@ export default withAuth(async (req, res, session) => {
     if (!canModify(session, task)) {
       return res.status(403).json({ error: 'Only the person who added this task, the assignee, or an Admin can edit it.' });
     }
+    const nextAssigned = assignedTo ?? task.assignedTo;
+    const nextTask = taskText ?? task.task;
+    const nextDeadline = deadline ?? task.deadline;
     await ref.update({
-      assignedTo: assignedTo ?? task.assignedTo,
-      task: taskText ?? task.task,
-      deadline: deadline ?? task.deadline,
+      assignedTo: nextAssigned,
+      task: nextTask,
+      deadline: nextDeadline,
       priority: priority ?? task.priority,
       notes: notes ?? task.notes,
     });
+    const prevEmail = String(task.assignedTo || '').toLowerCase();
+    const nextEmail = String(nextAssigned || '').toLowerCase();
+    if (nextEmail && nextEmail !== prevEmail) {
+      try {
+        await notifyTaskAssigned({ taskId: doc.id, assignedTo: nextAssigned, taskName: nextTask, dueDate: nextDeadline || '' });
+      } catch (err) {
+        console.error('Reassignment notification failed', err);
+      }
+    }
     return res.status(200).json({ success: true });
   }
 
