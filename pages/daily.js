@@ -24,6 +24,7 @@ export default function Daily() {
     if (code === 'usage') return router.push('/usage');
     if (code === 'mo') return router.push('/monthly');
     if (code === 'financials') return router.push('/financials');
+    if (code === 'risk') return router.push('/risk');
   }
 
   function load(dateKey) {

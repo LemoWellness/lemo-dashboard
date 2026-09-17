@@ -5,7 +5,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { authedFetch } from '../lib/firebaseClient';
 
-const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : '—');
+const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : '\u2014');
 const PIE_COLORS = ['#E85D20', '#0C0A09', '#706B66', '#2A1A10', '#d9a441', '#6b4c14'];
 
 export default function Financials() {
@@ -23,6 +23,7 @@ export default function Financials() {
     if (code === 'daily') return router.push('/daily');
     if (code === 'usage') return router.push('/usage');
     if (code === 'mo') return router.push('/monthly');
+    if (code === 'risk') return router.push('/risk');
   }
 
   function load() {
@@ -99,7 +100,7 @@ export default function Financials() {
                 <thead><tr><th>Category</th><th>Amount</th><th>% of Total</th></tr></thead>
                 <tbody>
                   {(selected.topExpenses || []).map((e, i) => (
-                    <tr key={i}><td>{e.category}</td><td>{fmt(e.amount)}</td><td>{e.percentOfTotal != null ? `${e.percentOfTotal}%` : '—'}</td></tr>
+                    <tr key={i}><td>{e.category}</td><td>{fmt(e.amount)}</td><td>{e.percentOfTotal != null ? `${e.percentOfTotal}%` : '\u2014'}</td></tr>
                   ))}
                   {(!selected.topExpenses || selected.topExpenses.length === 0) && <tr><td colSpan={3} className="muted">No categories for this period.</td></tr>}
                 </tbody>
@@ -122,7 +123,7 @@ export default function Financials() {
                     >
                       <td>{r.label || `${r.periodStart} to ${r.periodEnd}`}</td>
                       <td>{fmt(r.revenue)}</td><td>{fmt(r.expense)}</td><td>{fmt(r.netProfit)}</td>
-                      <td className="muted">{r.uploadedAt ? new Date(r.uploadedAt).toLocaleDateString() : '—'}</td>
+                      <td className="muted">{r.uploadedAt ? new Date(r.uploadedAt).toLocaleDateString() : '\u2014'}</td>
                       {isAdmin && <td><button className="task-delete-btn" onClick={(e) => { e.stopPropagation(); deleteReport(r.id); }}>Delete</button></td>}
                     </tr>
                   ))}

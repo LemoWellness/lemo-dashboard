@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { authedFetch } from '../lib/firebaseClient';
 
 const count = (n) => (typeof n === 'number' ? Math.round(n).toLocaleString() : n || '0');
-const pct = (n) => (typeof n === 'number' ? `${(n * 100).toFixed(1)}%` : '—');
+const pct = (n) => (typeof n === 'number' ? `${(n * 100).toFixed(1)}%` : '\u2014');
 
 export default function Usage() {
   const router = useRouter();
@@ -23,6 +23,7 @@ export default function Usage() {
     if (code === 'daily') return router.push('/daily');
     if (code === 'mo') return router.push('/monthly');
     if (code === 'financials') return router.push('/financials');
+    if (code === 'risk') return router.push('/risk');
   }
 
   function load(week) {
