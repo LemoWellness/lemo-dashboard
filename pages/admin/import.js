@@ -34,6 +34,7 @@ export default function ImportData() {
     if (code === 'usage') return router.push('/usage');
     if (code === 'mo') return router.push('/monthly');
     if (code === 'financials') return router.push('/financials');
+    if (code === 'risk') return router.push('/risk');
   }
 
   async function submit(e) {
@@ -110,10 +111,10 @@ export default function ImportData() {
       )}
 
       <form className="card" onSubmit={submitFinancials}>
-        <h3 style={{ marginTop: 0 }}>Financials (Profit &amp; Loss / Top Expenses)</h3>
+        <h3 style={{ marginTop: 0 }}>Financials (Profit & Loss / Top Expenses)</h3>
         <p className="muted" style={{ fontSize: '0.8rem' }}>
           Different file shape than the CSVs above (.xlsx exports straight from the accounting software), so it lives
-          here as its own upload rather than the Data Type dropdown. Upload a P&amp;L + Top Expenses pair for the
+          here as its own upload rather than the Data Type dropdown. Upload a P&L + Top Expenses pair for the
           same period, or just one or more monthly Top Expenses files (each becomes its own month — select multiple
           at once for a batch upload). Uploading a file for a period that already exists fills it in rather than
           duplicating it.
