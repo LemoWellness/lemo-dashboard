@@ -8,9 +8,16 @@ import {
   applySourceLines, compute, emptyAssessment, isMallModel, MALL_MODEL, normalizeLogistics,
 } from '../../lib/riskMath';
 
-const fmt = (v) => (typeof v === 'number' && Number.isFinite(v) ? `$${Math.round(v).toLocaleString()}` : '—');
-const fmtMoney2 = (v) => (typeof v === 'number' && Number.isFinite(v) ? `$${v.toFixed(2)}` : '—');
-const fmtN = (v, d = 1) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(d) : '—');
+const MD = '\u00b7';
+const EM = '\u2014';
+const EN = '\u2013';
+const ARR = '\u2190';
+const MINUS = '\u2212';
+const TIMES = '\u00d7';
+const ELL = '\u2026';
+const fmt = (v) => (typeof v === 'number' && Number.isFinite(v) ? `$${Math.round(v).toLocaleString()}` : EM);
+const fmtMoney2 = (v) => (typeof v === 'number' && Number.isFinite(v) ? `$${v.toFixed(2)}` : EM);
+const fmtN = (v, d = 1) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(d) : EM);
 const fmtMo = (v) => (typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(1)} mo` : 'Does not pay back');
 
 function Field({ label, children }) {
@@ -140,7 +147,7 @@ export default function RiskDetail() {
   }
 
   if (loading || !form) {
-    return <Layout active="risk" onNavigate={navigate}><p className="muted">{error || 'Loading assessment\u2026'}</p></Layout>;
+    return <Layout active="risk" onNavigate={navigate}><p className="muted">{error || ('Loading assessment' + ELL)}</p></Layout>;
   }
 
   const pay = form.businessModel !== 'Corporate Wellness';
@@ -150,7 +157,7 @@ export default function RiskDetail() {
   return (
     <Layout active="risk" onNavigate={navigate}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <button className="btn" type="button" onClick={() => router.push('/risk')}>{\u2190} All assessments</button>
+        <button className="btn" type="button" onClick={() => router.push('/risk')}>{ARR} All assessments</button>
         {isAdmin && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {form.status === 'Approved' && (
@@ -160,7 +167,7 @@ export default function RiskDetail() {
               </>
             )}
             {form.status !== 'Approved' && (
-              <button className="btn" type="button" disabled={busy} onClick={() => save('save')}>{busy ? 'Saving\u2026' : 'Save'}</button>
+              <button className="btn" type="button" disabled={busy} onClick={() => save('save')}>{busy ? ('Saving' + ELL) : 'Save'}</button>
             )}
           </div>
         )}
@@ -173,20 +180,20 @@ export default function RiskDetail() {
       )}
 
       <h1 style={{ marginBottom: 6 }}>{form.name || 'Untitled assessment'}</h1>
-      <p className="muted">{form.businessModel} {\u00b7} {form.chairQty || '\u2014'} chairs {\u00b7} {form.inventorySource} {\u00b7} {form.targetDeployDate || 'no date'} {\u00b7} {form.status}{form.version ? ` ${'\u00b7'} v${form.version}` : ''}</p>
+      <p className="muted">{form.businessModel} {MD} {form.chairQty || EM} chairs {MD} {form.inventorySource} {MD} {form.targetDeployDate || 'no date'} {MD} {form.status}{form.version ? ` ${MD} v${form.version}` : ''}</p>
 
       <div className="grid-4">
         <Kpi label="New cash required" value={fmt(c.inv?.newCash)} />
         <Kpi label="Total economic investment" value={fmt(c.inv?.totalEconomic)} />
         <Kpi label="Monthly operating cost" value={fmt(c.opex)} />
-        <Kpi label="Target payback" value={form.targetPaybackMonths ? `${form.targetPaybackMonths} mo` : '\u2014'} />
+        <Kpi label="Target payback" value={form.targetPaybackMonths ? `${form.targetPaybackMonths} mo` : EM} />
       </div>
       {pay && (
         <div className="grid-4">
           <Kpi label="Required sessions / chair / day" value={fmtN(c.required?.sessionsChairDay, 2)} />
           <Kpi label="Required sessions / week" value={fmtN(c.required?.sessionsWeek, 1)} />
           <Kpi label="Required sessions / month" value={fmtN(c.required?.sessionsMonth, 0)} />
-          <Kpi label="Estimated Payback \u2013 Base Scenario" value={c.scenarios ? fmtMo(c.scenarios.base.paybackMonths) : '\u2014'} />
+          <Kpi label="Estimated Payback \u2013 Base Scenario" value={c.scenarios ? fmtMo(c.scenarios.base.paybackMonths) : EM} />
         </div>
       )}
       {form.businessModel === 'Corporate Wellness' && c.cw && (
@@ -205,8 +212,8 @@ export default function RiskDetail() {
         <div className="card">
           <h3 style={{ marginTop: 0 }}>Assumption completeness</h3>
           <p className="muted">
-            Confirmed {Math.round(100 * c.completeness.Confirmed / c.completeness.total)}% {\u00b7}{' '}
-            Quoted {Math.round(100 * c.completeness.Quoted / c.completeness.total)}% {\u00b7}{' '}
+            Confirmed {Math.round(100 * c.completeness.Confirmed / c.completeness.total)}% {MD}{' '}
+            Quoted {Math.round(100 * c.completeness.Quoted / c.completeness.total)}% {MD}{' '}
             Assumed {Math.round(100 * c.completeness.Assumed / c.completeness.total)}%
           </p>
         </div>
@@ -282,7 +289,7 @@ export default function RiskDetail() {
           If Already Paid is No, manufacturing cost is in New Cash Required and Total Economic Investment.
           If Yes, it is in Total Economic Investment only. Existing chairs count in Total Economic Investment only when scope is Full Investment.
         </p>
-        <p className="muted">New cash {fmt(c.inv?.newCash)} {\u00b7} Total economic {fmt(c.inv?.totalEconomic)} {\u00b7} Basis used for payback {fmt(c.inv?.basis)}</p>
+        <p className="muted">New cash {fmt(c.inv?.newCash)} {MD} Total economic {fmt(c.inv?.totalEconomic)} {MD} Basis used for payback {fmt(c.inv?.basis)}</p>
       </div>
 
       <LineTable title="Inventory / logistics" items={form.logisticsItems || []} locked={locked} onChange={(items) => set('logisticsItems', items)} />
@@ -304,7 +311,7 @@ export default function RiskDetail() {
 
       {pay && (
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>{isMallModel(form.businessModel) ? 'Shopping Mall \u2013 Fixed Rent \u2014 session pricing' : 'Revenue sharing'}</h3>
+          <h3 style={{ marginTop: 0 }}>{isMallModel(form.businessModel) ? ('Shopping Mall ' + EN + ' Fixed Rent ' + EM + ' session pricing') : 'Revenue sharing'}</h3>
           <div className="inline-form">
             <Field label="10-min price"><input type="number" disabled={locked} value={form.rs.price10} onChange={(e) => setRs('price10', e.target.value)} /></Field>
             <Field label="15-min price"><input type="number" disabled={locked} value={form.rs.price15} onChange={(e) => setRs('price15', e.target.value)} /></Field>
@@ -323,21 +330,21 @@ export default function RiskDetail() {
                 <Field label="BD share %"><input type="number" disabled={locked} value={form.rs.bdPct} onChange={(e) => setRs('bdPct', e.target.value)} /></Field>
               </div>
               {!c.sharesOk && <p className="form-error">Revenue shares must total 100%.</p>}
-              <p className="muted">Default 70 / 20 / 10 is pre-filled and editable. Shopping Mall \u2013 Fixed Rent does not use this split.</p>
+              <p className="muted">Default 70 / 20 / 10 is pre-filled and editable. Shopping Mall {EN} Fixed Rent does not use this split.</p>
             </>
           )}
           {isMallModel(form.businessModel) && (
             <p className="muted">
               The shopping center receives 0% of customer session revenue. LEMO pays a fixed monthly mall rent (enter it under Monthly operating costs as Rent / Space Fee) and retains 100% of session gross before payment processing and LEMO operating expenses.
-              Calculation: Gross Session Revenue {'\u2212'} Payment Processing = LEMO Net Revenue Before OpEx; then subtract Monthly Mall Rent, Cleaning, Maintenance, and Other Monthly Operating Expenses. Target-payback required sessions include mall rent and all other monthly OpEx. The RS 70/20/10 structure is not applied.
+              Calculation: Gross Session Revenue {MINUS} Payment Processing = LEMO Net Revenue Before OpEx; then subtract Monthly Mall Rent, Cleaning, Maintenance, and Other Monthly Operating Expenses. Target-payback required sessions include mall rent and all other monthly OpEx. The RS 70/20/10 structure is not applied.
             </p>
           )}
           <div className="inline-form">
             <Field label="Operating days / month"><input type="number" disabled={locked} value={form.daysPerMonth} onChange={(e) => set('daysPerMonth', e.target.value)} /></Field>
             <Field label="Expected chair uptime %"><input type="number" disabled={locked} value={form.uptimePct} onChange={(e) => set('uptimePct', e.target.value)} /></Field>
-            <Field label="Low Scenario \u2013 Sessions / Chair / Day"><input type="number" disabled={locked} value={form.spdLow} onChange={(e) => set('spdLow', e.target.value)} /></Field>
-            <Field label="Base Scenario \u2013 Sessions / Chair / Day"><input type="number" disabled={locked} value={form.spdBase} onChange={(e) => set('spdBase', e.target.value)} /></Field>
-            <Field label="High Scenario \u2013 Sessions / Chair / Day"><input type="number" disabled={locked} value={form.spdHigh} onChange={(e) => set('spdHigh', e.target.value)} /></Field>
+            <Field label={'Low Scenario ' + EN + ' Sessions / Chair / Day'}><input type="number" disabled={locked} value={form.spdLow} onChange={(e) => set('spdLow', e.target.value)} /></Field>
+            <Field label={'Base Scenario ' + EN + ' Sessions / Chair / Day'}><input type="number" disabled={locked} value={form.spdBase} onChange={(e) => set('spdBase', e.target.value)} /></Field>
+            <Field label={'High Scenario ' + EN + ' Sessions / Chair / Day'}><input type="number" disabled={locked} value={form.spdHigh} onChange={(e) => set('spdHigh', e.target.value)} /></Field>
           </div>
         </div>
       )}
@@ -352,7 +359,7 @@ export default function RiskDetail() {
             <Field label="Contract term (months)"><input type="number" disabled={locked} value={form.cwContractMonths} onChange={(e) => set('cwContractMonths', e.target.value)} /></Field>
             <Field label="Deposit / upfront"><input type="number" disabled={locked} value={form.cwDeposit} onChange={(e) => set('cwDeposit', e.target.value)} /></Field>
           </div>
-          <p className="muted">If total monthly fee is entered it is used; otherwise chairs \u00d7 fee per chair. Sessions are not used for CW revenue.</p>
+          <p className="muted">If total monthly fee is entered it is used; otherwise chairs {TIMES} fee per chair. Sessions are not used for CW revenue.</p>
         </div>
       )}
 
@@ -371,11 +378,11 @@ export default function RiskDetail() {
                 <tr><td>Sessions / month</td><td>{fmtN(c.scenarios.low.perMonth, 0)}</td><td>{fmtN(c.scenarios.base.perMonth, 0)}</td><td>{fmtN(c.scenarios.high.perMonth, 0)}</td></tr>
                 <tr><td>Gross revenue</td><td>{fmt(c.scenarios.low.gross)}</td><td>{fmt(c.scenarios.base.gross)}</td><td>{fmt(c.scenarios.high.gross)}</td></tr>
                 {!isMallModel(form.businessModel) && (
-                  <tr><td>{\u2212} Revenue distributions</td><td>{fmt((c.scenarios.low.venue || 0) + (c.scenarios.low.bd || 0))}</td><td>{fmt((c.scenarios.base.venue || 0) + (c.scenarios.base.bd || 0))}</td><td>{fmt((c.scenarios.high.venue || 0) + (c.scenarios.high.bd || 0))}</td></tr>
+                  <tr><td>{MINUS} Revenue distributions</td><td>{fmt((c.scenarios.low.venue || 0) + (c.scenarios.low.bd || 0))}</td><td>{fmt((c.scenarios.base.venue || 0) + (c.scenarios.base.bd || 0))}</td><td>{fmt((c.scenarios.high.venue || 0) + (c.scenarios.high.bd || 0))}</td></tr>
                 )}
-                <tr><td>{\u2212} Payment processing</td><td>{fmt(c.scenarios.low.processing)}</td><td>{fmt(c.scenarios.base.processing)}</td><td>{fmt(c.scenarios.high.processing)}</td></tr>
+                <tr><td>{MINUS} Payment processing</td><td>{fmt(c.scenarios.low.processing)}</td><td>{fmt(c.scenarios.base.processing)}</td><td>{fmt(c.scenarios.high.processing)}</td></tr>
                 <tr><td>LEMO net revenue before OpEx</td><td>{fmt(c.scenarios.low.netBeforeOpex)}</td><td>{fmt(c.scenarios.base.netBeforeOpex)}</td><td>{fmt(c.scenarios.high.netBeforeOpex)}</td></tr>
-                <tr><td>{\u2212} Monthly operating expenses</td><td>{fmt(c.scenarios.low.opex)}</td><td>{fmt(c.scenarios.base.opex)}</td><td>{fmt(c.scenarios.high.opex)}</td></tr>
+                <tr><td>{MINUS} Monthly operating expenses</td><td>{fmt(c.scenarios.low.opex)}</td><td>{fmt(c.scenarios.base.opex)}</td><td>{fmt(c.scenarios.high.opex)}</td></tr>
                 <tr><td>Monthly operating profit / loss</td><td>{fmt(c.scenarios.low.profit)}</td><td>{fmt(c.scenarios.base.profit)}</td><td>{fmt(c.scenarios.high.profit)}</td></tr>
                 <tr><td>Payback</td><td>{fmtMo(c.scenarios.low.paybackMonths)}</td><td>{fmtMo(c.scenarios.base.paybackMonths)}</td><td>{fmtMo(c.scenarios.high.paybackMonths)}</td></tr>
               </tbody>
