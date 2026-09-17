@@ -5,11 +5,12 @@ import { useAuth } from '../../context/AuthContext';
 import { authedFetch } from '../../lib/firebaseClient';
 import {
   STATUSES, MODELS, SOURCES, LINE_STATUSES, RISK_LEVELS, RISK_STATUSES,
-  applySourceLines, compute, emptyAssessment, isMallModel, MALL_MODEL,
+  applySourceLines, compute, emptyAssessment, isMallModel, MALL_MODEL, normalizeLogistics,
 } from '../../lib/riskMath';
 
-const fmt = (v) => (typeof v === 'number' && Number.isFinite(v) ? `$${Math.round(v).toLocaleString()}` : '\u2014');
-const fmtN = (v, d = 1) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(d) : '\u2014');
+const fmt = (v) => (typeof v === 'number' && Number.isFinite(v) ? `$${Math.round(v).toLocaleString()}` : '—');
+const fmtMoney2 = (v) => (typeof v === 'number' && Number.isFinite(v) ? `$${v.toFixed(2)}` : '—');
+const fmtN = (v, d = 1) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(d) : '—');
 const fmtMo = (v) => (typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(1)} mo` : 'Does not pay back');
 
 function Field({ label, children }) {
@@ -99,12 +100,12 @@ export default function RiskDetail() {
         if (!r.ok) throw new Error(d.error || 'Not found.');
         const blank = emptyAssessment();
         const loaded = d.assessment || {};
-        setForm({
+        setForm(normalizeLogistics({
           ...blank,
           ...loaded,
           businessModel: isMallModel(loaded.businessModel) ? MALL_MODEL : (loaded.businessModel || blank.businessModel),
           rs: { ...blank.rs, ...(loaded.rs || {}) },
-        });
+        }));
         setLoading(false);
       })
       .catch((e) => { setError(e.message); setLoading(false); });
@@ -185,7 +186,7 @@ export default function RiskDetail() {
           <Kpi label="Required sessions / chair / day" value={fmtN(c.required?.sessionsChairDay, 2)} />
           <Kpi label="Required sessions / week" value={fmtN(c.required?.sessionsWeek, 1)} />
           <Kpi label="Required sessions / month" value={fmtN(c.required?.sessionsMonth, 0)} />
-          <Kpi label="Base payback" value={c.scenarios ? fmtMo(c.scenarios.base.paybackMonths) : '\u2014'} />
+          <Kpi label="Estimated payback \u2013 Base scenario" value={c.scenarios ? fmtMo(c.scenarios.base.paybackMonths) : '\u2014'} />
         </div>
       )}
       {form.businessModel === 'Corporate Wellness' && c.cw && (
@@ -313,7 +314,7 @@ export default function RiskDetail() {
             <Field label="25-min mix %"><input type="number" disabled={locked} value={form.rs.mix25} onChange={(e) => setRs('mix25', e.target.value)} /></Field>
           </div>
           {!c.mixOk && <p className="form-error">Session mix must total 100% before session calculations appear.</p>}
-          {c.mixOk && <p className="muted">Weighted average transaction {fmt(c.weightedTicket)}</p>}
+          {c.mixOk && <p className="muted">Weighted average transaction {fmtMoney2(c.weightedTicket)}</p>}
           {form.businessModel === 'Revenue Sharing' && (
             <>
               <div className="inline-form">
@@ -334,9 +335,9 @@ export default function RiskDetail() {
           <div className="inline-form">
             <Field label="Operating days / month"><input type="number" disabled={locked} value={form.daysPerMonth} onChange={(e) => set('daysPerMonth', e.target.value)} /></Field>
             <Field label="Expected chair uptime %"><input type="number" disabled={locked} value={form.uptimePct} onChange={(e) => set('uptimePct', e.target.value)} /></Field>
-            <Field label="Low sessions / chair / day"><input type="number" disabled={locked} value={form.spdLow} onChange={(e) => set('spdLow', e.target.value)} /></Field>
-            <Field label="Base sessions / chair / day"><input type="number" disabled={locked} value={form.spdBase} onChange={(e) => set('spdBase', e.target.value)} /></Field>
-            <Field label="High sessions / chair / day"><input type="number" disabled={locked} value={form.spdHigh} onChange={(e) => set('spdHigh', e.target.value)} /></Field>
+            <Field label="Low Scenario \u2013 Sessions / Chair / Day"><input type="number" disabled={locked} value={form.spdLow} onChange={(e) => set('spdLow', e.target.value)} /></Field>
+            <Field label="Base Scenario \u2013 Sessions / Chair / Day"><input type="number" disabled={locked} value={form.spdBase} onChange={(e) => set('spdBase', e.target.value)} /></Field>
+            <Field label="High Scenario \u2013 Sessions / Chair / Day"><input type="number" disabled={locked} value={form.spdHigh} onChange={(e) => set('spdHigh', e.target.value)} /></Field>
           </div>
         </div>
       )}
@@ -357,7 +358,7 @@ export default function RiskDetail() {
 
       {pay && c.scenarios && (
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Low / Base / High realized performance</h3>
+          <h3 style={{ marginTop: 0 }}>Performance Scenarios</h3>
           <p className="muted">Uptime applies to these realized scenarios only. The required sessions/chair/day KPI is the literal paid-session target and is not inflated by uptime.</p>
           <div className="table-wrap">
             <table>
@@ -366,6 +367,7 @@ export default function RiskDetail() {
               </thead>
               <tbody>
                 <tr><td>Sessions / chair / day</td><td>{fmtN(c.scenarios.low.sessionsPerChairPerDay, 2)}</td><td>{fmtN(c.scenarios.base.sessionsPerChairPerDay, 2)}</td><td>{fmtN(c.scenarios.high.sessionsPerChairPerDay, 2)}</td></tr>
+                <tr><td>Required sessions / chair / day for target payback</td><td>{fmtN(c.required?.sessionsChairDay, 2)}</td><td>{fmtN(c.required?.sessionsChairDay, 2)}</td><td>{fmtN(c.required?.sessionsChairDay, 2)}</td></tr>
                 <tr><td>Sessions / month</td><td>{fmtN(c.scenarios.low.perMonth, 0)}</td><td>{fmtN(c.scenarios.base.perMonth, 0)}</td><td>{fmtN(c.scenarios.high.perMonth, 0)}</td></tr>
                 <tr><td>Gross revenue</td><td>{fmt(c.scenarios.low.gross)}</td><td>{fmt(c.scenarios.base.gross)}</td><td>{fmt(c.scenarios.high.gross)}</td></tr>
                 {!isMallModel(form.businessModel) && (
