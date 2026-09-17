@@ -45,6 +45,7 @@ export default function Tasks() {
     if (code === 'daily') return router.push('/daily');
     if (code === 'mo') return router.push('/monthly');
     if (code === 'financials') return router.push('/financials');
+    if (code === 'risk') return router.push('/risk');
   }
 
   function displayName(email) {

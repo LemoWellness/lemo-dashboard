@@ -49,6 +49,7 @@ export default function Monthly() {
     if (code === 'daily') return router.push('/daily');
     if (code === 'usage') return router.push('/usage');
     if (code === 'financials') return router.push('/financials');
+    if (code === 'risk') return router.push('/risk');
   }
 
   function load(m) {
