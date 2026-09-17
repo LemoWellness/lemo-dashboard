@@ -1,5 +1,6 @@
 import { adminDb } from '../../../lib/firebaseAdmin';
 import { withAuth } from '../../../lib/auth';
+import { notifyTaskAssigned } from '../../../lib/notifications';
 
 function canModify(session, task) {
   if (session.role === 'Admin') return true;
@@ -36,6 +37,11 @@ export default withAuth(async (req, res, session) => {
       notes: notes || '',
       calendarEventId: '',
     });
+    try {
+      await notifyTaskAssigned({ taskId: docRef.id, assignedTo, taskName: String(task).trim(), dueDate: deadline || '' });
+    } catch (err) {
+      console.error('Assignment notification failed', err);
+    }
     return res.status(200).json({ success: true, id: docRef.id });
   }
 
