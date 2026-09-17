@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { authedFetch } from '../lib/firebaseClient';
-import { STATUSES } from '../lib/riskMath';
+import { STATUSES, displayModel } from '../lib/riskMath';
 
 export default function RiskList() {
   const router = useRouter();
@@ -87,7 +87,7 @@ export default function RiskList() {
           <tbody>
             {visible.map((r) => (
               <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/risk/${r.id}`)}>
-                <td>{r.name || '—'}</td><td>{r.businessModel || '—'}</td><td>{r.chairQty || '—'}</td><td>{r.inventorySource || '—'}</td><td>{r.status || '—'}</td>
+                <td>{r.name || '—'}</td><td>{displayModel(r.businessModel)}</td><td>{r.chairQty || '—'}</td><td>{r.inventorySource || '—'}</td><td>{r.status || '—'}</td>
                 <td onClick={(e) => e.stopPropagation()}>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button type="button" className="btn" onClick={() => router.push(`/risk/${r.id}`)}>{isAdmin ? 'Edit' : 'View'}</button>
