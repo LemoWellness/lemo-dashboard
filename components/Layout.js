@@ -11,6 +11,7 @@ const NAV = [
   { code: 'daily', label: 'Daily' },
   { code: 'tasks', label: 'Tasks' },
   { code: 'financials', label: 'Financials' },
+  { code: 'risk', label: 'Deployment Risk' },
 ];
 const ADMIN_NAV = [{ code: 'admin-users', label: 'Manage Users' }, { code: 'admin-import', label: 'Import Data' }];
 

@@ -61,6 +61,11 @@ export default function RiskList() {
     if (!res.ok) { setError((await res.json()).error); return; }
     load();
   }
+  async function unarchive(id) {
+    const res = await authedFetch(`/api/risk/${id}`, { method: 'POST', body: JSON.stringify({ action: 'unarchive' }) });
+    if (!res.ok) { setError((await res.json()).error); return; }
+    load();
+  }
 
   return (
     <Layout active="risk" onNavigate={navigate}>
@@ -84,11 +89,12 @@ export default function RiskList() {
               <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/risk/${r.id}`)}>
                 <td>{r.name || '—'}</td><td>{r.businessModel || '—'}</td><td>{r.chairQty || '—'}</td><td>{r.inventorySource || '—'}</td><td>{r.status || '—'}</td>
                 <td onClick={(e) => e.stopPropagation()}>
-                  {isAdmin && (<div style={{ display: 'flex', gap: 6 }}>
-                    <button type="button" className="btn" onClick={() => router.push(`/risk/${r.id}`)}>Edit</button>
-                    <button type="button" className="btn" onClick={() => duplicate(r.id)}>Duplicate</button>
-                    {!r.archived && <button type="button" className="btn" onClick={() => archive(r.id)}>Archive</button>}
-                  </div>)}
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button type="button" className="btn" onClick={() => router.push(`/risk/${r.id}`)}>{isAdmin ? 'Edit' : 'View'}</button>
+                    {isAdmin && <button type="button" className="btn" onClick={() => duplicate(r.id)}>Duplicate</button>}
+                    {isAdmin && !r.archived && <button type="button" className="btn" onClick={() => archive(r.id)}>Archive</button>}
+                    {isAdmin && r.archived && <button type="button" className="btn" onClick={() => unarchive(r.id)}>Unarchive</button>}
+                  </div>
                 </td>
               </tr>
             ))}
