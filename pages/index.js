@@ -168,7 +168,7 @@ export default function Home() {
     const { jsPDF } = await import('jspdf');
     const autoTable = (await import('jspdf-autotable')).default;
     const doc = new jsPDF({ orientation: 'landscape' });
-    doc.setFontSize(16); doc.text('LEMO — Expense Report', 40, 40);
+    doc.setFontSize(16); doc.text('LEMO \u2014 Expense Report', 40, 40);
     doc.setFontSize(12); doc.text(selectedName, 40, 58);
     autoTable(doc, { startY: 84, head: [['Date', 'Category', 'Item', 'Source', 'Description', 'Cost', 'Qty', 'Notes']], body: expenses.map((e) => [e.date || '', e.category || '', e.item || '', e.source || '', e.description || '', e.costPerUnit != null ? `$${Number(e.costPerUnit).toFixed(2)}` : '', e.quantity ?? '', e.notes || '']), headStyles: { fillColor: [12, 10, 9] }, styles: { fontSize: 8 } });
     doc.save(`LEMO-Expenses-${selectedName}.pdf`);
@@ -187,7 +187,7 @@ export default function Home() {
             <label>Business model<select value={modelFilter} onChange={(e) => setModelFilter(e.target.value)}><option value="All">All</option>{businessModels.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
             <label>State<select value={stateFilter} onChange={(e) => setStateFilter(e.target.value)}><option value="All">All</option>{statesForModel.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
           </div>
-          {loading && <p className="muted">Loading…</p>}
+          {loading && <p className="muted">Loading\u2026</p>}
           {!loading && filteredProjects.length > 0 && (
             <div className="table-wrap"><table>
               <thead><tr><th>Name</th><th>Business Model</th><th>State</th><th>Monthly Fee</th></tr></thead>
@@ -198,20 +198,20 @@ export default function Home() {
       ) : (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
-            <button className="btn" onClick={() => setSelectedName(null)}>← Back to all installations</button>
+            <button className="btn" onClick={() => setSelectedName(null)}>\u2190 Back to all installations</button>
             {isAdmin && <button className="btn" onClick={openEditAccount}>Edit Company</button>}
           </div>
           <h2>{selected.name}</h2>
           <div className="card"><div className="grid-3">
-            <div><div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Install Date</div><div>{selected.goLiveDate || '—'}</div><div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginTop: 12 }}>Address</div><div>{selected.streetAddress}<br />{selected.city}, {selected.state} {selected.zipCode}</div></div>
-            <div><div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Contact</div><div>{selected.customerContactName || '—'}</div><div className="muted">{selected.customerContactPhone}</div><div className="muted">{selected.customerContactEmail}</div></div>
-            <div><div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>BD Consultant</div><div>{selected.bdConsultantName || '—'}</div><div className="muted">{selected.bdConsultantPhone}</div><div className="muted">{selected.bdConsultantEmail}</div><div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginTop: 12 }}>Chairs</div><div>{selected.numberOfChairs != null && selected.numberOfChairs !== '' ? selected.numberOfChairs : '—'}</div></div>
+            <div><div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Install Date</div><div>{selected.goLiveDate || '\u2014'}</div><div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginTop: 12 }}>Address</div><div>{selected.streetAddress}<br />{selected.city}, {selected.state} {selected.zipCode}</div></div>
+            <div><div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Contact</div><div>{selected.customerContactName || '\u2014'}</div><div className="muted">{selected.customerContactPhone}</div><div className="muted">{selected.customerContactEmail}</div></div>
+            <div><div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>BD Consultant</div><div>{selected.bdConsultantName || '\u2014'}</div><div className="muted">{selected.bdConsultantPhone}</div><div className="muted">{selected.bdConsultantEmail}</div><div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginTop: 12 }}>Chairs</div><div>{selected.numberOfChairs != null && selected.numberOfChairs !== '' ? selected.numberOfChairs : '\u2014'}</div></div>
           </div></div>
           {metrics && (<><div className="grid-4"><Kpi label="Current monthly revenue" value={fmt(metrics.currentMonthlyRevenue)} /><Kpi label="Total LEMO income" value={fmt(metrics.totalLemoIncome)} /><Kpi label="Total expenses" value={fmt(metrics.totalExpenses)} /><Kpi label="Net profit / loss" value={fmt(metrics.netProfitLoss)} negative={metrics.netProfitLoss < 0} /></div>
           <div className="grid-3">
             <div className="card"><h3 style={{ marginTop: 0 }}>ROI progress</h3>
               <div style={{ background: 'var(--warm-white)', border: '1px solid var(--iron)', borderRadius: 99, height: 10, overflow: 'hidden', marginBottom: 10 }}><div style={{ background: 'var(--ember)', height: '100%', width: `${(metrics.roiProgress || 0) * 100}%` }} /></div>
-              <div className="muted" style={{ fontSize: '0.8rem' }}>{metrics.roiProgress != null ? `${(metrics.roiProgress * 100).toFixed(1)}% of expenses recovered` : '—'} · {metrics.breakEvenDate === 'Not Reached' ? `Not Reached · ${metrics.daysToBreakEven}` : `Reached ${metrics.breakEvenDate}`}</div>
+              <div className="muted" style={{ fontSize: '0.8rem' }}>{metrics.roiProgress != null ? `${(metrics.roiProgress * 100).toFixed(1)}% of expenses recovered` : '\u2014'} \u00b7 {metrics.breakEvenDate === 'Not Reached' ? `Not Reached \u00b7 ${metrics.daysToBreakEven}` : `Reached ${metrics.breakEvenDate}`}</div>
               <div style={{ fontWeight: 500, marginTop: 16 }}>{selected.businessModel}</div>
             </div>
             <div className="card"><h3 style={{ marginTop: 0 }}>Expense categories (all-time)</h3>{metrics.expenseBreakdown.length > 0 ? (<ResponsiveContainer width="100%" height={200}><PieChart><Pie data={metrics.expenseBreakdown} dataKey="total" nameKey="category" outerRadius="75%" label={(e) => e.category}>{metrics.expenseBreakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}</Pie><Tooltip formatter={(v) => fmt(v)} /></PieChart></ResponsiveContainer>) : <p className="muted">No expenses yet.</p>}</div>
@@ -224,12 +224,62 @@ export default function Home() {
             <div className="table-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Notes</th></tr></thead><tbody>{income.slice(0, 10).map((i) => (<tr key={i.id}><td>{i.date}</td><td>{fmt(i.amount)}</td><td>{i.notes}</td></tr>))}{income.length === 0 && <tr><td colSpan={3} className="muted">No income recorded.</td></tr>}</tbody></table></div>
           </Collapsible>
           <Collapsible title="Communication Log" open={openSections.commlog} onToggle={() => setOpenSections({ ...openSections, commlog: !openSections.commlog })} actions={<button className="btn" onClick={(e) => { e.stopPropagation(); openNoteModal(); }}>+ Communication Log</button>}>
-            {notes.map((n) => (<p key={n.id}><strong>{n.date}</strong> ({n.channel}) — {n.note} <span className="muted">— {n.loggedBy}</span></p>))}
+            {notes.map((n) => (<p key={n.id}><strong>{n.date}</strong> ({n.channel}) \u2014 {n.note} <span className="muted">\u2014 {n.loggedBy}</span></p>))}
             {notes.length === 0 && <p className="muted">No notes logged yet.</p>}
           </Collapsible>
         </div>
       )}
-      {showAddAccount && (<div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}><form className="card" onSubmit={submitAccount} style={{ background: 'var(--warm-white)', width: '90%', maxWidth: 640, maxHeight: '85vh', overflowY: 'auto' }}><h3 style={{ marginTop: 0 }}>{editingAccount ? 'Edit Company' : 'Add New Account'}</h3>{accountError && <p className="form-error">{accountError}</p>}<div className="form-grid-2"><label>Name<input value={accountForm.name} onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })} disabled={editingAccount} required /></label><label>Business Model<select value={accountForm.businessModel} onChange={(e) => setAccountForm({ ...accountForm, businessModel: e.target.value })}><option>Revenue Sharing</option><option>Corporate Wellness</option></select></label><label>Number of Chairs<input type="number" value={accountForm.numberOfChairs} onChange={(e) => setAccountForm({ ...accountForm, numberOfChairs: e.target.value })} /></label><label>Go-Live Date<input type="date" value={accountForm.goLiveDate} onChange={(e) => setAccountForm({ ...accountForm, goLiveDate: e.target.value })} /></label>{accountForm.businessModel === 'Corporate Wellness' ? <label>Monthly Fee<input type="number" value={accountForm.monthlyFee} onChange={(e) => setAccountForm({ ...accountForm, monthlyFee: e.target.value })} /></label> : <label>LEMO Revenue Share %<input type="number" value={accountForm.revenueSharePercent} onChange={(e) => setAccountForm({ ...accountForm, revenueSharePercent: e.target.value })} /></label>}</div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}><button type="button" className="btn" onClick={() => setShowAddAccount(false)}>Cancel</button><button type="submit" className="btn">Save</button></div></form></div>)}
+      {showAddAccount && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 100, padding: '24px 12px', overflowY: 'auto' }}>
+          <form className="card" onSubmit={submitAccount} style={{ background: 'var(--warm-white)', width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', margin: 'auto' }}>
+            <h3 style={{ marginTop: 0 }}>{editingAccount ? 'Edit Company' : 'Add New Account'}</h3>
+            {accountError && <p className="form-error">{accountError}</p>}
+            <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--ash)', margin: '12px 0 8px' }}>Account Information</div>
+            <div className="form-grid-2">
+              <label>Name<input value={accountForm.name} onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })} disabled={editingAccount} required /></label>
+              <label>Business Model<select value={accountForm.businessModel} onChange={(e) => setAccountForm({ ...accountForm, businessModel: e.target.value })}><option>Revenue Sharing</option><option>Corporate Wellness</option></select></label>
+              <label>Number of Chairs<input type="number" value={accountForm.numberOfChairs} onChange={(e) => setAccountForm({ ...accountForm, numberOfChairs: e.target.value })} /></label>
+              <label>Go-Live Date<input type="date" value={accountForm.goLiveDate} onChange={(e) => setAccountForm({ ...accountForm, goLiveDate: e.target.value })} /></label>
+              {accountForm.businessModel === 'Corporate Wellness'
+                ? <label>Monthly Fee<input type="number" value={accountForm.monthlyFee} onChange={(e) => setAccountForm({ ...accountForm, monthlyFee: e.target.value })} /></label>
+                : <label>LEMO Revenue Share %<input type="number" value={accountForm.revenueSharePercent} onChange={(e) => setAccountForm({ ...accountForm, revenueSharePercent: e.target.value })} /></label>}
+            </div>
+            <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--ash)', margin: '16px 0 8px' }}>Venue Address</div>
+            <div className="form-grid-2">
+              <label>Street Address<input value={accountForm.streetAddress} onChange={(e) => setAccountForm({ ...accountForm, streetAddress: e.target.value })} /></label>
+              <label>City<input value={accountForm.city} onChange={(e) => setAccountForm({ ...accountForm, city: e.target.value })} /></label>
+              <label>State<input value={accountForm.state} onChange={(e) => setAccountForm({ ...accountForm, state: e.target.value })} /></label>
+              <label>ZIP<input value={accountForm.zipCode} onChange={(e) => setAccountForm({ ...accountForm, zipCode: e.target.value })} /></label>
+            </div>
+            <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--ash)', margin: '16px 0 8px' }}>Primary Venue Contact</div>
+            <div className="form-grid-2">
+              <label>Name<input value={accountForm.customerContactName} onChange={(e) => setAccountForm({ ...accountForm, customerContactName: e.target.value })} /></label>
+              <label>Phone<input value={accountForm.customerContactPhone} onChange={(e) => setAccountForm({ ...accountForm, customerContactPhone: e.target.value })} /></label>
+              <label>Email<input type="email" value={accountForm.customerContactEmail} onChange={(e) => setAccountForm({ ...accountForm, customerContactEmail: e.target.value })} /></label>
+            </div>
+            <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--ash)', margin: '16px 0 8px' }}>Secondary Venue Contact (Optional)</div>
+            <div className="form-grid-2">
+              <label>Name<input value={accountForm.contact2Name} onChange={(e) => setAccountForm({ ...accountForm, contact2Name: e.target.value })} /></label>
+              <label>Phone<input value={accountForm.contact2Phone} onChange={(e) => setAccountForm({ ...accountForm, contact2Phone: e.target.value })} /></label>
+              <label>Email<input type="email" value={accountForm.contact2Email} onChange={(e) => setAccountForm({ ...accountForm, contact2Email: e.target.value })} /></label>
+            </div>
+            <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--ash)', margin: '16px 0 8px' }}>BD Consultant</div>
+            <div className="form-grid-2">
+              <label>Name<input value={accountForm.bdConsultantName} onChange={(e) => setAccountForm({ ...accountForm, bdConsultantName: e.target.value })} /></label>
+              <label>Phone<input value={accountForm.bdConsultantPhone} onChange={(e) => setAccountForm({ ...accountForm, bdConsultantPhone: e.target.value })} /></label>
+              <label>Email<input type="email" value={accountForm.bdConsultantEmail} onChange={(e) => setAccountForm({ ...accountForm, bdConsultantEmail: e.target.value })} /></label>
+            </div>
+            <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--ash)', margin: '16px 0 8px' }}>Notes</div>
+            <label style={{ display: 'block' }}>Notes
+              <textarea value={accountForm.editNotes} onChange={(e) => setAccountForm({ ...accountForm, editNotes: e.target.value })} rows={2} style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4, fontFamily: 'inherit' }} />
+            </label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+              <button type="button" className="btn" onClick={() => setShowAddAccount(false)}>Cancel</button>
+              <button type="submit" className="btn">Save</button>
+            </div>
+          </form>
+        </div>
+      )}
       {showExpenseModal && (<div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}><form className="card" onSubmit={submitExpense} style={{ background: 'var(--warm-white)', width: '90%', maxWidth: 460 }}><h3>Add Expense</h3><label>Date<input type="date" value={expForm.date} onChange={(e) => setExpForm({ ...expForm, date: e.target.value })} required /></label><label>Category<input value={expForm.category} onChange={(e) => setExpForm({ ...expForm, category: e.target.value })} required /></label><label>Quantity<input type="number" value={expForm.quantity} onChange={(e) => setExpForm({ ...expForm, quantity: e.target.value })} /></label><label>Cost / Unit<input type="number" value={expForm.costPerUnit} onChange={(e) => setExpForm({ ...expForm, costPerUnit: e.target.value })} /></label><button type="button" className="btn" onClick={() => setShowExpenseModal(false)}>Cancel</button><button type="submit" className="btn">Save</button></form></div>)}
       {showIncomeModal && (<div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}><form className="card" onSubmit={submitIncome} style={{ background: 'var(--warm-white)', width: '90%', maxWidth: 420 }}><h3>Add Income</h3><label>Date<input type="date" value={incForm.date} onChange={(e) => setIncForm({ ...incForm, date: e.target.value })} required /></label><label>Amount<input type="number" value={incForm.amount} onChange={(e) => setIncForm({ ...incForm, amount: e.target.value })} required /></label><button type="button" className="btn" onClick={() => setShowIncomeModal(false)}>Cancel</button><button type="submit" className="btn">Save</button></form></div>)}
       {showNoteModal && (<div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}><form className="card" onSubmit={submitNote} style={{ background: 'var(--warm-white)', width: '90%', maxWidth: 440 }}><h3>Communication Log</h3><label>Note<textarea value={noteForm.note} onChange={(e) => setNoteForm({ ...noteForm, note: e.target.value })} required /></label><button type="button" className="btn" onClick={() => setShowNoteModal(false)}>Cancel</button><button type="submit" className="btn">Save</button></form></div>)}
