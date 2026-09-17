@@ -61,7 +61,38 @@ function Kpi({ label, value }) {
   );
 }
 
-function Section({ id, title, open, onToggle, children }) {
+function summarizeRisks(risks) {
+  const rows = risks || [];
+  const isOpen = (r) => r.status === 'Open';
+  const highCritOpen = rows.filter((r) => isOpen(r) && (r.level === 'High' || r.level === 'Critical')).length;
+  const mediumOpen = rows.filter((r) => isOpen(r) && r.level === 'Medium').length;
+  const lowOpen = rows.filter((r) => isOpen(r) && r.level === 'Low').length;
+  const mitigating = rows.filter((r) => r.status === 'Mitigating').length;
+  const resolved = rows.filter((r) => r.status === 'Resolved').length;
+  const notAssessed = rows.filter((r) => r.level === 'Not Assessed' || r.status === 'Not Assessed').length;
+  const parts = [];
+  if (highCritOpen) parts.push(highCritOpen + ' High/Critical Open');
+  if (mediumOpen) parts.push(mediumOpen + ' Medium Open');
+  if (notAssessed) parts.push(notAssessed + ' Not Assessed');
+  return { highCritOpen, mediumOpen, lowOpen, mitigating, resolved, notAssessed, header: parts.join(' ' + MD + ' ') };
+}
+
+const LEVEL_TINT = {
+  Critical: { background: '#f4d6d2', color: '#6f1d16' },
+  High: { background: '#f8e4e2', color: '#9b2c22' },
+  Medium: { background: '#f8ead6', color: '#8a4b12' },
+  Low: { background: '#e4f0e8', color: '#1f5b38' },
+  'Not Assessed': { background: '#eeeae4', color: '#5f5a55' },
+};
+const STATUS_TINT = {
+  Open: { background: '#f8e4e2', color: '#9b2c22' },
+  Mitigating: { background: '#e4ebf4', color: '#1d4e89' },
+  Resolved: { background: '#e4f0e8', color: '#1f5b38' },
+  'Not Applicable': { background: '#eeeae4', color: '#5f5a55' },
+  'Not Assessed': { background: '#eeeae4', color: '#5f5a55' },
+};
+
+function Section({ id, title, summary, open, onToggle, children }) {
   return (
     <div className="card">
       <div
@@ -71,7 +102,10 @@ function Section({ id, title, open, onToggle, children }) {
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(id); } }}
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, cursor: 'pointer', userSelect: 'none' }}
       >
-        <h3 style={{ margin: 0 }}>{title}</h3>
+        <div>
+          <h3 style={{ margin: 0 }}>{title}</h3>
+          {summary ? <p className="muted" style={{ margin: '4px 0 0' }}>{summary}</p> : null}
+        </div>
         <span className="muted" aria-hidden="true">{open ? CHEV_OPEN : CHEV_CLOSED}</span>
       </div>
       {open ? <div style={{ marginTop: 12 }}>{children}</div> : null}
@@ -491,7 +525,26 @@ export default function RiskDetail() {
         </Section>
       )}
 
-      <Section id="risks" title="Deployment risks" open={!!openSections.risks} onToggle={toggleSection}>
+      <Section id="risks" title="Deployment risks" summary={summarizeRisks(form.risks).header} open={!!openSections.risks} onToggle={toggleSection}>
+        {(() => {
+          const rs = summarizeRisks(form.risks);
+          const Mini = ({ label, value }) => (
+            <div className="card" style={{ marginBottom: 0, padding: 10 }}>
+              <div className="muted" style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
+              <div style={{ fontFamily: "'Lora', serif", fontSize: '1.15rem', marginTop: 4 }}>{value}</div>
+            </div>
+          );
+          return (
+            <div className="grid-4" style={{ marginBottom: 12 }}>
+              <Mini label="High / Critical Open" value={rs.highCritOpen} />
+              <Mini label="Medium Open" value={rs.mediumOpen} />
+              <Mini label="Low Open" value={rs.lowOpen} />
+              <Mini label="Mitigating" value={rs.mitigating} />
+              <Mini label="Resolved" value={rs.resolved} />
+              <Mini label="Not Assessed" value={rs.notAssessed} />
+            </div>
+          );
+        })()}
         <div className="table-wrap wide">
           <table>
             <thead>
@@ -502,16 +555,16 @@ export default function RiskDetail() {
                 <tr key={row.category}>
                   <td>{row.category}</td>
                   <td>
-                    <select disabled={locked} value={row.level} onChange={(e) => {
+                    <select disabled={locked} value={row.level || 'Not Assessed'} style={LEVEL_TINT[row.level] || LEVEL_TINT['Not Assessed']} onChange={(e) => {
                       const risks = form.risks.map((r, idx) => (idx === i ? { ...r, level: e.target.value } : r));
                       set('risks', risks);
-                    }}>{RISK_LEVELS.map((s) => <option key={s}>{s}</option>)}</select>
+                    }}>{RISK_LEVELS.map((lvl) => <option key={lvl}>{lvl}</option>)}</select>
                   </td>
                   <td>
-                    <select disabled={locked} value={row.status} onChange={(e) => {
+                    <select disabled={locked} value={row.status || 'Not Assessed'} style={STATUS_TINT[row.status] || STATUS_TINT['Not Assessed']} onChange={(e) => {
                       const risks = form.risks.map((r, idx) => (idx === i ? { ...r, status: e.target.value } : r));
                       set('risks', risks);
-                    }}>{RISK_STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
+                    }}>{RISK_STATUSES.map((st) => <option key={st}>{st}</option>)}</select>
                   </td>
                   <td><input disabled={locked} value={row.owner || ''} onChange={(e) => {
                     const risks = form.risks.map((r, idx) => (idx === i ? { ...r, owner: e.target.value } : r));
