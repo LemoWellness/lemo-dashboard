@@ -18,7 +18,30 @@ const ELL = '\u2026';
 const fmt = (v) => (typeof v === 'number' && Number.isFinite(v) ? `$${Math.round(v).toLocaleString()}` : EM);
 const fmtMoney2 = (v) => (typeof v === 'number' && Number.isFinite(v) ? `$${v.toFixed(2)}` : EM);
 const fmtN = (v, d = 1) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(d) : EM);
-const fmtMo = (v) => (typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(1)} mo` : 'Does not pay back');
+const CHEV_OPEN = '\u25BE';
+const CHEV_CLOSED = '\u25B8';
+const DETAIL_SECTIONS = ['project', 'chair', 'logistics', 'travel', 'other', 'opex', 'pricing', 'scenarios', 'required', 'risks', 'decision'];
+function collapsedMap() {
+  return DETAIL_SECTIONS.reduce((acc, id) => { acc[id] = false; return acc; }, {});
+}
+function fmtPaybackMonths(months) {
+  if (typeof months === 'number' && Number.isFinite(months) && months > 0) return months.toFixed(1) + ' months';
+  return null;
+}
+function fmtEstimatedPayback(profit, months) {
+  if (typeof profit === 'number' && Number.isFinite(profit) && profit > 0) {
+    const label = fmtPaybackMonths(months);
+    if (label) return label;
+  }
+  return 'No Payback at Current Base Scenario';
+}
+function fmtScenarioPayback(profit, months) {
+  if (typeof profit === 'number' && Number.isFinite(profit) && profit > 0) {
+    const label = fmtPaybackMonths(months);
+    if (label) return label;
+  }
+  return 'No payback';
+}
 
 function Field({ label, children }) {
   return (
@@ -38,14 +61,31 @@ function Kpi({ label, value }) {
   );
 }
 
-function LineTable({ title, items, onChange, locked, extra }) {
+function Section({ id, title, open, onToggle, children }) {
+  return (
+    <div className="card">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onToggle(id)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(id); } }}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, cursor: 'pointer', userSelect: 'none' }}
+      >
+        <h3 style={{ margin: 0 }}>{title}</h3>
+        <span className="muted" aria-hidden="true">{open ? CHEV_OPEN : CHEV_CLOSED}</span>
+      </div>
+      {open ? <div style={{ marginTop: 12 }}>{children}</div> : null}
+    </div>
+  );
+}
+
+function LineTable({ title, items, onChange, locked, extra, embedded }) {
   function patch(i, key, val) {
     const next = items.map((row, idx) => (idx === i ? { ...row, [key]: val } : row));
     onChange(next);
   }
-  return (
-    <div className="card">
-      <h3 style={{ marginTop: 0 }}>{title}</h3>
+  const body = (
+    <>
       {extra}
       <div className="table-wrap wide">
         <table>
@@ -72,6 +112,13 @@ function LineTable({ title, items, onChange, locked, extra }) {
           </tbody>
         </table>
       </div>
+    </>
+  );
+  if (embedded) return body;
+  return (
+    <div className="card">
+      <h3 style={{ marginTop: 0 }}>{title}</h3>
+      {body}
     </div>
   );
 }
@@ -85,6 +132,7 @@ export default function RiskDetail() {
   const [error, setError] = useState('');
   const [saveMsg, setSaveMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [openSections, setOpenSections] = useState(collapsedMap);
 
   function navigate(code) {
     if (code === 'admin-users') return router.push('/admin/users');
@@ -118,6 +166,17 @@ export default function RiskDetail() {
       .catch((e) => { setError(e.message); setLoading(false); });
   }
   useEffect(() => { if (session && id) load(); }, [session, id]);
+  useEffect(() => { setOpenSections(collapsedMap()); }, [id]);
+
+  function toggleSection(sectionId) {
+    setOpenSections((prev) => ({ ...prev, [sectionId]: !prev[sectionId] }));
+  }
+  function expandAll() {
+    setOpenSections(DETAIL_SECTIONS.reduce((acc, sid) => { acc[sid] = true; return acc; }, {}));
+  }
+  function collapseAll() {
+    setOpenSections(collapsedMap());
+  }
 
   const isAdmin = session?.role === 'Admin';
   const locked = !isAdmin || form?.status === 'Approved';
@@ -193,14 +252,14 @@ export default function RiskDetail() {
           <Kpi label="Required sessions / chair / day" value={fmtN(c.required?.sessionsChairDay, 2)} />
           <Kpi label="Required sessions / week" value={fmtN(c.required?.sessionsWeek, 1)} />
           <Kpi label="Required sessions / month" value={fmtN(c.required?.sessionsMonth, 0)} />
-          <Kpi label="Estimated Payback \u2013 Base Scenario" value={c.scenarios ? fmtMo(c.scenarios.base.paybackMonths) : EM} />
+          <Kpi label={'Estimated Payback ' + EN + ' Base Scenario'} value={c.scenarios ? fmtEstimatedPayback(c.scenarios.base.profit, c.scenarios.base.paybackMonths) : EM} />
         </div>
       )}
       {form.businessModel === 'Corporate Wellness' && c.cw && (
         <div className="grid-4">
           <Kpi label="Monthly contract revenue" value={fmt(c.cw.monthlyContract)} />
           <Kpi label="Net monthly contribution" value={fmt(c.cw.netMonthly)} />
-          <Kpi label="Estimated payback" value={fmtMo(c.cw.paybackMonths)} />
+          <Kpi label="Estimated payback" value={fmtEstimatedPayback(c.cw.netMonthly, c.cw.paybackMonths)} />
           <Kpi label="Required fee / chair for target" value={fmt(c.cw.requiredFeePerChair)} />
         </div>
       )}
@@ -219,8 +278,12 @@ export default function RiskDetail() {
         </div>
       )}
 
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Project information</h3>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '4px 0 12px' }}>
+        <button className="btn" type="button" onClick={expandAll}>Expand All</button>
+        <button className="btn" type="button" onClick={collapseAll}>Collapse All</button>
+      </div>
+
+      <Section id="project" title="Project information" open={!!openSections.project} onToggle={toggleSection}>
         <div className="inline-form">
           <Field label="Project / location name"><input disabled={locked} value={form.name} onChange={(e) => set('name', e.target.value)} /></Field>
           <Field label="Company / venue"><input disabled={locked} value={form.company} onChange={(e) => set('company', e.target.value)} /></Field>
@@ -266,10 +329,9 @@ export default function RiskDetail() {
             </select>
           </Field>
         </div>
-      </div>
+      </Section>
 
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Chair value</h3>
+      <Section id="chair" title="Chair value" open={!!openSections.chair} onToggle={toggleSection}>
         <div className="inline-form">
           {form.chairInventory === 'New' && (
             <>
@@ -290,28 +352,38 @@ export default function RiskDetail() {
           If Yes, it is in Total Economic Investment only. Existing chairs count in Total Economic Investment only when scope is Full Investment.
         </p>
         <p className="muted">New cash {fmt(c.inv?.newCash)} {MD} Total economic {fmt(c.inv?.totalEconomic)} {MD} Basis used for payback {fmt(c.inv?.basis)}</p>
-      </div>
+      </Section>
 
-      <LineTable title="Inventory / logistics" items={form.logisticsItems || []} locked={locked} onChange={(items) => set('logisticsItems', items)} />
-      <LineTable
-        title="Travel (amounts per trip)"
-        items={form.travelItems || []}
-        locked={locked}
-        onChange={(items) => set('travelItems', items)}
-        extra={<Field label="Number of trips"><input type="number" disabled={locked} value={form.travelTrips} onChange={(e) => set('travelTrips', e.target.value)} /></Field>}
-      />
-      <LineTable title="Other deployment costs" items={form.otherCostItems || []} locked={locked} onChange={(items) => set('otherCostItems', items)} />
-      <LineTable
-        title="Monthly operating costs"
-        items={form.opexItems || []}
-        locked={locked}
-        onChange={(items) => set('opexItems', items)}
-        extra={<Field label="Payment processing % of gross customer transactions"><input type="number" disabled={locked} value={form.processingPct} onChange={(e) => set('processingPct', e.target.value)} /></Field>}
-      />
+      <Section id="logistics" title="Inventory / logistics" open={!!openSections.logistics} onToggle={toggleSection}>
+        <LineTable embedded title="Inventory / logistics" items={form.logisticsItems || []} locked={locked} onChange={(items) => set('logisticsItems', items)} />
+      </Section>
+      <Section id="travel" title="Travel (amounts per trip)" open={!!openSections.travel} onToggle={toggleSection}>
+        <LineTable
+          embedded
+          title="Travel (amounts per trip)"
+          items={form.travelItems || []}
+          locked={locked}
+          onChange={(items) => set('travelItems', items)}
+          extra={<Field label="Number of trips"><input type="number" disabled={locked} value={form.travelTrips} onChange={(e) => set('travelTrips', e.target.value)} /></Field>}
+        />
+      </Section>
+      <Section id="other" title="Other deployment costs" open={!!openSections.other} onToggle={toggleSection}>
+        <LineTable embedded title="Other deployment costs" items={form.otherCostItems || []} locked={locked} onChange={(items) => set('otherCostItems', items)} />
+      </Section>
+      <Section id="opex" title="Monthly operating costs" open={!!openSections.opex} onToggle={toggleSection}>
+        <LineTable
+          embedded
+          title="Monthly operating costs"
+          items={form.opexItems || []}
+          locked={locked}
+          onChange={(items) => set('opexItems', items)}
+          extra={<Field label="Payment processing % of gross customer transactions"><input type="number" disabled={locked} value={form.processingPct} onChange={(e) => set('processingPct', e.target.value)} /></Field>}
+        />
+      </Section>
 
       {pay && (
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>{isMallModel(form.businessModel) ? ('Shopping Mall ' + EN + ' Fixed Rent ' + EM + ' session pricing') : 'Revenue sharing'}</h3>
+        <Section id="pricing" title="Session Pricing / Business Model Revenue Inputs" open={!!openSections.pricing} onToggle={toggleSection}>
+          <p className="muted">{isMallModel(form.businessModel) ? ('Shopping Mall ' + EN + ' Fixed Rent ' + EM + ' session pricing') : 'Revenue sharing'}</p>
           <div className="inline-form">
             <Field label="10-min price"><input type="number" disabled={locked} value={form.rs.price10} onChange={(e) => setRs('price10', e.target.value)} /></Field>
             <Field label="15-min price"><input type="number" disabled={locked} value={form.rs.price15} onChange={(e) => setRs('price15', e.target.value)} /></Field>
@@ -346,12 +418,12 @@ export default function RiskDetail() {
             <Field label={'Base Scenario ' + EN + ' Sessions / Chair / Day'}><input type="number" disabled={locked} value={form.spdBase} onChange={(e) => set('spdBase', e.target.value)} /></Field>
             <Field label={'High Scenario ' + EN + ' Sessions / Chair / Day'}><input type="number" disabled={locked} value={form.spdHigh} onChange={(e) => set('spdHigh', e.target.value)} /></Field>
           </div>
-        </div>
+        </Section>
       )}
 
       {form.businessModel === 'Corporate Wellness' && (
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Corporate Wellness contract</h3>
+        <Section id="pricing" title="Session Pricing / Business Model Revenue Inputs" open={!!openSections.pricing} onToggle={toggleSection}>
+          <p className="muted">Corporate Wellness contract</p>
           <div className="inline-form">
             <Field label="Monthly fee per chair"><input type="number" disabled={locked} value={form.cwFeePerChair} onChange={(e) => set('cwFeePerChair', e.target.value)} /></Field>
             <Field label="Or total monthly contract fee"><input type="number" disabled={locked} value={form.cwTotalMonthlyFee} onChange={(e) => set('cwTotalMonthlyFee', e.target.value)} /></Field>
@@ -360,12 +432,11 @@ export default function RiskDetail() {
             <Field label="Deposit / upfront"><input type="number" disabled={locked} value={form.cwDeposit} onChange={(e) => set('cwDeposit', e.target.value)} /></Field>
           </div>
           <p className="muted">If total monthly fee is entered it is used; otherwise chairs {TIMES} fee per chair. Sessions are not used for CW revenue.</p>
-        </div>
+        </Section>
       )}
 
       {pay && c.scenarios && (
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Performance Scenarios</h3>
+        <Section id="scenarios" title="Performance Scenarios" open={!!openSections.scenarios} onToggle={toggleSection}>
           <p className="muted">Uptime applies to these realized scenarios only. The required sessions/chair/day KPI is the literal paid-session target and is not inflated by uptime.</p>
           <div className="table-wrap">
             <table>
@@ -384,16 +455,15 @@ export default function RiskDetail() {
                 <tr><td>LEMO net revenue before OpEx</td><td>{fmt(c.scenarios.low.netBeforeOpex)}</td><td>{fmt(c.scenarios.base.netBeforeOpex)}</td><td>{fmt(c.scenarios.high.netBeforeOpex)}</td></tr>
                 <tr><td>{MINUS} Monthly operating expenses</td><td>{fmt(c.scenarios.low.opex)}</td><td>{fmt(c.scenarios.base.opex)}</td><td>{fmt(c.scenarios.high.opex)}</td></tr>
                 <tr><td>Monthly operating profit / loss</td><td>{fmt(c.scenarios.low.profit)}</td><td>{fmt(c.scenarios.base.profit)}</td><td>{fmt(c.scenarios.high.profit)}</td></tr>
-                <tr><td>Payback</td><td>{fmtMo(c.scenarios.low.paybackMonths)}</td><td>{fmtMo(c.scenarios.base.paybackMonths)}</td><td>{fmtMo(c.scenarios.high.paybackMonths)}</td></tr>
+                <tr><td>Payback</td><td>{fmtScenarioPayback(c.scenarios.low.profit, c.scenarios.low.paybackMonths)}</td><td>{fmtScenarioPayback(c.scenarios.base.profit, c.scenarios.base.paybackMonths)}</td><td>{fmtScenarioPayback(c.scenarios.high.profit, c.scenarios.high.paybackMonths)}</td></tr>
               </tbody>
             </table>
           </div>
-        </div>
+        </Section>
       )}
 
       {pay && c.required && !c.required.blocked && (
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Required performance for target payback</h3>
+        <Section id="required" title="Required performance for target payback" open={!!openSections.required} onToggle={toggleSection}>
           <p className="muted">
             Required monthly investment recovery {fmt(c.required.recovery)} + monthly operating expenses {fmt(c.opex)}
             = required LEMO net revenue before OpEx {fmt(c.required.netBeforeOpex)}.
@@ -411,11 +481,10 @@ export default function RiskDetail() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Section>
       )}
 
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Deployment risks</h3>
+      <Section id="risks" title="Deployment risks" open={!!openSections.risks} onToggle={toggleSection}>
         <div className="table-wrap wide">
           <table>
             <thead>
@@ -454,10 +523,9 @@ export default function RiskDetail() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Section>
 
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Decision / management notes</h3>
+      <Section id="decision" title="Decision / management notes" open={!!openSections.decision} onToggle={toggleSection}>
         <div className="inline-form">
           <Field label="Decision date"><input type="date" disabled={!isAdmin} value={form.decisionDate || ''} onChange={(e) => set('decisionDate', e.target.value)} /></Field>
           <Field label="Approved by"><input disabled={!isAdmin} value={form.approvedBy || ''} onChange={(e) => set('approvedBy', e.target.value)} /></Field>
@@ -470,7 +538,7 @@ export default function RiskDetail() {
           <textarea disabled={!isAdmin} rows={2} value={form.outstandingInfo || ''} onChange={(e) => set('outstandingInfo', e.target.value)}
             style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 8 }} />
         </Field>
-      </div>
+      </Section>
     </Layout>
   );
 }
