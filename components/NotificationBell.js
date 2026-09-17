@@ -78,12 +78,37 @@ export default function NotificationBell() {
                 <div className="notif-type">{typeLabel(n.type)}</div>
                 <div>{n.taskName || n.title}</div>
                 <div className="muted">{n.body}</div>
-                <div className="muted">{n.dueDate ? `Due ${n.dueDate}` : ''}{n.dueDate ? ' · ' : ''}{formatWhen(n.createdAt)}</div>
+                <div className="muted">{n.dueDate ? `Due ${n.dueDate}` : ''}{n.dueDate ? ' \u00b7 ' : ''}{formatWhen(n.createdAt)}</div>
               </button>
             ))}
           </div>
         </div>
       )}
+      <style jsx>{`
+        .notif-wrap { position: relative; margin: 12px 0; }
+        .notif-bell { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+        .notif-count {
+          background: var(--ember); color: #fff; border-radius: 10px;
+          font-size: 0.7rem; padding: 1px 6px; min-width: 18px; text-align: center;
+        }
+        .notif-panel {
+          position: absolute; left: 0; right: 0; bottom: 100%;
+          background: #fff; color: var(--obsidian); border: 1px solid var(--iron);
+          border-radius: 4px; z-index: 80; max-height: 360px; overflow: auto;
+          box-shadow: 0 8px 24px rgba(12,10,9,0.18); margin-bottom: 6px;
+        }
+        .notif-panel-head {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 10px 12px; border-bottom: 1px solid var(--iron); font-size: 0.8rem;
+        }
+        .notif-markall { background: none; border: none; color: var(--ember); cursor: pointer; font-size: 0.75rem; }
+        .notif-item {
+          display: block; width: 100%; text-align: left; background: #fff; border: none;
+          border-bottom: 1px solid var(--iron); padding: 10px 12px; cursor: pointer; color: var(--obsidian);
+        }
+        .notif-item.unread { background: #f8f1ea; }
+        .notif-type { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ash); margin-bottom: 2px; }
+      `}</style>
     </div>
   );
 }
