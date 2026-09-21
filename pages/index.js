@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { authedFetch } from '../lib/firebaseClient';
 
 const PIE_COLORS = ['#E85D20', '#0C0A09', '#706B66', '#2A1A10'];
-const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : (n ?? '—'));
+const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : (n ?? '\u2014'));
 function monthLabelFromKey(key) {
   const [y, m] = String(key).split('-').map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -96,7 +96,7 @@ export default function Home() {
       cumulative += Number(i.amount) || 0;
       if (cumulative >= totalExpenses && totalExpenses > 0) { breakEvenDate = i.date; break; }
     }
-    let daysToBreakEven = '—';
+    let daysToBreakEven = '\u2014';
     if (selected.goLiveDate) {
       const goLive = new Date(selected.goLiveDate);
       daysToBreakEven = breakEvenDate
@@ -198,7 +198,7 @@ export default function Home() {
       ) : (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
-            <button className="btn" onClick={() => setSelectedName(null)}>← Back to all installations</button>
+            <button className="btn" onClick={() => setSelectedName(null)}>{"'\u2190'"} Back to all installations</button>
             {isAdmin && <button className="btn" onClick={openEditAccount}>Edit Company</button>}
           </div>
           <h2>{selected.name}</h2>
