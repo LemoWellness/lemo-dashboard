@@ -11,11 +11,19 @@ const NAV = [
   { code: 'loc', label: 'Installations' },
   { code: 'usage', label: 'Usage' },
   { code: 'daily', label: 'Daily' },
+  { code: 'reporting', label: 'Reporting' },
   { code: 'tasks', label: 'Tasks' },
   { code: 'financials', label: 'Financials' },
   { code: 'risk', label: 'Deployment Risk' },
 ];
 const ADMIN_NAV = [{ code: 'admin-users', label: 'Manage Users' }, { code: 'admin-import', label: 'Import Data' }];
+
+function canSeeReporting(session) {
+  if (!session) return false;
+  if (session.role === 'Admin' || session.tabs === 'all') return true;
+  const tabs = Array.isArray(session.tabs) ? session.tabs : [];
+  return tabs.includes('reporting') || tabs.includes('daily') || tabs.includes('usage');
+}
 
 export default function Layout({ active, onNavigate, children }) {
   const { user, session } = useAuth();
@@ -33,13 +41,24 @@ export default function Layout({ active, onNavigate, children }) {
   }
   if (!user) return null;
 
-  const visibleNav = NAV.filter((n) => session.tabs === 'all' || session.tabs.includes(n.code));
+  const visibleNav = NAV.filter((n) => {
+    if (n.code === 'reporting') return canSeeReporting(session);
+    return session.tabs === 'all' || session.tabs.includes(n.code);
+  });
 
   const isAdminOnlyPage = active === 'admin-users' || active === 'admin-import';
-  const hasAccess = session.role === 'Admin' || (isAdminOnlyPage ? false : (session.tabs === 'all' || session.tabs.includes(active)));
+  const hasAccess = session.role === 'Admin' || (isAdminOnlyPage ? false : (
+    active === 'reporting'
+      ? canSeeReporting(session)
+      : (session.tabs === 'all' || session.tabs.includes(active))
+  ));
 
   function handleNav(code) {
     setMenuOpen(false);
+    if (code === 'reporting') {
+      router.push('/reporting');
+      return;
+    }
     onNavigate(code);
   }
 
