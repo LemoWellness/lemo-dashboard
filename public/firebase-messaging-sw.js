@@ -1,7 +1,7 @@
 /* LEMO Phase 2 Stage 2 — show system banners when the app is in the background or closed. */
 importScripts('https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.4/firebase-messaging-compat.js');
-importScripts('/firebase-messaging-config.js');
+importScripts('/api/push/sw-config');
 
 self.addEventListener('install', function (event) {
   event.waitUntil(self.skipWaiting());
