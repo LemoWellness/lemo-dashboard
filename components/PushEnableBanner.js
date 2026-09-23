@@ -4,6 +4,7 @@ import {
   dismissBanner,
   getPushCapability,
   listRegisteredDevices,
+  listenForegroundPush,
   registerPushDevice,
 } from '../lib/pushClient';
 
@@ -25,6 +26,7 @@ export default function PushEnableBanner() {
     }
     if (devices.count > 0) {
       setRegistered(devices.devices[0]);
+      listenForegroundPush();
     }
     const dismissed = bannerDismissed();
     const showHint = next.iosNeedsHomeScreen;
@@ -71,7 +73,7 @@ export default function PushEnableBanner() {
   } else if (cap.permission === 'denied') {
     body = 'Notification permission is blocked. Enable it in this phone’s Settings for LEMO, then reopen the app.';
   } else if (registered) {
-    body = `This device is registered for notifications (${cap.platform}${registered.tokenTail ? `, token …${registered.tokenTail}` : ''}). The in-app inbox still works. No banners will be sent until Stage 2.`;
+    body = `This device is registered for notifications (${cap.platform}${registered.tokenTail ? `, token …${registered.tokenTail}` : ''}). The in-app inbox still works.`;
   }
 
   return (
