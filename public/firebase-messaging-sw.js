@@ -24,11 +24,9 @@ function initMessaging() {
       var messaging = self.firebase.messaging();
       messaging.onBackgroundMessage(function (payload) {
         var data = (payload && payload.data) || {};
-        var note = (payload && payload.notification) || {};
-        var title = note.title || data.title || 'LEMO';
-        var body = note.body || data.body || '';
+        var title = data.title || 'LEMO';
+        var body = data.body || '';
         var url = data.url || '/tasks';
-        if (note.title) return;
         return self.registration.showNotification(title, {
           body: body,
           icon: '/icon-192.png',
