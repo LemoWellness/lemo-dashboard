@@ -4,6 +4,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../lib/firebaseClient';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
+import PushEnableBanner from './PushEnableBanner';
 
 const NAV = [
   { code: 'mo', label: 'Monthly Overview' },
@@ -49,7 +50,7 @@ export default function Layout({ active, onNavigate, children }) {
         <h2>LEMO</h2>
         <div style={{ marginLeft: 'auto' }}><NotificationBell /></div>
       </div>
-      <div className={`sidebar-backdrop ${menuOpen ? 'show' : ''}`} onClick={() => setMenuOpen(false)} />
+      <div className={`sidebar-backdrop ${menuOpen ? 'show' }}`} onClick={() => setMenuOpen(false)} />
       <nav className={`sidebar ${menuOpen ? 'open' : ''}`}>
         <h2>LEMO</h2>
         {visibleNav.map((n) => (
@@ -59,7 +60,7 @@ export default function Layout({ active, onNavigate, children }) {
         ))}
         {session.role === 'Admin' && (
           <>
-            <hr style={{ margin: '12px 0', border: 'none', borderTop: '1px solid var(--line)' }} />
+            <hr style={{ margin: '12px 0', border: 'none', borderTop: '1px solid var(--iron)' }} />
             {ADMIN_NAV.map((n) => (
               <button key={n.code} className={active === n.code ? 'active' : ''} onClick={() => handleNav(n.code)}>
                 {n.label}
@@ -76,6 +77,7 @@ export default function Layout({ active, onNavigate, children }) {
         <button className="signout" onClick={() => signOut(auth)}>Sign out</button>
       </nav>
       <main className="main">
+        <PushEnableBanner />
         {hasAccess ? children : (
           <div className="card" style={{ maxWidth: 480 }}>
             <h2 style={{ marginTop: 0 }}>You don't have access to this section</h2>
