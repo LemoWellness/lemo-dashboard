@@ -50,7 +50,7 @@ export default function Layout({ active, onNavigate, children }) {
         <h2>LEMO</h2>
         <div style={{ marginLeft: 'auto' }}><NotificationBell /></div>
       </div>
-      <div className={`sidebar-backdrop ${menuOpen ? 'show' }}`} onClick={() => setMenuOpen(false)} />
+      <div className={`sidebar-backdrop ${menuOpen ? 'show' : ''}`} onClick={() => setMenuOpen(false)} />
       <nav className={`sidebar ${menuOpen ? 'open' : ''}`}>
         <h2>LEMO</h2>
         {visibleNav.map((n) => (
@@ -60,7 +60,7 @@ export default function Layout({ active, onNavigate, children }) {
         ))}
         {session.role === 'Admin' && (
           <>
-            <hr style={{ margin: '12px 0', border: 'none', borderTop: '1px solid var(--iron)' }} />
+            <hr style={{ margin: '12px 0', border: 'none', borderTop: '1px solid var(--line)' }} />
             {ADMIN_NAV.map((n) => (
               <button key={n.code} className={active === n.code ? 'active' : ''} onClick={() => handleNav(n.code)}>
                 {n.label}
