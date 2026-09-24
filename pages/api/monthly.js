@@ -80,8 +80,6 @@ function chairsOf(project) {
 function cwContractMonthly(project) { return Number(project?.monthlyFee) || 0; }
 function liveInMonth(project, monthKey) {
   const go = project?.goLiveDate || '';
-  // No confirmed go-live date means the company hasn't actually gone live yet —
-  // don't show it in any monthly overview until a real date is set.
   if (!go) return false;
   return String(go).slice(0, 10) <= monthEnd(monthKey);
 }
@@ -94,6 +92,17 @@ function isCommercialSite(name, project) {
 }
 function cashInMonth(allIncome, monthKey) {
   return allIncome.filter((i) => (i.date || '').startsWith(monthKey)).reduce((s, i) => s + (Number(i.amount) || 0), 0);
+}
+function monthKeysFromTo(startKey, endKey) {
+  if (!startKey || !endKey || startKey > endKey) return [];
+  const keys = [];
+  let k = startKey;
+  while (k <= endKey) {
+    keys.push(k);
+    k = shiftMonth(k, 1);
+    if (keys.length > 120) break;
+  }
+  return keys;
 }
 
 export default withAuth(async (req, res) => {
@@ -140,10 +149,6 @@ export default withAuth(async (req, res) => {
   const displayNames = {};
   function remember(name) { if (!name) return; const { key } = findProject(projectsByName, projectsByLower, name); displayNames[String(key).trim().toLowerCase()] = key || name; }
   Object.keys(perLocationIncome).forEach(remember); Object.keys(perLocationExpenses).forEach(remember); dailyActive.forEach(remember); usageActive.forEach(remember); cwSites.forEach(({ name }) => remember(name));
-  // Apply the go-live check to EVERY company here, regardless of business model or
-  // which signal (income/expense/daily/usage) originally flagged them as active.
-  // This is what actually keeps a not-yet-installed company out of the monthly
-  // overview entirely, instead of just gating Corporate Wellness's own numbers.
   const activeLocationNames = Array.from(new Set(Object.values(displayNames).filter(Boolean)))
     .filter((name) => liveInMonth(findProject(projectsByName, projectsByLower, name).data, monthKey));
   const activeLocations = activeLocationNames.length;
@@ -158,12 +163,41 @@ export default withAuth(async (req, res) => {
     const netProfit = billableRevenue - expenses;
     return { location: name, model: p.businessModel || '', chairs, commercial, grossRevenue: perLocationGross[name] ?? perLocationGross[p.name] ?? null, billableRevenue, received, lemoIncome: billableRevenue, expenses, netProfit, netPerChair: commercial && chairs ? netProfit / chairs : null };
   }).sort((a, b) => b.billableRevenue - a.billableRevenue);
+  const paidMonthsByLocation = {};
+  allIncome.forEach((i) => {
+    const loc = String(i.location || '').trim().toLowerCase();
+    const mk = String(i.date || '').slice(0, 7);
+    if (!loc || mk.length !== 7) return;
+    if (!paidMonthsByLocation[loc]) paidMonthsByLocation[loc] = new Set();
+    paidMonthsByLocation[loc].add(mk);
+  });
+  function cwPaidInMonth(name, project, mk) {
+    const keys = [name, project?.name].filter(Boolean).map((s) => String(s).trim().toLowerCase());
+    return keys.some((k) => paidMonthsByLocation[k] && paidMonthsByLocation[k].has(mk));
+  }
+  let cwOwed = 0;
+  let cwChairs = 0;
+  cwSites.forEach(({ name, data }) => {
+    cwChairs += Number(data.numberOfChairs) > 0 ? Number(data.numberOfChairs) : 0;
+    const fee = cwContractMonthly(data);
+    if (fee <= 0) return;
+    const start = String(data.goLiveDate || '').slice(0, 7);
+    monthKeysFromTo(start, monthKey).forEach((mk) => {
+      if (!cwPaidInMonth(name, data, mk)) cwOwed += fee;
+    });
+  });
   const comparison = ['Corporate Wellness', 'Revenue Sharing'].map((model) => {
     const rows = locationTable.filter((l) => l.model === model && l.commercial !== false);
     const income = model === 'Corporate Wellness' ? corporateWellnessIncome : revenueSharingIncome;
     const cash = monthIncome.filter((i) => modelOf(i.location) === model).reduce((s, i) => s + (Number(i.amount) || 0), 0);
     const expenses = monthExpenses.filter((e) => modelOf(e.location) === model).reduce((s, e) => s + (Number(e.amount) || 0), 0);
-    return { model, income, cash, expenses, netProfit: income - expenses, activeLocations: activeLocationNames.filter((n) => modelOf(n) === model).length, revenueGeneratingChairs: rows.reduce((s, l) => s + (Number(l.chairs) || DEVICES_PER_VENUE), 0) };
+    return {
+      model, income, cash, owed: model === 'Corporate Wellness' ? cwOwed : 0, expenses,
+      netProfit: income - expenses,
+      activeLocations: activeLocationNames.filter((n) => modelOf(n) === model).length,
+      chairs: model === 'Corporate Wellness' ? cwChairs : rows.reduce((s, l) => s + (Number(l.chairs) || 0), 0),
+      revenueGeneratingChairs: rows.reduce((s, l) => s + (Number(l.chairs) || DEVICES_PER_VENUE), 0),
+    };
   });
   const activeChairs = locationTable.reduce((s, l) => s + (Number(l.chairs) || 0), 0);
   const expenseBreakdown = breakdownFromReports(financialReports, monthKey, monthExpenses);
