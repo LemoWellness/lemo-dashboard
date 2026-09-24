@@ -1,8 +1,9 @@
-// Admin-only CSV import into Firestore.
+// Admin-only CSV/XLSX import into Firestore.
 // Usage/Daily/Expenses/Income/Log/Projects use stable IDs so a re-upload
 // overwrites the same row instead of creating a second copy.
 import crypto from 'crypto';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import formidable from 'formidable';
 import fs from 'fs';
 import { adminDb } from '../../lib/firebaseAdmin';
@@ -43,6 +44,19 @@ function normPeriod(p) {
   return String(p || '').trim().replace(/\s+to\s+/ig, '~');
 }
 
+function normalizeCountDate(v) {
+  if (v === '' || v == null) return '';
+  if (typeof v === 'number' && v > 20000 && v < 80000) {
+    const parsed = XLSX.SSF.parse_date_code(v);
+    if (parsed) {
+      return `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
+    }
+  }
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  return s;
+}
+
 function stableId(prefix, parts) {
   const key = parts.map((p) => String(p || '').trim().toLowerCase()).join('|');
   return prefix + crypto.createHash('sha1').update(key).digest('hex');
@@ -66,6 +80,29 @@ function docIdFor(type, doc) {
     return stableId('c_', [doc.location, doc.date, doc.note, doc.channel]);
   }
   return null;
+}
+
+function isSpreadsheet(name) {
+  const n = String(name || '').toLowerCase();
+  return n.endsWith('.xlsx') || n.endsWith('.xls');
+}
+
+function parseTableFile(fileObj) {
+  const original = fileObj.originalFilename || fileObj.newFilename || fileObj.filepath || '';
+  if (isSpreadsheet(original)) {
+    const buf = fs.readFileSync(fileObj.filepath);
+    const wb = XLSX.read(buf, { type: 'buffer', cellDates: true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+  }
+  const csvText = fs.readFileSync(fileObj.filepath, 'utf8').replace(/^\uFEFF/, '');
+  const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+  if (parsed.errors.length) {
+    const err = new Error(`CSV parse error: ${parsed.errors[0].message}`);
+    err.status = 400;
+    throw err;
+  }
+  return parsed.data;
 }
 
 function rowToDoc(type, row) {
@@ -131,7 +168,7 @@ function rowToDoc(type, row) {
       return {
         venueId: pick(row, 'Venue ID'),
         venueName: String(pick(row, 'Venue Name', 'Venue name') || '').trim(),
-        countDate: pick(row, 'Count Date', 'Count date'),
+        countDate: normalizeCountDate(pick(row, 'Count Date', 'Count date')),
         outletId: pick(row, 'Outlet ID'),
         outletName: pick(row, 'Outlet Name', 'Outlet name'),
         entryTime: pick(row, 'Entry Time', 'Entry time'),
@@ -203,18 +240,14 @@ export default async function handler(req, res) {
     const fileObj = Array.isArray(files.file) ? files.file[0] : files.file;
     if (!fileObj) return res.status(400).json({ error: 'No file uploaded.' });
 
-    const csvText = fs.readFileSync(fileObj.filepath, 'utf8').replace(/^\uFEFF/, '');
-    const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-    if (parsed.errors.length) {
-      return res.status(400).json({ error: `CSV parse error: ${parsed.errors[0].message}` });
-    }
+    const rows = parseTableFile(fileObj);
 
     let written = 0;
     let skipped = 0;
     const batchSize = 400;
-    for (let i = 0; i < parsed.data.length; i += batchSize) {
+    for (let i = 0; i < rows.length; i += batchSize) {
       const batch = adminDb.batch();
-      const chunk = parsed.data.slice(i, i + batchSize);
+      const chunk = rows.slice(i, i + batchSize);
       chunk.forEach((row) => {
         const doc = rowToDoc(type, row);
         const hasKey = doc && (doc.name || doc.location || doc.venueName || doc.outletId || doc.venueId);
@@ -232,7 +265,7 @@ export default async function handler(req, res) {
       await batch.commit();
     }
 
-    return res.status(200).json({ success: true, written, skipped, totalRows: parsed.data.length });
+    return res.status(200).json({ success: true, written, skipped, totalRows: rows.length });
   } catch (err) {
     const status = err.status || 500;
     if (status === 500) console.error(err);
