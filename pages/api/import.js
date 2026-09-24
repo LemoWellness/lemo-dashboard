@@ -1,4 +1,5 @@
 // Admin-only CSV import into Firestore.
+import crypto from 'crypto';
 import Papa from 'papaparse';
 import formidable from 'formidable';
 import fs from 'fs';
@@ -34,6 +35,16 @@ function pick(row, ...names) {
     if (v !== undefined && v !== null && String(v).trim() !== '') return v;
   }
   return '';
+}
+
+function usageStableId(doc) {
+  const key = [
+    String(doc.period || '').trim(),
+    String(doc.outletId || '').trim(),
+    String(doc.venueName || '').trim().toLowerCase(),
+    String(doc.outletName || '').trim().toLowerCase(),
+  ].join('|');
+  return 'u_' + crypto.createHash('sha1').update(key).digest('hex');
 }
 
 function rowToDoc(type, row) {
@@ -190,10 +201,15 @@ export default async function handler(req, res) {
           skipped++;
           return;
         }
-        const ref = type === 'projects'
-          ? adminDb.collection(collection).doc(doc.name)
-          : adminDb.collection(collection).doc();
-        batch.set(ref, { ...doc, importedAt: new Date().toISOString() }, { merge: type === 'projects' });
+        let ref;
+        if (type === 'projects') {
+          ref = adminDb.collection(collection).doc(doc.name);
+        } else if (type === 'usageRawData') {
+          ref = adminDb.collection(collection).doc(usageStableId(doc));
+        } else {
+          ref = adminDb.collection(collection).doc();
+        }
+        batch.set(ref, { ...doc, importedAt: new Date().toISOString() }, { merge: type === 'projects' || type === 'usageRawData' });
         written++;
       });
       await batch.commit();

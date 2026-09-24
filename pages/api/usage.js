@@ -1,6 +1,7 @@
 // Direct port of getUsageOverview() + getCompanyUsageTrend_() from the old
 // Code.gs. Same aggregation: all-time totals across every row, a selected
 // week's totals + venue ranking, and a chronological company-wide trend.
+// Duplicate imports of the same period+outlet+venue are collapsed to one row.
 import { adminDb } from '../../lib/firebaseAdmin';
 import { withAuth } from '../../lib/auth';
 
@@ -10,22 +11,46 @@ function periodStartTime(period) {
   return isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
+function usageRowKey(r) {
+  return [
+    String(r.period || '').trim(),
+    String(r.outletId || '').trim(),
+    String(r.venueName || '').trim().toLowerCase(),
+    String(r.outletName || '').trim().toLowerCase(),
+  ].join('|');
+}
+
+function collapseDuplicateUsageRows(docs) {
+  const best = new Map();
+  docs.forEach((doc) => {
+    const r = doc.data();
+    if (!r.venueName) return;
+    const key = usageRowKey(r);
+    const prev = best.get(key);
+    if (!prev) {
+      best.set(key, r);
+      return;
+    }
+    const prevAt = Date.parse(prev.importedAt || '') || 0;
+    const nextAt = Date.parse(r.importedAt || '') || 0;
+    if (nextAt >= prevAt) best.set(key, r);
+  });
+  return [...best.values()];
+}
+
 export default withAuth(async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed.' });
 
   const snap = await adminDb.collection('usageRawData').get();
   if (snap.empty) return res.status(200).json({ hasData: false });
 
+  const rows = collapseDuplicateUsageRows(snap.docs);
+
   const allTime = { orders: 0, seating: 0, idle: 0, occupied: 0, scanned: 0 };
-  const byPeriodTrend = {}; // raw period -> { orders, scans, payments }
+  const byPeriodTrend = {};
   const periodsSeen = new Set();
-  const rows = [];
 
-  snap.forEach((doc) => {
-    const r = doc.data();
-    if (!r.venueName) return;
-    rows.push(r);
-
+  rows.forEach((r) => {
     const orders = Number(r.orderNumber) || 0;
     const seating = Number(r.seatNum) || 0;
     const idle = Number(r.idleNumber) || 0;
