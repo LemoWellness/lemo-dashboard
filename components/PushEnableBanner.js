@@ -33,7 +33,7 @@ export default function PushEnableBanner() {
     const showEnable = next.canEnable && next.permission !== 'granted' && !dismissed;
     const showDenied = next.permission === 'denied' && !dismissed;
     const showMissingKey = !next.hasVapid && !dismissed;
-    setHidden(!(showHint || showEnable || showDenied || showMissingKey || devices.count > 0));
+    setHidden(!(showHint || showEnable || showDenied || showMissingKey));
   }
 
   useEffect(() => { refresh(); }, []);
@@ -72,8 +72,6 @@ export default function PushEnableBanner() {
     body = 'Device notifications are not configured yet. An administrator needs to add the VAPID key in Vercel.';
   } else if (cap.permission === 'denied') {
     body = 'Notification permission is blocked. Enable it in this phone’s Settings for LEMO, then reopen the app.';
-  } else if (registered) {
-    body = `This device is registered for notifications (${cap.platform}${registered.tokenTail ? `, token …${registered.tokenTail}` : ''}). The in-app inbox still works.`;
   }
 
   return (
