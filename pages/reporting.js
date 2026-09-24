@@ -7,7 +7,6 @@ import { authedFetch } from '../lib/firebaseClient';
 
 const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : n);
 const count = (n) => (typeof n === 'number' ? Math.round(n).toLocaleString() : n || '0');
-const pct = (n) => (typeof n === 'number' ? `${(n * 100).toFixed(1)}%` : '—');
 
 export default function Reporting() {
   const router = useRouter();
@@ -68,8 +67,7 @@ export default function Reporting() {
         </div>
       </div>
       <p className="muted">
-        Built from Daily Raw Data only. Usage seating, idle, occupied, scanned, and H5 conversion are not in this source and are not shown.
-        Income is Revenue Sharing POS only. Corporate Wellness monthly fees stay in Income / Monthly Overview.
+        Built from Daily Raw Data only. Usage is chair sessions started (orderNumber). Income is Revenue Sharing POS only.
       </p>
       {loading && <p className="muted">Loading reporting data…</p>}
       {error && <p className="form-error">{error}</p>}
@@ -107,13 +105,12 @@ function DailyView({ data, selectedDate, onDate }) {
       </div>
       {data.dataHealthIssues?.count > 0 && <HealthBanner issues={data.dataHealthIssues} />}
       <div className="grid-4">
-        <Kpi label="Orders" value={count(data.totals.orders)} />
-        <Kpi label="Completed orders" value={count(data.totals.completed)} />
+        <Kpi label="Usage" value={count(data.totals.orders)} />
         <Kpi label="Refunds" value={fmt(data.totals.refunds)} />
-        <Kpi label="RS POS income" value={fmt(data.totals.netIncome)} />
+        <Kpi label="RS Income" value={fmt(data.totals.netIncome)} />
       </div>
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Orders and RS income (last 30 days)</h3>
+        <h3 style={{ marginTop: 0 }}>Usage and RS income (last 30 days)</h3>
         <ResponsiveContainer width="100%" height={280}>
           <LineChart data={data.trend}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} />
@@ -122,9 +119,9 @@ function DailyView({ data, selectedDate, onDate }) {
             <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
             <Tooltip />
             <Legend />
-            <Line yAxisId="left" type="monotone" dataKey="corporateWellnessOrders" name="Corporate Wellness orders" stroke="#E85D20" strokeWidth={2.5} dot={false} />
-            <Line yAxisId="left" type="monotone" dataKey="revenueSharingOrders" name="Revenue Sharing orders" stroke="#1C1916" strokeWidth={2.5} dot={false} />
-            <Line yAxisId="right" type="monotone" dataKey="revenueSharingIncome" name="Revenue Sharing income" stroke="#D9A441" strokeWidth={2.5} dot={false} />
+            <Line yAxisId="left" type="monotone" dataKey="corporateWellnessOrders" name="CW Usage" stroke="#E85D20" strokeWidth={2.5} dot={false} />
+            <Line yAxisId="left" type="monotone" dataKey="revenueSharingOrders" name="RS Usage" stroke="#1C1916" strokeWidth={2.5} dot={false} />
+            <Line yAxisId="right" type="monotone" dataKey="revenueSharingIncome" name="RS Income" stroke="#D9A441" strokeWidth={2.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -143,7 +140,7 @@ function DailyView({ data, selectedDate, onDate }) {
       {data.sustainedOutages.length > 0 && (
         <AlertPanel title="Ongoing outage">
           {data.sustainedOutages.map((o, i) => (
-            <AlertRow key={i}><strong>{o.venue}</strong> normally averages {o.priorAvg} orders, at zero for {o.streak} uploads in a row.</AlertRow>
+            <AlertRow key={i}><strong>{o.venue}</strong> normally averages {o.priorAvg} uses, at zero for {o.streak} uploads in a row.</AlertRow>
           ))}
         </AlertPanel>
       )}
@@ -180,7 +177,6 @@ function MonthlyView({ data, selectedMonth, onMonth }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <p className="muted" style={{ margin: 0 }}>
           Calendar month {data.month} · {data.dayCount} day{data.dayCount === 1 ? '' : 's'} of Daily Raw Data.
-          Compare monthly Usage here with the Usage page only as a check — Usage periods are a different file and grain.
         </p>
         <label className="muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
           Select month
@@ -191,15 +187,13 @@ function MonthlyView({ data, selectedMonth, onMonth }) {
       </div>
       {data.dataHealthIssues?.count > 0 && <HealthBanner issues={data.dataHealthIssues} />}
       <div className="grid-4">
-        <Kpi label="Orders" value={count(data.totals.orders)} />
-        <Kpi label="Completed orders" value={count(data.totals.completed)} />
+        <Kpi label="Usage" value={count(data.totals.orders)} />
         <Kpi label="Refunds" value={fmt(data.totals.refunds)} />
-        <Kpi label="RS POS income" value={fmt(data.totals.netIncome)} />
+        <Kpi label="RS Income" value={fmt(data.totals.netIncome)} />
       </div>
       <div className="grid-4">
-        <Kpi label="CW orders" value={count(data.split.corporateWellnessOrders)} />
-        <Kpi label="RS orders" value={count(data.split.revenueSharingOrders)} />
-        <Kpi label="Completed rate" value={pct(data.completedRate)} />
+        <Kpi label="CW Usage" value={count(data.split.corporateWellnessOrders)} />
+        <Kpi label="RS Usage" value={count(data.split.revenueSharingOrders)} />
         <Kpi label="Days in month" value={count(data.dayCount)} />
       </div>
       <div className="card">
@@ -212,9 +206,9 @@ function MonthlyView({ data, selectedMonth, onMonth }) {
             <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
             <Tooltip />
             <Legend />
-            <Line yAxisId="left" type="monotone" dataKey="corporateWellnessOrders" name="Corporate Wellness orders" stroke="#E85D20" strokeWidth={2.5} dot={false} />
-            <Line yAxisId="left" type="monotone" dataKey="revenueSharingOrders" name="Revenue Sharing orders" stroke="#1C1916" strokeWidth={2.5} dot={false} />
-            <Line yAxisId="right" type="monotone" dataKey="revenueSharingIncome" name="Revenue Sharing income" stroke="#D9A441" strokeWidth={2.5} dot={false} />
+            <Line yAxisId="left" type="monotone" dataKey="corporateWellnessOrders" name="CW Usage" stroke="#E85D20" strokeWidth={2.5} dot={false} />
+            <Line yAxisId="left" type="monotone" dataKey="revenueSharingOrders" name="RS Usage" stroke="#1C1916" strokeWidth={2.5} dot={false} />
+            <Line yAxisId="right" type="monotone" dataKey="revenueSharingIncome" name="RS Income" stroke="#D9A441" strokeWidth={2.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
