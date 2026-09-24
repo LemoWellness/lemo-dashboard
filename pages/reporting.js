@@ -180,7 +180,7 @@ function MonthlyView({ data, selectedMonth, onMonth }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <p className="muted" style={{ margin: 0 }}>
           Calendar month {data.month} · {data.dayCount} day{data.dayCount === 1 ? '' : 's'} of Daily Raw Data.
-          Compare monthly Orders here with Usage only as a check — Usage periods are a different file and grain.
+          Compare monthly Usage here with the Usage page only as a check — Usage periods are a different file and grain.
         </p>
         <label className="muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
           Select month
@@ -218,7 +218,7 @@ function MonthlyView({ data, selectedMonth, onMonth }) {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <VenueTable rows={data.venueTable} title="Venue totals — selected month (ranked by orders)" />
+      <VenueTable rows={data.venueTable} title="Venue totals — selected month (ranked by Usage)" />
     </>
   );
 }
@@ -226,23 +226,29 @@ function MonthlyView({ data, selectedMonth, onMonth }) {
 function VenueTable({ rows, title }) {
   return (
     <div className="card">
-      <h3 style={{ marginTop: 0 }}>{title || 'Venue activity (ranked by orders)'}</h3>
+      <h3 style={{ marginTop: 0 }}>{title || 'Venue activity (ranked by Usage)'}</h3>
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Venue</th><th>Orders</th><th>RS POS income</th><th>Refunds</th>
-              <th>Completed</th><th>Avg order price</th><th>Avg visitors</th>
+              <th>Venue</th>
+              <th>Usage</th>
+              <th>Refunds</th>
+              <th>RS Income</th>
+              <th>Avg # of Visitors</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((v, i) => (
               <tr key={i}>
-                <td>{v.venue}</td><td>{count(v.orders)}</td><td>{fmt(v.netIncome)}</td><td>{fmt(v.refunds)}</td>
-                <td>{count(v.completed)}</td><td>{fmt(v.avgOrderPrice)}</td><td>{Math.round(v.avgVisitors * 10) / 10}</td>
+                <td>{v.venue}</td>
+                <td>{count(v.orders)}</td>
+                <td>{fmt(v.refunds)}</td>
+                <td>{fmt(v.netIncome)}</td>
+                <td>{Math.round(v.avgVisitors * 10) / 10}</td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={7} className="muted">No venue activity for this period</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={5} className="muted">No venue activity for this period</td></tr>}
           </tbody>
         </table>
       </div>
