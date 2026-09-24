@@ -15,7 +15,7 @@ function isOverdue(t) {
   return t.deadline < todayStr();
 }
 function formatDeadline(ymd) {
-  if (!ymd) return '\u2014';
+  if (!ymd) return '—';
   const parts = ymd.split('-');
   return parts.length === 3 ? `${parts[1]}/${parts[2]}/${parts[0]}` : ymd;
 }
@@ -146,7 +146,7 @@ export default function Tasks() {
         <button className="btn" onClick={openAdd}>+ Add Task</button>
       </div>
 
-      {loading ? <p className="muted">Loading tasks\u2026</p> : loadError ? <p className="form-error">{loadError}</p> : (
+      {loading ? <p className="muted">Loading tasks…</p> : loadError ? <p className="form-error">{loadError}</p> : (
         <>
           <div className="seg-tabs">
             <button className={`seg-tab ${subtab === 'active' ? 'active' : ''}`} onClick={() => setSubtab('active')}>
@@ -210,7 +210,7 @@ export default function Tasks() {
                   return (
                     <tr key={t.id} style={focused ? { outline: '2px solid var(--ember)', background: '#f8f1ea' } : done ? { opacity: 0.55 } : overdue ? { background: '#fdeceb' } : undefined}>
                       <td style={done ? { textDecoration: 'line-through' } : undefined}>{t.task}</td>
-                      <td className="muted" style={{ fontStyle: t.notes ? 'italic' : 'normal' }}>{t.notes || '\u2014'}</td>
+                      <td className="muted" style={{ fontStyle: t.notes ? 'italic' : 'normal' }}>{t.notes || '—'}</td>
                       <td>{displayName(t.assignedTo)}</td>
                       <td>{displayName(t.addedBy)}</td>
                       <td>{formatDeadline(t.deadline)}</td>
@@ -234,7 +234,7 @@ export default function Tasks() {
                   );
                 })}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={8} className="muted">{subtab === 'completed' ? 'No completed tasks yet.' : 'No active tasks \u2014 click "+ Add Task" to create one.'}</td></tr>
+                  <tr><td colSpan={8} className="muted">{subtab === 'completed' ? 'No completed tasks yet.' : 'No active tasks — click "+ Add Task" to create one.'}</td></tr>
                 )}
               </tbody>
             </table>
@@ -254,7 +254,7 @@ export default function Tasks() {
 
             <label style={{ display: 'block', marginBottom: 12 }}>Assigned To
               <select value={form.assignedTo} onChange={(e) => setForm({ ...form, assignedTo: e.target.value })} style={{ width: '100%', marginTop: 4 }}>
-                <option value="">Select\u2026</option>
+                <option value="">Select…</option>
                 {sortedUsers.map((u) => <option key={u.email} value={u.email}>{u.name}</option>)}
               </select>
             </label>
@@ -276,7 +276,7 @@ export default function Tasks() {
             </label>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => setShowModal(false)}>Cancel</button>
-              <button type="submit" className="btn" disabled={saving}>{saving ? 'Saving\u2026' : editingId ? 'Save Changes' : 'Save Task'}</button>
+              <button type="submit" className="btn" disabled={saving}>{saving ? 'Saving…' : editingId ? 'Save Changes' : 'Save Task'}</button>
             </div>
           </form>
         </div>
