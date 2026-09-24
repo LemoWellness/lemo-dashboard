@@ -40,7 +40,7 @@ export default function ImportData() {
   async function submit(e) {
     e.preventDefault();
     setError(''); setResult(null);
-    if (!file) { setError('Choose a CSV file first.'); return; }
+    if (!file) { setError('Choose a CSV or Excel file first.'); return; }
     setBusy(true);
     try {
       const idToken = await auth.currentUser.getIdToken();
@@ -84,7 +84,7 @@ export default function ImportData() {
     <Layout active="admin-import" onNavigate={navigate}>
       <h1>Import Data</h1>
       <p className="muted">
-        Export as CSV, then upload here. Re-uploading the same Usage, Daily, Project, Expense, Income, or Communication Log rows now overwrites the existing record instead of creating a duplicate. For Daily Raw Data, keep the original POS headers (Venue Name, Count Date, POS, etc.).
+        Upload CSV or Excel (.xlsx). Re-uploading the same Usage, Daily, Project, Expense, Income, or Communication Log rows overwrites the existing record instead of creating a duplicate. Reporting reads Daily Raw Data, so a Daily upload is what feeds Reporting. Keep Daily POS headers (Venue Name, Count Date, POS, etc.).
       </p>
       <form className="card inline-form" onSubmit={submit}>
         <label>
@@ -94,8 +94,8 @@ export default function ImportData() {
           </select>
         </label>
         <label>
-          CSV file
-          <input type="file" accept=".csv" onChange={(e) => setFile(e.target.files[0])} />
+          File (CSV or xlsx)
+          <input type="file" accept=".csv,.xlsx,.xls" onChange={(e) => setFile(e.target.files[0])} />
         </label>
         <button className="btn" type="submit" disabled={busy}>{busy ? 'Importing…' : 'Import'}</button>
       </form>
@@ -109,7 +109,7 @@ export default function ImportData() {
       <form className="card" onSubmit={submitFinancials}>
         <h3 style={{ marginTop: 0 }}>Financials (Profit & Loss / Top Expenses)</h3>
         <p className="muted" style={{ fontSize: '0.8rem' }}>
-          Different file shape than the CSVs above (.xlsx exports straight from the accounting software), so it lives
+          Different file shape than the files above (.xlsx exports straight from the accounting software), so it lives
           here as its own upload rather than the Data Type dropdown. Upload a P&L + Top Expenses pair for the
           same period, or just one or more monthly Top Expenses files (each becomes its own month — select multiple
           at once for a batch upload). Uploading a file for a period that already exists fills it in rather than
