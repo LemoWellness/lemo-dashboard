@@ -105,19 +105,31 @@ export default function Monthly() {
 
       <div className="grid-2">
         {comparison.map((c) => {
-          const chairs = c.revenueGeneratingChairs ?? 0;
-          const perChair = chairs > 0 ? c.income / chairs : null;
+          const isCw = c.model === 'Corporate Wellness';
+          const chairs = isCw ? (c.chairs ?? 0) : (c.revenueGeneratingChairs ?? 0);
+          const perChair = !isCw && chairs > 0 ? c.income / chairs : null;
           return (
             <div className="card" key={c.model} style={{ marginBottom: 0 }}>
               <h3 style={{ marginTop: 0 }}>{c.model} Performance</h3>
-              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Income</span><span>{fmt(c.income)}</span></div>
-              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Direct expenses</span><span>{fmt(c.expenses)}</span></div>
-              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Contribution</span><span>{fmt(c.netProfit)}</span></div>
-              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Active locations</span><span>{c.activeLocations}</span></div>
-              <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span>Revenue-generating chairs</span><span>{chairs || '—'}</span></div>
-              <div className="muted" style={{ fontSize: '0.75rem', fontStyle: 'italic', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--warm-white)' }}>
-                {perChair != null ? `${fmt(perChair)}/chair across ${chairs} revenue-generating chair${chairs === 1 ? '' : 's'}` : 'No revenue-generating chairs in this model this month'}
-              </div>
+              {isCw ? (
+                <>
+                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Received</span><span>{fmt(c.cash)}</span></div>
+                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Owed</span><span>{fmt(c.owed)}</span></div>
+                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Active locations</span><span>{c.activeLocations}</span></div>
+                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span>Chairs</span><span>{chairs || '—'}</span></div>
+                </>
+              ) : (
+                <>
+                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Income</span><span>{fmt(c.income)}</span></div>
+                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Direct expenses</span><span>{fmt(c.expenses)}</span></div>
+                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Contribution</span><span>{fmt(c.netProfit)}</span></div>
+                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Active locations</span><span>{c.activeLocations}</span></div>
+                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span>Revenue-generating chairs</span><span>{chairs || '—'}</span></div>
+                  <div className="muted" style={{ fontSize: '0.75rem', fontStyle: 'italic', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--warm-white)' }}>
+                    {perChair != null ? `${fmt(perChair)}/chair across ${chairs} revenue-generating chair${chairs === 1 ? '' : 's'}` : 'No revenue-generating chairs in this model this month'}
+                  </div>
+                </>
+              )}
             </div>
           );
         })}
