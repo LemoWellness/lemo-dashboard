@@ -1,4 +1,6 @@
 // Admin-only CSV import into Firestore.
+// Usage/Daily/Expenses/Income/Log/Projects use stable IDs so a re-upload
+// overwrites the same row instead of creating a second copy.
 import crypto from 'crypto';
 import Papa from 'papaparse';
 import formidable from 'formidable';
@@ -37,14 +39,33 @@ function pick(row, ...names) {
   return '';
 }
 
-function usageStableId(doc) {
-  const key = [
-    String(doc.period || '').trim(),
-    String(doc.outletId || '').trim(),
-    String(doc.venueName || '').trim().toLowerCase(),
-    String(doc.outletName || '').trim().toLowerCase(),
-  ].join('|');
-  return 'u_' + crypto.createHash('sha1').update(key).digest('hex');
+function normPeriod(p) {
+  return String(p || '').trim().replace(/\s+to\s+/ig, '~');
+}
+
+function stableId(prefix, parts) {
+  const key = parts.map((p) => String(p || '').trim().toLowerCase()).join('|');
+  return prefix + crypto.createHash('sha1').update(key).digest('hex');
+}
+
+function docIdFor(type, doc) {
+  if (type === 'projects') return doc.name;
+  if (type === 'usageRawData') {
+    return stableId('u_', [doc.period, doc.outletId, doc.venueName, doc.outletName]);
+  }
+  if (type === 'dailyRawData') {
+    return stableId('d_', [doc.countDate, doc.venueId, doc.outletId, doc.venueName, doc.outletName]);
+  }
+  if (type === 'expenses') {
+    return stableId('e_', [doc.location, doc.date, doc.category, doc.item, doc.amount, doc.description]);
+  }
+  if (type === 'income') {
+    return stableId('i_', [doc.location, doc.date, doc.amount, doc.notes]);
+  }
+  if (type === 'communicationLog') {
+    return stableId('c_', [doc.location, doc.date, doc.note, doc.channel]);
+  }
+  return null;
 }
 
 function rowToDoc(type, row) {
@@ -135,7 +156,7 @@ function rowToDoc(type, row) {
       };
     case 'usageRawData':
       return {
-        period: pick(row, 'Date'),
+        period: normPeriod(pick(row, 'Date')),
         outletId: pick(row, 'Outlet ID'),
         outletName: pick(row, 'Outlet Name'),
         province: pick(row, 'Province'),
@@ -201,15 +222,11 @@ export default async function handler(req, res) {
           skipped++;
           return;
         }
-        let ref;
-        if (type === 'projects') {
-          ref = adminDb.collection(collection).doc(doc.name);
-        } else if (type === 'usageRawData') {
-          ref = adminDb.collection(collection).doc(usageStableId(doc));
-        } else {
-          ref = adminDb.collection(collection).doc();
-        }
-        batch.set(ref, { ...doc, importedAt: new Date().toISOString() }, { merge: type === 'projects' || type === 'usageRawData' });
+        const id = docIdFor(type, doc);
+        const ref = id
+          ? adminDb.collection(collection).doc(id)
+          : adminDb.collection(collection).doc();
+        batch.set(ref, { ...doc, importedAt: new Date().toISOString() }, { merge: Boolean(id) });
         written++;
       });
       await batch.commit();

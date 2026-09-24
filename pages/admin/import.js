@@ -84,11 +84,7 @@ export default function ImportData() {
     <Layout active="admin-import" onNavigate={navigate}>
       <h1>Import Data</h1>
       <p className="muted">
-        Export the relevant tab from the old LEMO spreadsheet as CSV (File → Download → Comma Separated Values),
-        then upload it here. Re-uploading the same file is safe for Project Details (it updates by installation name);
-        for Expenses/Income/Communication Log/Daily Raw Data, re-uploading will add duplicate rows.
-        For Daily Raw Data specifically, export the sheet exactly as-is — its column headers
-        (Venue Name, Count Date, POS, etc.) must match the original POS export precisely.
+        Export as CSV, then upload here. Re-uploading the same Usage, Daily, Project, Expense, Income, or Communication Log rows now overwrites the existing record instead of creating a duplicate. For Daily Raw Data, keep the original POS headers (Venue Name, Count Date, POS, etc.).
       </p>
       <form className="card inline-form" onSubmit={submit}>
         <label>
