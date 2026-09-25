@@ -40,9 +40,11 @@ export default function Financials() {
   useEffect(() => { if (session) load(); }, [session]);
 
   async function deleteReport(id) {
-    if (String(id).startsWith('live-')) return;
-    if (!window.confirm('Delete this report?')) return;
-    await authedFetch(`/api/financials/${id}`, { method: 'DELETE' });
+    const row = reports.find((r) => r.id === id);
+    const uploadIds = row?.uploadIds || [];
+    if (!uploadIds.length) return;
+    if (!window.confirm('Delete the uploaded report for this period? Recorded income and expenses stay.')) return;
+    await Promise.all(uploadIds.map((uid) => authedFetch(`/api/financials/${uid}`, { method: 'DELETE' })));
     load();
   }
 
@@ -65,12 +67,12 @@ export default function Financials() {
 
       {isAdmin && (
         <p className="muted" style={{ fontSize: '0.8rem' }}>
-          Live books update when CW or RS income and expenses are saved. Uploaded Profit &amp; Loss reports still come from <a href="/admin/import">Import Data</a>.
+          Upload Profit &amp; Loss reports from <a href="/admin/import">Import Data</a>. Recorded CW and RS income is included in each month.
         </p>
       )}
 
       {loading ? <p className="muted">Loading...</p> : !selected ? (
-        <p className="muted">No live books or uploaded financial reports yet.</p>
+        <p className="muted">No financials yet.</p>
       ) : (
         <>
           <div className="grid-3">
@@ -113,10 +115,9 @@ export default function Financials() {
 
           <div className="card">
             <h3 style={{ marginTop: 0 }}>Report history</h3>
-            <p className="muted" style={{ fontSize: '0.75rem', marginTop: -8 }}>Live books come from recorded income and expenses. Click a row to view that period.</p>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Period</th><th>Revenue</th><th>Expense</th><th>Net Profit</th><th>Source</th>{isAdmin && <th></th>}</tr></thead>
+                <thead><tr><th>Period</th><th>Revenue</th><th>Expense</th><th>Net Profit</th>{isAdmin && <th></th>}</tr></thead>
                 <tbody>
                   {reports.map((r) => (
                     <tr
@@ -126,8 +127,7 @@ export default function Financials() {
                     >
                       <td>{r.label || `${r.periodStart} to ${r.periodEnd}`}</td>
                       <td>{fmt(r.revenue)}</td><td>{fmt(r.expense)}</td><td>{fmt(r.netProfit)}</td>
-                      <td className="muted">{r.source === 'live' ? 'Live books' : (r.uploadedAt ? new Date(r.uploadedAt).toLocaleDateString() : 'Upload')}</td>
-                      {isAdmin && <td>{r.source !== 'live' && <button className="task-delete-btn" onClick={(e) => { e.stopPropagation(); deleteReport(r.id); }}>Delete</button>}</td>}
+                      {isAdmin && <td>{r.uploadIds?.length > 0 && <button className="task-delete-btn" onClick={(e) => { e.stopPropagation(); deleteReport(r.id); }}>Delete</button>}</td>}
                     </tr>
                   ))}
                 </tbody>
