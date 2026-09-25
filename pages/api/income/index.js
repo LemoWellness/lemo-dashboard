@@ -1,6 +1,8 @@
 import { adminDb } from '../../../lib/firebaseAdmin';
 import { withAuth } from '../../../lib/auth';
 
+const MONTH_RE = /^\d{4}-\d{2}$/;
+
 export default withAuth(async (req, res, session) => {
   if (req.method === 'GET') {
     const { location } = req.query;
@@ -11,16 +13,16 @@ export default withAuth(async (req, res, session) => {
   }
 
   if (req.method === 'POST') {
-    // addIncome() in the old Code.gs required Admin, and was restricted to
-    // "Corporate Wellness" business-model locations — kept as-is here.
     if (session.role !== 'Admin') {
       return res.status(403).json({ error: 'Only an administrator can do that.' });
     }
-    const { location, date, amount, notes, grossRevenue } = req.body || {};
+    const { location, date, amount, notes, grossRevenue, periodMonth } = req.body || {};
     if (!location) return res.status(400).json({ error: 'No location specified.' });
     const amt = Number(amount);
     if (!amount || isNaN(amt) || amt <= 0) return res.status(400).json({ error: 'Amount must be a positive number.' });
     if (!date) return res.status(400).json({ error: 'Date is required.' });
+    const paidFor = String(periodMonth || date).slice(0, 7);
+    if (!MONTH_RE.test(paidFor)) return res.status(400).json({ error: 'Paying for month is required.' });
 
     const projectDoc = await adminDb.collection('projects').doc(location).get();
     const businessModel = projectDoc.exists ? projectDoc.data().businessModel : null;
@@ -33,6 +35,7 @@ export default withAuth(async (req, res, session) => {
     const docRef = await adminDb.collection('income').add({
       location,
       date,
+      periodMonth: paidFor,
       businessModel,
       amount: amt,
       grossRevenue: grossRevenue != null && grossRevenue !== '' ? Number(grossRevenue) : null,

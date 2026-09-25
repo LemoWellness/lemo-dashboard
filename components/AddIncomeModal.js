@@ -8,8 +8,11 @@ export default function AddIncomeModal({ venue, form, error, onChange, onClose, 
         <h3 style={{ marginTop: 0 }}>Add Income</h3>
         <p className="muted" style={{ marginTop: -8 }}>For: {venue}</p>
         {error && <p className="form-error">{error}</p>}
-        <label className="stack-field">Date
+        <label className="stack-field">Date received
           <input type="date" className="task-date" value={form.date} onChange={(e) => set('date', e.target.value)} required />
+        </label>
+        <label className="stack-field">Paying for month
+          <input type="month" className="task-date" value={form.periodMonth || ''} onChange={(e) => set('periodMonth', e.target.value)} required />
         </label>
         <label className="stack-field">Amount (monthly subscription payment)
           <input className="stack-input" type="number" value={form.amount} onChange={(e) => set('amount', e.target.value)} required />
