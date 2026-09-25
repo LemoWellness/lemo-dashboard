@@ -15,6 +15,9 @@ export default function Financials() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
+  const [noteRow, setNoteRow] = useState(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [noteError, setNoteError] = useState('');
 
   function navigate(code) {
     if (code === 'admin-users') return router.push('/admin/users');
@@ -45,6 +48,24 @@ export default function Financials() {
     if (!uploadIds.length) return;
     if (!window.confirm('Delete this report?')) return;
     await Promise.all(uploadIds.map((uid) => authedFetch(`/api/financials/${uid}`, { method: 'DELETE' })));
+    load();
+  }
+
+  function openNote(row) {
+    setNoteRow(row);
+    setNoteDraft(row.note || '');
+    setNoteError('');
+  }
+
+  async function saveNote(e) {
+    e.preventDefault();
+    if (!selected || !noteRow) return;
+    const res = await authedFetch('/api/financials/notes', {
+      method: 'PUT',
+      body: JSON.stringify({ periodStart: selected.periodStart, category: noteRow.category, note: noteDraft }),
+    });
+    if (!res.ok) { setNoteError((await res.json()).error || 'Could not save note.'); return; }
+    setNoteRow(null);
     load();
   }
 
@@ -102,12 +123,21 @@ export default function Financials() {
             <h3 style={{ marginTop: 0 }}>By category</h3>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Category</th><th>Amount</th><th>% of Total</th></tr></thead>
+                <thead><tr><th>Category</th><th>Amount</th><th>% of Total</th><th></th></tr></thead>
                 <tbody>
                   {(selected.topExpenses || []).map((e, i) => (
-                    <tr key={i}><td>{e.category}</td><td>{fmt(e.amount)}</td><td>{e.percentOfTotal != null ? `${e.percentOfTotal}%` : dash}</td></tr>
+                    <tr key={i}>
+                      <td>{e.category}</td>
+                      <td>{fmt(e.amount)}</td>
+                      <td>{e.percentOfTotal != null ? `${e.percentOfTotal}%` : dash}</td>
+                      <td>
+                        <button type="button" className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => openNote(e)}>
+                          {e.note ? 'Note' : 'Add note'}
+                        </button>
+                      </td>
+                    </tr>
                   ))}
-                  {(!selected.topExpenses || selected.topExpenses.length === 0) && <tr><td colSpan={3} className="muted">No categories for this period.</td></tr>}
+                  {(!selected.topExpenses || selected.topExpenses.length === 0) && <tr><td colSpan={4} className="muted">No categories for this period.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -127,7 +157,7 @@ export default function Financials() {
                     >
                       <td>{r.label || `${r.periodStart} to ${r.periodEnd}`}</td>
                       <td>{fmt(r.revenue)}</td><td>{fmt(r.expense)}</td><td>{fmt(r.netProfit)}</td>
-                      {isAdmin && <td>{r.uploadIds?.length > 0 && <button className="task-delete-btn" onClick={(e) => { e.stopPropagation(); deleteReport(r.id); }}>Delete</button>}</td>}
+                      {isAdmin && <td>{r.uploadIds?.length > 0 && <button className="task-delete-btn" onClick={(ev) => { ev.stopPropagation(); deleteReport(r.id); }}>Delete</button>}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -135,6 +165,25 @@ export default function Financials() {
             </div>
           </div>
         </>
+      )}
+      {noteRow && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
+          <form className="card" onSubmit={saveNote} style={{ background: 'var(--warm-white)', width: '100%', maxWidth: 420, margin: 0 }}>
+            <h3 style={{ marginTop: 0 }}>{noteRow.category}</h3>
+            {noteError && <p className="form-error">{noteError}</p>}
+            {isAdmin ? (
+              <label className="stack-field">Note
+                <textarea className="stack-input" value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} rows={5} />
+              </label>
+            ) : (
+              <p style={{ whiteSpace: 'pre-wrap' }}>{noteRow.note || 'No note yet.'}</p>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button type="button" className="btn btn-ghost" onClick={() => setNoteRow(null)}>Close</button>
+              {isAdmin && <button type="submit" className="btn">Save note</button>}
+            </div>
+          </form>
+        </div>
       )}
     </Layout>
   );

@@ -22,15 +22,31 @@ function incomeInRange(rows, start, end) {
     return true;
   });
 }
+function noteKey(periodStart, category) {
+  return `${String(periodStart || '')}|${String(category || '')}`;
+}
 
 export default withAuth(async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed.' });
-  const [reportSnap, incomeSnap] = await Promise.all([
+  const [reportSnap, incomeSnap, noteSnap] = await Promise.all([
     adminDb.collection('financialReports').orderBy('periodStart', 'desc').get(),
     adminDb.collection('income').get(),
+    adminDb.collection('financialCategoryNotes').get(),
   ]);
+  const notesByKey = {};
+  noteSnap.forEach((d) => {
+    const n = d.data();
+    notesByKey[noteKey(n.periodStart, n.category)] = n.note || '';
+  });
   const incomeRows = incomeSnap.docs.map((d) => d.data());
   const used = new Set();
+
+  function withNotes(periodStart, categories) {
+    return (categories || []).map((c) => ({
+      ...c,
+      note: notesByKey[noteKey(periodStart, c.category)] || '',
+    }));
+  }
 
   const uploaded = reportSnap.docs.map((d) => {
     const data = d.data();
@@ -45,6 +61,7 @@ export default withAuth(async (req, res) => {
       revenue,
       expense,
       netProfit: revenue - expense,
+      topExpenses: withNotes(data.periodStart, data.topExpenses),
       uploadIds: [d.id],
     };
   });
