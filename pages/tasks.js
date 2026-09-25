@@ -321,16 +321,17 @@ export default function Tasks() {
                 style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4, fontFamily: 'inherit' }} />
             </label>
             <div className="form-grid-2" style={{ marginBottom: 12 }}>
-              <label>Deadline<input type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} style={{ width: '100%', marginTop: 4 }} /></label>
+              <label>Deadline<input type="date" className="task-date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} /></label>
               <label>Priority
                 <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} style={{ width: '100%', marginTop: 4 }}>
                   <option>Low</option><option>Medium</option><option>High</option>
                 </select>
               </label>
             </div>
-            <label style={{ display: 'block', marginBottom: 16 }}>First update (optional)
-              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2}
+            <label style={{ display: 'block', marginBottom: 16 }}>Notes
+              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} placeholder="Optional"
                 style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4, fontFamily: 'inherit' }} />
+              <span className="muted" style={{ display: 'block', fontSize: '0.75rem', marginTop: 6 }}>Write updates here if needed. They show in the task history after you save.</span>
             </label>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => setShowAdd(false)}>Cancel</button>
@@ -361,7 +362,7 @@ export default function Tasks() {
                     style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4, fontFamily: 'inherit' }} />
                 </label>
                 <div className="form-grid-2" style={{ marginBottom: 12 }}>
-                  <label>Deadline<input type="date" value={editForm.deadline} onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })} style={{ width: '100%', marginTop: 4 }} /></label>
+                  <label>Deadline<input type="date" className="task-date" value={editForm.deadline} onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })} /></label>
                   <label>Priority
                     <select value={editForm.priority} onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })} style={{ width: '100%', marginTop: 4 }}>
                       <option>Low</option><option>Medium</option><option>High</option>

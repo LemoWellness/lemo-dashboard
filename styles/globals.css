@@ -108,6 +108,24 @@ select option:hover {
   color: #fff;
 }
 
+input.task-date {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--charcoal);
+  border: 1px solid var(--iron);
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  color: var(--warm-white);
+  color-scheme: dark;
+}
+input.task-date:hover { border-color: var(--ember); }
+input.task-date:focus { outline: none; border-color: var(--ember); }
+
 /* Tasks */
 .task-subtabs { display: flex; gap: 4px; border-bottom: 2px solid var(--iron); margin-bottom: 16px; }
 .task-subtab-btn {
