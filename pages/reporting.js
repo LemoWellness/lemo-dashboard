@@ -71,7 +71,7 @@ export default function Reporting() {
       <p className="muted">
         Built from Daily Raw Data only. Usage is chair sessions started (orderNumber). Income is Revenue Sharing POS only.
       </p>
-      {loading && <p className="muted">Loading reporting data…</p>}
+      {loading && <p className="muted">Loading reporting data...</p>}
       {error && <p className="form-error">{error}</p>}
       {!loading && !error && (!data || !data.hasData) && (
         <p className="muted">No daily data uploaded yet. Import Daily Raw Data to populate Reporting.</p>
@@ -92,7 +92,7 @@ function DailyView({ data, selectedDate, onDate }) {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <p className="muted" style={{ margin: 0 }}>
-          Showing {data.period}{data.previousPeriod ? ` · compared against ${data.previousPeriod}` : ' · no earlier day to compare against yet'}
+          Showing {data.period}{data.previousPeriod ? ` compared against ${data.previousPeriod}` : ' no earlier day to compare against yet'}
         </p>
         <label className="muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
           Select day
@@ -111,26 +111,12 @@ function DailyView({ data, selectedDate, onDate }) {
         <Kpi label="Refunds" value={fmt(data.totals.refunds)} />
         <Kpi label="RS Income" value={fmt(data.totals.netIncome)} />
       </div>
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Usage and RS income (last 30 days)</h3>
-        <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={data.trend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} />
-            <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-            <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
-            <Tooltip />
-            <Legend />
-            <Line yAxisId="left" type="monotone" dataKey="corporateWellnessOrders" name="CW Usage" stroke="#E85D20" strokeWidth={2.5} dot={false} />
-            <Line yAxisId="left" type="monotone" dataKey="revenueSharingOrders" name="RS Usage" stroke="#1C1916" strokeWidth={2.5} dot={false} />
-            <Line yAxisId="right" type="monotone" dataKey="revenueSharingIncome" name="RS Income" stroke="#D9A441" strokeWidth={2.5} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      <UsageChart data={data.trend} xKey="date" title="Usage (last 30 days)" />
+      <IncomeChart data={data.trend} xKey="date" title="RS Income (last 30 days)" />
       {data.duplicates.length > 0 && (
         <AlertPanel title="Possible duplicate upload">
           {data.duplicates.map((x, i) => (
-            <AlertRow key={i}><strong>{x.venue}</strong> — outlet "{x.outletName}" has {x.rowCount} rows for this same upload.</AlertRow>
+            <AlertRow key={i}><strong>{x.venue}</strong> - outlet "{x.outletName}" has {x.rowCount} rows for this same upload.</AlertRow>
           ))}
         </AlertPanel>
       )}
@@ -178,7 +164,7 @@ function MonthlyView({ data, selectedMonth, onMonth }) {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <p className="muted" style={{ margin: 0 }}>
-          Calendar month {data.month} · {data.dayCount} day{data.dayCount === 1 ? '' : 's'} of Daily Raw Data.
+          Calendar month {data.month} - {data.dayCount} day{data.dayCount === 1 ? '' : 's'} of Daily Raw Data.
         </p>
         <label className="muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
           Select month
@@ -198,24 +184,47 @@ function MonthlyView({ data, selectedMonth, onMonth }) {
         <Kpi label="RS Usage" value={count(data.split.revenueSharingOrders)} />
         <Kpi label="Days in month" value={count(data.dayCount)} />
       </div>
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Monthly trend</h3>
-        <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={data.trend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} />
-            <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-            <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
-            <Tooltip />
-            <Legend />
-            <Line yAxisId="left" type="monotone" dataKey="corporateWellnessOrders" name="CW Usage" stroke="#E85D20" strokeWidth={2.5} dot={false} />
-            <Line yAxisId="left" type="monotone" dataKey="revenueSharingOrders" name="RS Usage" stroke="#1C1916" strokeWidth={2.5} dot={false} />
-            <Line yAxisId="right" type="monotone" dataKey="revenueSharingIncome" name="RS Income" stroke="#D9A441" strokeWidth={2.5} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-      <VenueTable rows={data.venueTable} title="Venue totals — selected month (ranked by Usage)" />
+      <UsageChart data={data.trend} xKey="month" title="Usage trend" />
+      <IncomeChart data={data.trend} xKey="month" title="RS Income trend" />
+      <VenueTable rows={data.venueTable} title="Venue totals - selected month (ranked by Usage)" />
     </>
+  );
+}
+
+function UsageChart({ data, xKey, title }) {
+  return (
+    <div className="card">
+      <h3 style={{ marginTop: 0 }}>{title}</h3>
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} />
+          <XAxis dataKey={xKey} tick={{ fontSize: 11 }} />
+          <YAxis tick={{ fontSize: 11 }} />
+          <Tooltip />
+          <Legend />
+          <Line type="monotone" dataKey="corporateWellnessOrders" name="CW Usage" stroke="#E85D20" strokeWidth={2.5} dot={false} />
+          <Line type="monotone" dataKey="revenueSharingOrders" name="RS Usage" stroke="#1C1916" strokeWidth={2.5} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function IncomeChart({ data, xKey, title }) {
+  return (
+    <div className="card">
+      <h3 style={{ marginTop: 0 }}>{title}</h3>
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} />
+          <XAxis dataKey={xKey} tick={{ fontSize: 11 }} />
+          <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${Math.round(v).toLocaleString()}`} />
+          <Tooltip formatter={(v) => fmt(v)} />
+          <Legend />
+          <Line type="monotone" dataKey="revenueSharingIncome" name="RS Income" stroke="#D9A441" strokeWidth={2.5} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
