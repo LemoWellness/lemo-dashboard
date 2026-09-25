@@ -42,7 +42,7 @@ export default function Home() {
   const [accountForm, setAccountForm] = useState(EMPTY_FORM);
   const [accountError, setAccountError] = useState('');
   const [expForm, setExpForm] = useState({ date: '', category: '', item: '', description: '', source: '', quantity: 1, costPerUnit: '', notes: '' });
-  const [incForm, setIncForm] = useState({ date: '', amount: '', notes: '' });
+  const [incForm, setIncForm] = useState({ date: '', periodMonth: '', amount: '', notes: '' });
   const [noteForm, setNoteForm] = useState({ note: '', channel: 'Call', loggedBy: '' });
   const [formError, setFormError] = useState('');
   const [openSections, setOpenSections] = useState({ expenses: true, income: true, commlog: true });
@@ -158,7 +158,7 @@ export default function Home() {
     e.preventDefault(); setFormError('');
     const res = await authedFetch('/api/income', { method: 'POST', body: JSON.stringify({ location: selectedName, ...incForm }) });
     if (!res.ok) { setFormError((await res.json()).error); return; }
-    setIncForm({ date: '', amount: '', notes: '' }); setShowIncomeModal(false); loadDetail(selectedName);
+    setIncForm({ date: '', periodMonth: '', amount: '', notes: '' }); setShowIncomeModal(false); loadDetail(selectedName);
   }
   async function submitNote(e) {
     e.preventDefault(); setFormError('');
@@ -167,7 +167,12 @@ export default function Home() {
     setNoteForm({ note: '', channel: 'Call', loggedBy: '' }); setShowNoteModal(false); loadDetail(selectedName);
   }
   function openExpenseModal() { setExpForm({ date: new Date().toISOString().slice(0, 10), category: '', item: '', description: '', source: '', quantity: 1, costPerUnit: '', notes: '' }); setFormError(''); setShowExpenseModal(true); }
-  function openIncomeModal() { setIncForm({ date: new Date().toISOString().slice(0, 10), amount: '', notes: '' }); setFormError(''); setShowIncomeModal(true); }
+  function openIncomeModal() {
+    const today = new Date().toISOString().slice(0, 10);
+    setIncForm({ date: today, periodMonth: today.slice(0, 7), amount: '', notes: '' });
+    setFormError('');
+    setShowIncomeModal(true);
+  }
   function openNoteModal() { setNoteForm({ date: new Date().toISOString().slice(0, 10), note: '', channel: 'Call', loggedBy: '' }); setFormError(''); setShowNoteModal(true); }
   async function downloadExpensePdf() {
     const { jsPDF } = await import('jspdf');
@@ -203,11 +208,17 @@ export default function Home() {
       ) : (
         <div>
           <AccountChrome selected={selected} isAdmin={isAdmin} onBack={() => setSelectedName(null)} onEdit={openEditAccount} onNote={openNoteModal} onIncome={openIncomeModal} onExpense={openExpenseModal} />
-          {metrics && (<><div className="grid-4"><Kpi label="Current monthly revenue" value={fmt(metrics.currentMonthlyRevenue)} /><Kpi label="Total LEMO income" value={fmt(metrics.totalLemoIncome)} /><Kpi label="Total expenses" value={fmt(metrics.totalExpenses)} /><Kpi label="Net profit / loss" value={fmt(metrics.netProfitLoss)} negative={metrics.netProfitLoss < 0} /></div>
+          {metrics && (<><div className="grid-4"><Kpi label={selected.businessModel === 'Corporate Wellness' ? 'Monthly Fee' : 'Current monthly revenue'} value={fmt(metrics.currentMonthlyRevenue)} /><Kpi label="Total Income" value={fmt(metrics.totalLemoIncome)} /><Kpi label="Total expenses" value={fmt(metrics.totalExpenses)} /><Kpi label="Net profit / loss" value={fmt(metrics.netProfitLoss)} negative={metrics.netProfitLoss < 0} /></div>
           <div className="grid-3">
             <div className="card"><h3 style={{ marginTop: 0 }}>ROI progress</h3>
               <div style={{ background: 'var(--warm-white)', border: '1px solid var(--iron)', borderRadius: 99, height: 10, overflow: 'hidden', marginBottom: 10 }}><div style={{ background: 'var(--ember)', height: '100%', width: `${(metrics.roiProgress || 0) * 100}%` }} /></div>
-              <div className="muted" style={{ fontSize: '0.8rem' }}>{metrics.roiProgress != null ? `${(metrics.roiProgress * 100).toFixed(1)}% of expenses recovered` : '-'} {String.fromCharCode(0x00b7)} {metrics.breakEvenDate === 'Not Reached' ? `Not Reached ${String.fromCharCode(0x00b7)} ${metrics.daysToBreakEven}` : `Reached ${metrics.breakEvenDate}`}</div>
+              <div className="muted" style={{ fontSize: '0.8rem' }}>
+                {metrics.roiProgress != null
+                  ? `${(metrics.roiProgress * 100).toFixed(1)}% recovered (${fmt(metrics.totalLemoIncome)} of ${fmt(metrics.totalExpenses)})`
+                  : 'Add expenses to track recovery'}
+                {' '}{String.fromCharCode(0x00b7)}{' '}
+                {metrics.breakEvenDate === 'Not Reached' ? `Not reached ${String.fromCharCode(0x00b7)} ${metrics.daysToBreakEven}` : `Reached ${metrics.breakEvenDate}`}
+              </div>
               <div style={{ fontWeight: 500, marginTop: 16 }}>{selected.businessModel}</div>
             </div>
             <div className="card"><h3 style={{ marginTop: 0 }}>Expense categories (all-time)</h3>{metrics.expenseBreakdown.length > 0 ? (<ResponsiveContainer width="100%" height={200}><PieChart><Pie data={metrics.expenseBreakdown} dataKey="total" nameKey="category" outerRadius="75%" label={(e) => e.category}>{metrics.expenseBreakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}</Pie><Tooltip formatter={(v) => fmt(v)} /></PieChart></ResponsiveContainer>) : <p className="muted">No expenses yet.</p>}</div>
@@ -218,7 +229,7 @@ export default function Home() {
             <div className="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Item</th><th>Amount</th></tr></thead><tbody>{expenses.slice(0, 10).map((e) => (<tr key={e.id}><td>{e.date}</td><td>{e.category}</td><td>{e.item}</td><td>{fmt(e.amount)}</td></tr>))}{expenses.length === 0 && <tr><td colSpan={4} className="muted">No expenses recorded.</td></tr>}</tbody></table></div>
           </Collapsible>
           <Collapsible title="Income" open={openSections.income} onToggle={() => setOpenSections({ ...openSections, income: !openSections.income })} actions={isAdmin && selected.businessModel === 'Corporate Wellness' && (<button className="btn" onClick={(e) => { e.stopPropagation(); openIncomeModal(); }}>+ Add Income</button>)}>
-            <div className="table-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Notes</th></tr></thead><tbody>{income.slice(0, 10).map((i) => (<tr key={i.id}><td>{i.date}</td><td>{fmt(i.amount)}</td><td>{i.notes}</td></tr>))}{income.length === 0 && <tr><td colSpan={3} className="muted">No income recorded.</td></tr>}</tbody></table></div>
+            <div className="table-wrap"><table><thead><tr><th>Date received</th><th>Paying for</th><th>Amount</th><th>Notes</th></tr></thead><tbody>{income.slice(0, 10).map((i) => (<tr key={i.id}><td>{i.date}</td><td>{i.periodMonth || String(i.date || '').slice(0, 7)}</td><td>{fmt(i.amount)}</td><td>{i.notes}</td></tr>))}{income.length === 0 && <tr><td colSpan={4} className="muted">No income recorded.</td></tr>}</tbody></table></div>
           </Collapsible>
           <Collapsible title="Communication Log" open={openSections.commlog} onToggle={() => setOpenSections({ ...openSections, commlog: !openSections.commlog })} actions={<button className="btn" onClick={(e) => { e.stopPropagation(); openNoteModal(); }}>+ Communication Log</button>}>
             {notes.map((n) => (<p key={n.id}><strong>{n.date}</strong> ({n.channel}) - {n.note} <span className="muted">- {n.loggedBy}</span></p>))}
