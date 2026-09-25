@@ -104,6 +104,11 @@ function monthKeysFromTo(startKey, endKey) {
   }
   return keys;
 }
+function incomeBelongsToSite(incomeLocation, name, project) {
+  const loc = String(incomeLocation || '').trim().toLowerCase();
+  if (!loc) return false;
+  return [name, project?.name].filter(Boolean).some((s) => String(s).trim().toLowerCase() === loc);
+}
 
 export default withAuth(async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed.' });
@@ -163,18 +168,6 @@ export default withAuth(async (req, res) => {
     const netProfit = billableRevenue - expenses;
     return { location: name, model: p.businessModel || '', chairs, commercial, grossRevenue: perLocationGross[name] ?? perLocationGross[p.name] ?? null, billableRevenue, received, lemoIncome: billableRevenue, expenses, netProfit, netPerChair: commercial && chairs ? netProfit / chairs : null };
   }).sort((a, b) => b.billableRevenue - a.billableRevenue);
-  const paidMonthsByLocation = {};
-  allIncome.forEach((i) => {
-    const loc = String(i.location || '').trim().toLowerCase();
-    const mk = String(i.date || '').slice(0, 7);
-    if (!loc || mk.length !== 7) return;
-    if (!paidMonthsByLocation[loc]) paidMonthsByLocation[loc] = new Set();
-    paidMonthsByLocation[loc].add(mk);
-  });
-  function cwPaidInMonth(name, project, mk) {
-    const keys = [name, project?.name].filter(Boolean).map((s) => String(s).trim().toLowerCase());
-    return keys.some((k) => paidMonthsByLocation[k] && paidMonthsByLocation[k].has(mk));
-  }
   let cwOwed = 0;
   let cwChairs = 0;
   cwSites.forEach(({ name, data }) => {
@@ -182,9 +175,15 @@ export default withAuth(async (req, res) => {
     const fee = cwContractMonthly(data);
     if (fee <= 0) return;
     const start = String(data.goLiveDate || '').slice(0, 7);
-    monthKeysFromTo(start, monthKey).forEach((mk) => {
-      if (!cwPaidInMonth(name, data, mk)) cwOwed += fee;
-    });
+    const monthsBillable = monthKeysFromTo(start, monthKey).length;
+    const expected = monthsBillable * fee;
+    const received = allIncome.reduce((s, i) => {
+      const mk = String(i.date || '').slice(0, 7);
+      if (mk.length !== 7 || mk > monthKey) return s;
+      if (!incomeBelongsToSite(i.location, name, data)) return s;
+      return s + (Number(i.amount) || 0);
+    }, 0);
+    cwOwed += Math.max(0, expected - received);
   });
   const comparison = ['Corporate Wellness', 'Revenue Sharing'].map((model) => {
     const rows = locationTable.filter((l) => l.model === model && l.commercial !== false);
