@@ -5,6 +5,7 @@ import Layout from '../components/Layout';
 import AccountChrome from '../components/AccountChrome';
 import AddExpenseModal from '../components/AddExpenseModal';
 import AddIncomeModal from '../components/AddIncomeModal';
+import CommunicationLogModal from '../components/CommunicationLogModal';
 import { useAuth } from '../context/AuthContext';
 import { authedFetch } from '../lib/firebaseClient';
 
@@ -215,7 +216,7 @@ export default function Home() {
             <div className="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Item</th><th>Amount</th></tr></thead><tbody>{expenses.slice(0, 10).map((e) => (<tr key={e.id}><td>{e.date}</td><td>{e.category}</td><td>{e.item}</td><td>{fmt(e.amount)}</td></tr>))}{expenses.length === 0 && <tr><td colSpan={4} className="muted">No expenses recorded.</td></tr>}</tbody></table></div>
           </Collapsible>
           <Collapsible title="Income" open={openSections.income} onToggle={() => setOpenSections({ ...openSections, income: !openSections.income })} actions={isAdmin && selected.businessModel === 'Corporate Wellness' && (<button className="btn" onClick={(e) => { e.stopPropagation(); openIncomeModal(); }}>+ Add Income</button>)}>
-            <div className="table-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Notes</th></tr></thead><tbody>{income.slice(0, 10).map((i) => (<tr key={i.id}><td>{i.date}</td><td>{fmt(i.amount)}</td><td>{i.notes}</td></tr>))}{income.length === 0 && <tr><td colSpan={3} className="muted">No income recorded.</td></tr>}</tbody></table></div>
+            <div className="table-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Notes</th></tr></thead><tbody>{income.slice(0, 10).map((i) => (<tr key={i.id}><td>{i.date}</td><td>{fmt(i.amount)}</td><td>{i.notes}</td></tr>))}{income.length === 0 && <tr><td colSpan={3} className="muted">No income recorded.</td></tr>)}</tbody></table></div>
           </Collapsible>
           <Collapsible title="Communication Log" open={openSections.commlog} onToggle={() => setOpenSections({ ...openSections, commlog: !openSections.commlog })} actions={<button className="btn" onClick={(e) => { e.stopPropagation(); openNoteModal(); }}>+ Communication Log</button>}>
             {notes.map((n) => (<p key={n.id}><strong>{n.date}</strong> ({n.channel}) - {n.note} <span className="muted">- {n.loggedBy}</span></p>))}
@@ -276,7 +277,7 @@ export default function Home() {
       )}
       {showExpenseModal && <AddExpenseModal venue={selectedName} form={expForm} error={formError} onChange={setExpForm} onClose={() => setShowExpenseModal(false)} onSubmit={submitExpense} />}
       {showIncomeModal && <AddIncomeModal venue={selectedName} form={incForm} error={formError} onChange={setIncForm} onClose={() => setShowIncomeModal(false)} onSubmit={submitIncome} />}
-      {showNoteModal && (<div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}><form className="card" onSubmit={submitNote} style={{ background: 'var(--warm-white)', width: '90%', maxWidth: 440 }}><h3>Communication Log</h3><label>Note<textarea value={noteForm.note} onChange={(e) => setNoteForm({ ...noteForm, note: e.target.value })} required /></label><button type="button" className="btn" onClick={() => setShowNoteModal(false)}>Cancel</button><button type="submit" className="btn">Save</button></form></div>)}
+      {showNoteModal && <CommunicationLogModal venue={selectedName} form={noteForm} error={formError} onChange={setNoteForm} onClose={() => setShowNoteModal(false)} onSubmit={submitNote} />}
     </Layout>
   );
 }
