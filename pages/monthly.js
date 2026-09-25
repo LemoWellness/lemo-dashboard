@@ -34,9 +34,9 @@ function Hint({ text }) {
   );
 }
 
-function Row({ label, value }) {
+function Row({ label, value, last }) {
   return (
-    <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}>
+    <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: last ? 0 : 6 }}>
       <span>{label}</span><span>{value}</span>
     </div>
   );
@@ -121,16 +121,18 @@ export default function Monthly() {
         {comparison.map((c) => {
           const isCw = c.model === 'Corporate Wellness';
           const chairs = isCw ? (c.chairs ?? 0) : (c.chairs || c.revenueGeneratingChairs || rsChairsFromTable || 0);
+          const installs = c.installs ?? c.activeLocations ?? '—';
           const rsTotal = Number(c.cash ?? c.income) || 0;
           return (
             <div className="card" key={c.model} style={{ marginBottom: 0 }}>
               <h3 style={{ marginTop: 0 }}>{c.model} Performance</h3>
               {isCw ? (
                 <>
+                  <Row label="Expected" value={fmt(c.income)} />
                   <Row label="Received" value={fmt(c.cash)} />
-                  <Row label="Owed" value={fmt(c.owed)} />
-                  <Row label="Active locations" value={c.activeLocations} />
-                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span>Chairs</span><span>{chairs || '—'}</span></div>
+                  <Row label="Backpay" value={fmt(c.owed)} />
+                  <Row label="# of Installs" value={installs} />
+                  <Row label="# of Chairs" value={chairs || '—'} last />
                 </>
               ) : (
                 <>
@@ -138,7 +140,8 @@ export default function Monthly() {
                   <Row label="LEMO Payout" value={fmt(rsTotal * RS_LEMO)} />
                   <Row label="Venue Payout" value={fmt(rsTotal * RS_VENUE)} />
                   <Row label="BD Consultant Payout" value={fmt(rsTotal * RS_BD)} />
-                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span># of Chairs</span><span>{chairs || '—'}</span></div>
+                  <Row label="# of Installs" value={installs} />
+                  <Row label="# of Chairs" value={chairs || '—'} last />
                 </>
               )}
             </div>
