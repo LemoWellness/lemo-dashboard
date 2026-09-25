@@ -14,6 +14,9 @@ function typeLabel(type) {
   if (type === 'dueToday') return 'Task Due Today';
   if (type === 'dueSoon') return 'Task Due Soon';
   if (type === 'overdue') return 'Task Overdue';
+  if (type === 'cancelRequested') return 'Cancel Request';
+  if (type === 'cancelApproved') return 'Task Cancelled';
+  if (type === 'cancelDenied') return 'Cancel Denied';
   return type || 'Notification';
 }
 
