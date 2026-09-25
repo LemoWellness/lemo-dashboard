@@ -11,11 +11,11 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 function isOverdue(t) {
-  if (!t.deadline || t.status === 'Done') return false;
+  if (!t.deadline || t.status === 'Done' || t.status === 'On Hold' || t.status === 'Pending') return false;
   return t.deadline < todayStr();
 }
 function formatDeadline(ymd) {
-  if (!ymd) return '—';
+  if (!ymd) return '\u2014';
   const parts = ymd.split('-');
   return parts.length === 3 ? `${parts[1]}/${parts[2]}/${parts[0]}` : ymd;
 }
@@ -54,6 +54,8 @@ export default function Tasks() {
   const [updateText, setUpdateText] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [deskBusy, setDeskBusy] = useState('');
+  const [pendingStatus, setPendingStatus] = useState('');
+  const [statusNote, setStatusNote] = useState('');
   const focusId = typeof router.query.task === 'string' ? router.query.task : '';
   const isAdmin = session?.role === 'Admin';
 
@@ -99,6 +101,8 @@ export default function Tasks() {
     setOpenTask(hit);
     setEditing(false);
     setUpdateText('');
+    setPendingStatus('');
+    setStatusNote('');
   }, [focusId, tasks]);
 
   const activeCount = tasks.filter((t) => t.status !== 'Done').length;
@@ -132,6 +136,8 @@ export default function Tasks() {
     setEditing(false);
     setUpdateText('');
     setFormError('');
+    setPendingStatus('');
+    setStatusNote('');
   }
   function startEdit() {
     if (!openTask?.canEdit) return;
@@ -173,9 +179,38 @@ export default function Tasks() {
     load();
   }
 
-  async function changeStatus(id, status) {
-    await authedFetch(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+  function requestStatus(next) {
+    if (!openTask || next === openTask.status) return;
+    if (next === 'On Hold' || next === 'Pending') {
+      setPendingStatus(next);
+      setStatusNote('');
+      setFormError('');
+      return;
+    }
+    setPendingStatus('');
+    setStatusNote('');
+    changeStatus(openTask.id, next);
+  }
+
+  async function changeStatus(id, status, note) {
+    const body = note ? { status, addUpdate: note } : { status };
+    const res = await authedFetch(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+    if (!res.ok) {
+      setFormError((await res.json()).error || 'Could not update status.');
+      return;
+    }
+    setPendingStatus('');
+    setStatusNote('');
     load();
+  }
+
+  async function submitStatusNote(e) {
+    e.preventDefault();
+    if (!openTask || !pendingStatus) return;
+    if (!statusNote.trim()) { setFormError('Add a note before setting this status.'); return; }
+    setSaving(true);
+    await changeStatus(openTask.id, pendingStatus, statusNote.trim());
+    setSaving(false);
   }
 
   async function submitUpdate(e) {
@@ -224,7 +259,7 @@ export default function Tasks() {
         </div>
       </div>
 
-      {loading ? <p className="muted">Loading tasks…</p> : loadError ? <p className="form-error">{loadError}</p> : (
+      {loading ? <p className="muted">Loading tasks\u2026</p> : loadError ? <p className="form-error">{loadError}</p> : (
         <>
           <div className="seg-tabs">
             <button className={`seg-tab ${subtab === 'active' ? 'active' : ''}`} onClick={() => setSubtab('active')}>
@@ -250,6 +285,8 @@ export default function Tasks() {
                   <option value="">All</option>
                   <option>Not Started</option>
                   <option>In Progress</option>
+                  <option>On Hold</option>
+                  <option>Pending</option>
                   <option>Done</option>
                 </select>
               </label>
@@ -295,7 +332,7 @@ export default function Tasks() {
                   );
                 })}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={6} className="muted">{subtab === 'completed' ? 'No completed tasks yet.' : 'No active tasks — click "+ Add Task" to create one.'}</td></tr>
+                  <tr><td colSpan={6} className="muted">{subtab === 'completed' ? 'No completed tasks yet.' : 'No active tasks \u2014 click "+ Add Task" to create one.'}</td></tr>
                 )}
               </tbody>
             </table>
@@ -312,7 +349,7 @@ export default function Tasks() {
             {formError && <p className="form-error">{formError}</p>}
             <label style={{ display: 'block', marginBottom: 12 }}>Assigned To
               <select value={form.assignedTo} onChange={(e) => setForm({ ...form, assignedTo: e.target.value })} style={{ width: '100%', marginTop: 4 }}>
-                <option value="">Select…</option>
+                <option value="">Select\u2026</option>
                 {sortedUsers.map((u) => <option key={u.email} value={u.email}>{u.name}</option>)}
               </select>
             </label>
@@ -335,7 +372,7 @@ export default function Tasks() {
             </label>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => setShowAdd(false)}>Cancel</button>
-              <button type="submit" className="btn" disabled={saving}>{saving ? 'Saving…' : 'Save Task'}</button>
+              <button type="submit" className="btn" disabled={saving}>{saving ? 'Saving\u2026' : 'Save Task'}</button>
             </div>
           </form>
         </div>
@@ -371,7 +408,7 @@ export default function Tasks() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginBottom: 16 }}>
                   <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => setEditing(false)}>Cancel</button>
-                  <button type="submit" className="btn" disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</button>
+                  <button type="submit" className="btn" disabled={saving}>{saving ? 'Saving\u2026' : 'Save Changes'}</button>
                 </div>
               </form>
             ) : (
@@ -384,13 +421,27 @@ export default function Tasks() {
                 </div>
                 {live.canUpdateStatus ? (
                   <label style={{ display: 'block', marginBottom: 16 }}>Status
-                    <select value={live.status} onChange={(e) => changeStatus(live.id, e.target.value)} style={{ width: '100%', marginTop: 4 }}>
+                    <select value={pendingStatus || live.status} onChange={(e) => requestStatus(e.target.value)} style={{ width: '100%', marginTop: 4 }}>
                       <option>Not Started</option>
                       <option>In Progress</option>
+                      <option>On Hold</option>
+                      <option>Pending</option>
                       <option>Done</option>
                     </select>
                   </label>
                 ) : <p style={{ marginBottom: 16 }}><span className="muted">Status</span> {live.status}</p>}
+                {pendingStatus && (
+                  <form onSubmit={submitStatusNote} style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block' }}>Note required
+                      <textarea value={statusNote} onChange={(e) => setStatusNote(e.target.value)} rows={2} placeholder="Why is this On Hold or Pending?"
+                        style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4, fontFamily: 'inherit' }} />
+                    </label>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                      <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => { setPendingStatus(''); setStatusNote(''); setFormError(''); }}>Cancel</button>
+                      <button type="submit" className="btn" disabled={saving || !statusNote.trim()}>{saving ? 'Saving\u2026' : `Set ${pendingStatus}`}</button>
+                    </div>
+                  </form>
+                )}
               </>
             )}
 
@@ -400,15 +451,15 @@ export default function Tasks() {
               {taskUpdates(live).map((u) => (
                 <div key={u.id} style={{ marginBottom: 10 }}>
                   <div style={{ fontSize: '0.8rem' }}>{u.text}</div>
-                  <div className="muted" style={{ fontSize: '0.72rem' }}>{displayName(u.by) || u.byName} · {formatWhen(u.at)}</div>
+                  <div className="muted" style={{ fontSize: '0.72rem' }}>{displayName(u.by) || u.byName} \u00b7 {formatWhen(u.at)}</div>
                 </div>
               ))}
               {live.canAddUpdate && (
                 <form onSubmit={submitUpdate} style={{ marginTop: 8 }}>
-                  <textarea value={updateText} onChange={(e) => setUpdateText(e.target.value)} rows={2} placeholder="Add an update…"
+                  <textarea value={updateText} onChange={(e) => setUpdateText(e.target.value)} rows={2} placeholder="Add an update\u2026"
                     style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, fontFamily: 'inherit' }} />
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                    <button type="submit" className="btn" disabled={saving || !updateText.trim()}>{saving ? 'Saving…' : 'Add update'}</button>
+                    <button type="submit" className="btn" disabled={saving || !updateText.trim()}>{saving ? 'Saving\u2026' : 'Add update'}</button>
                   </div>
                 </form>
               )}
