@@ -93,18 +93,23 @@ export default function NotificationBell() {
         </div>
       )}
       <style jsx>{`
-        .notif-wrap { position: relative; margin: 12px 0; }
-        .notif-bell { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+        .notif-wrap { position: relative; margin: 0; display: inline-block; }
+        .notif-bell {
+          display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+          width: auto; white-space: nowrap;
+        }
         .notif-count {
           background: var(--ember); color: #fff; border-radius: 10px;
           font-size: 0.7rem; padding: 1px 6px; min-width: 18px; text-align: center;
         }
         .notif-panel {
-          position: absolute; left: 0; right: 0; bottom: 100%;
+          position: absolute; top: calc(100% + 6px); right: 0; left: auto;
+          width: min(380px, calc(100vw - 24px));
           background: #fff; color: var(--obsidian); border: 1px solid var(--iron);
-          border-radius: 4px; z-index: 80; max-height: 360px; overflow: hidden;
-          box-shadow: 0 8px 24px rgba(12,10,9,0.18); margin-bottom: 6px;
+          border-radius: 4px; z-index: 80; overflow: hidden;
+          box-shadow: 0 8px 24px rgba(12,10,9,0.18);
           display: flex; flex-direction: column;
+          max-height: min(70vh, 480px);
         }
         .notif-panel-head {
           display: flex; justify-content: space-between; align-items: center;
@@ -113,7 +118,7 @@ export default function NotificationBell() {
         }
         .notif-panel-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
         .notif-markall { background: none; border: none; color: var(--ember); cursor: pointer; font-size: 0.75rem; }
-        .notif-close { display: none; }
+        .notif-close { display: inline-block; background: none; border: none; cursor: pointer; font-size: 0.75rem; color: var(--ash); }
         .notif-list { overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
         .notif-item {
           display: block; width: 100%; text-align: left; background: #fff; border: none;
@@ -124,9 +129,8 @@ export default function NotificationBell() {
         .notif-type { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ash); margin-bottom: 2px; }
         .notif-name, .notif-body, .notif-meta { overflow-wrap: anywhere; word-break: break-word; }
         @media (max-width: 640px) {
-          .notif-wrap { margin: 0; }
           .notif-bell {
-            width: auto; color: var(--warm-white); background: transparent; border: none;
+            color: var(--warm-white); background: transparent; border: none;
             font-size: 0.78rem; font-family: inherit; font-weight: 500; padding: 4px 6px;
           }
           .notif-panel {
@@ -134,20 +138,13 @@ export default function NotificationBell() {
             top: calc(56px + env(safe-area-inset-top, 0px));
             left: max(12px, env(safe-area-inset-left, 0px));
             right: max(12px, env(safe-area-inset-right, 0px));
-            bottom: auto;
             width: auto;
             max-width: none;
-            margin-bottom: 0;
-            max-height: calc(100vh - 68px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
             max-height: calc(100dvh - 68px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
             z-index: 320;
           }
           .notif-panel-head { flex-wrap: wrap; }
-          .notif-markall, .notif-close {
-            display: inline-block; background: none; border: none; cursor: pointer;
-            font-size: 0.75rem; padding: 6px 2px; min-height: 32px; color: var(--ember);
-          }
-          .notif-close { color: var(--ash); }
+          .notif-markall, .notif-close { min-height: 32px; padding: 6px 2px; }
         }
       `}</style>
     </div>
