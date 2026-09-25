@@ -1,6 +1,6 @@
 import { adminDb } from '../../../lib/firebaseAdmin';
 import { withAuth } from '../../../lib/auth';
-import { notifyTaskAssigned } from '../../../lib/notifications';
+import { notifyTaskAssigned, notifyCancelRequested, notifyCancelApproved, notifyCancelDenied } from '../../../lib/notifications';
 
 function emailOf(session) {
   return String(session.email || '').toLowerCase();
@@ -38,14 +38,115 @@ export default withAuth(async (req, res, session) => {
   const task = doc.data();
 
   if (req.method === 'PATCH') {
-    const { status, assignedTo, task: taskText, deadline, priority, notes, addUpdate } = req.body || {};
+    const { status, assignedTo, task: taskText, deadline, priority, notes, addUpdate, cancelRequest, cancelDecision } = req.body || {};
     const editingFields = assignedTo !== undefined || taskText !== undefined || deadline !== undefined || priority !== undefined || notes !== undefined;
+
+    if (cancelRequest) {
+      if (!isAssignee(session, task) && session.role !== 'Admin') {
+        return res.status(403).json({ error: 'Only the assignee can request cancellation.' });
+      }
+      if (task.status === 'Cancelled' || task.status === 'Cancel Requested') {
+        return res.status(400).json({ error: 'This task already has a cancel request or is cancelled.' });
+      }
+      const reason = String(cancelRequest === true ? addUpdate : cancelRequest).trim();
+      if (!reason) return res.status(400).json({ error: 'Write why this task should be cancelled.' });
+      const now = new Date().toISOString();
+      const entry = {
+        id: `u-${Date.now()}`,
+        at: now,
+        by: session.email,
+        byName: session.name || session.email,
+        text: `Cancel requested: ${reason}`,
+        kind: 'cancel',
+      };
+      await ref.update({
+        status: 'Cancel Requested',
+        cancelReason: reason,
+        cancelRequestedBy: session.email,
+        cancelRequestedAt: now,
+        cancelPreviousStatus: task.status || 'Not Started',
+        notes: reason,
+        updates: [...history(task), entry],
+      });
+      try {
+        await notifyCancelRequested({
+          taskId: doc.id,
+          creatorEmail: task.addedBy,
+          taskName: task.task,
+          dueDate: task.deadline || '',
+          reason,
+        });
+      } catch (err) {
+        console.error('Cancel request notification failed', err);
+      }
+      return res.status(200).json({ success: true });
+    }
+
+    if (cancelDecision) {
+      if (!canEditFields(session, task)) {
+        return res.status(403).json({ error: 'Only the person who created this task can approve or deny cancellation.' });
+      }
+      if (task.status !== 'Cancel Requested') {
+        return res.status(400).json({ error: 'There is no cancel request to review.' });
+      }
+      const decision = String(cancelDecision);
+      const now = new Date().toISOString();
+      if (decision === 'approve') {
+        await ref.update({
+          status: 'Cancelled',
+          updates: [...history(task), {
+            id: `u-${Date.now()}`,
+            at: now,
+            by: session.email,
+            byName: session.name || session.email,
+            text: 'Cancel request approved',
+            kind: 'cancel',
+          }],
+        });
+        try {
+          await notifyCancelApproved({ taskId: doc.id, assigneeEmail: task.assignedTo, taskName: task.task, dueDate: task.deadline || '' });
+        } catch (err) {
+          console.error('Cancel approved notification failed', err);
+        }
+        return res.status(200).json({ success: true });
+      }
+      if (decision === 'deny') {
+        await ref.update({
+          status: task.cancelPreviousStatus || 'Not Started',
+          cancelReason: '',
+          cancelRequestedBy: '',
+          cancelRequestedAt: '',
+          cancelPreviousStatus: '',
+          updates: [...history(task), {
+            id: `u-${Date.now()}`,
+            at: now,
+            by: session.email,
+            byName: session.name || session.email,
+            text: 'Cancel request denied',
+            kind: 'cancel',
+          }],
+        });
+        try {
+          await notifyCancelDenied({ taskId: doc.id, assigneeEmail: task.assignedTo, taskName: task.task, dueDate: task.deadline || '' });
+        } catch (err) {
+          console.error('Cancel denied notification failed', err);
+        }
+        return res.status(200).json({ success: true });
+      }
+      return res.status(400).json({ error: 'Decision must be approve or deny.' });
+    }
 
     if (status !== undefined && !editingFields) {
       if (!canWork(session, task)) {
         return res.status(403).json({ error: 'Only the creator or assignee can update status.' });
       }
       const next = String(status);
+      if (next === 'Cancelled' || next === 'Cancel Requested') {
+        return res.status(400).json({ error: 'Use the cancel request flow for cancellation.' });
+      }
+      if (task.status === 'Cancel Requested' || task.status === 'Cancelled') {
+        return res.status(400).json({ error: 'Review the cancel request before changing status.' });
+      }
       const note = String(addUpdate || '').trim();
       if ((next === 'On Hold' || next === 'Pending') && !note) {
         return res.status(400).json({ error: 'Add a note before setting this status.' });
