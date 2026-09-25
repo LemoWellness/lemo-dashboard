@@ -2,9 +2,9 @@ export default function AccountChrome({ selected, isAdmin, onBack, onEdit, onNot
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
-        <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={onBack}>{String.fromCharCode(0x2190)} Back</button>
+        <button type="button" className="btn btn-ghost" onClick={onBack}>{String.fromCharCode(0x2190)} Back</button>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ember)', border: '1px solid var(--ember)' }} onClick={onNote}>+ Communication Log</button>
+          <button type="button" className="btn btn-ghost" onClick={onNote}>+ Communication Log</button>
           {isAdmin && selected.businessModel === 'Corporate Wellness' && <button type="button" className="btn" onClick={onIncome}>+ Add Income</button>}
           {isAdmin && <button type="button" className="btn" onClick={onExpense}>+ Add Expense</button>}
         </div>
@@ -12,7 +12,7 @@ export default function AccountChrome({ selected, isAdmin, onBack, onEdit, onNot
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
           <h2 style={{ margin: 0 }}>{selected.name}</h2>
-          {isAdmin && <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={onEdit}>Edit Company</button>}
+          {isAdmin && <button type="button" className="btn btn-ghost" onClick={onEdit}>Edit Company</button>}
         </div>
         <div className="grid-3">
           <div>
@@ -33,7 +33,7 @@ export default function AccountChrome({ selected, isAdmin, onBack, onEdit, onNot
                 <div className="muted">{selected.contact2Phone}</div>
                 <div className="muted">{selected.contact2Email}</div>
               </>
-            ) : (isAdmin && <button type="button" className="btn" style={{ marginTop: 10, background: 'transparent', color: 'var(--ember)', border: '1px solid var(--ember)' }} onClick={onEdit}>+ Add Contact</button>)}
+            ) : (isAdmin && <button type="button" className="btn btn-ghost" style={{ marginTop: 10 }} onClick={onEdit}>+ Add Contact</button>)}
           </div>
           <div>
             <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>BD Consultant</div>

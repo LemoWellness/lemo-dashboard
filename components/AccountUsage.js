@@ -26,26 +26,20 @@ export default function AccountUsage({ venue }) {
       )}
       {!loading && data && data.hasData && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
-          <StatBox label="Usage (sessions)" value={count(data.totals.usage)} accent />
+          <StatBox label="Usage (sessions)" value={count(data.totals.usage)} />
           <StatBox label="Refunds" value={money(data.totals.refunds)} />
           <StatBox label="RS Income" value={money(data.totals.rsIncome)} />
           <StatBox label="Avg # of Visitors" value={Math.round((data.totals.avgVisitors || 0) * 10) / 10} />
         </div>
       )}
-      <style jsx>{`
-        @media (max-width: 800px) {
-          div :global(.usage-stat-grid) { grid-template-columns: 1fr 1fr; }
-        }
-      `}</style>
     </div>
   );
 }
 
-function StatBox({ label, value, accent }) {
+function StatBox({ label, value }) {
   return (
-    <div style={{
+    <div className="kpi-card" style={{
       border: '1px solid var(--iron)',
-      borderLeft: accent ? '3px solid var(--ember)' : '1px solid var(--iron)',
       background: '#fff',
       padding: '12px 14px',
       minWidth: 0,

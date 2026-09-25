@@ -66,7 +66,9 @@ table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
 th { color: var(--muted); font-weight: 500; }
 
-.card { background: white; border: 1px solid var(--iron); border-left: 3px solid var(--ember); border-radius: 3px; padding: 20px; margin-bottom: 20px; }
+.card { background: white; border: 1px solid var(--iron); border-radius: 3px; padding: 20px; margin-bottom: 20px; }
+.kpi-card { border-left: 3px solid var(--ember); }
+.btn-ghost { background: transparent; color: var(--ash); border: 1px solid var(--iron); }
 .card h2, .card h3 { color: var(--obsidian); }
 .inline-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
 .inline-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--muted); }
@@ -114,14 +116,14 @@ input.task-date {
   margin-top: 4px;
   appearance: none;
   -webkit-appearance: none;
-  background-color: var(--charcoal);
+  background-color: #fff;
   border: 1px solid var(--iron);
   border-radius: 5px;
   padding: 6px 10px;
   font-family: 'Poppins', sans-serif;
   font-size: 0.8rem;
-  color: var(--warm-white);
-  color-scheme: dark;
+  color: var(--obsidian);
+  color-scheme: light;
 }
 input.task-date:hover { border-color: var(--ember); }
 input.task-date:focus { outline: none; border-color: var(--ember); }
@@ -250,14 +252,37 @@ input.task-date:focus { outline: none; border-color: var(--ember); }
   width: 100%;
   appearance: none;
   -webkit-appearance: none;
-  background-color: var(--charcoal);
+  background-color: #fff;
   border: 1px solid var(--iron);
   border-radius: 5px;
   padding: 6px 10px;
   font-family: 'Poppins', sans-serif;
   font-size: 0.8rem;
-  color: var(--warm-white);
+  color: var(--obsidian);
 }
 .stack-input:hover { border-color: var(--ember); }
 .stack-input:focus { outline: none; border-color: var(--ember); }
 textarea.stack-input { min-height: 96px; resize: vertical; }
+
+/* Account / modal fields: original clean white inputs */
+.stack-field input,
+.stack-field select,
+.stack-field textarea,
+.card input,
+.card textarea {
+  background-color: #fff;
+  color: var(--obsidian);
+  border: 1px solid var(--iron);
+  color-scheme: light;
+}
+.stack-field select,
+.card select {
+  background-color: #fff;
+  color: var(--obsidian);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0L5 6L10 0Z' fill='%230C0A09'/></svg>");
+}
+.stack-field select option,
+.card select option {
+  background: #fff;
+  color: var(--obsidian);
+}
