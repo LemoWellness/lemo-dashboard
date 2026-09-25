@@ -36,7 +36,7 @@ export default function NotificationBell() {
     }
   }
 
-  useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, []);
+  useEffect(() => { load(); }, []);
   useEffect(() => {
     function onDoc(e) {
       if (box.current && !box.current.contains(e.target)) setOpen(false);
@@ -48,6 +48,13 @@ export default function NotificationBell() {
       document.removeEventListener('touchstart', onDoc);
     };
   }, []);
+
+  function toggleOpen() {
+    setOpen((v) => {
+      if (!v) load();
+      return !v;
+    });
+  }
 
   async function markRead(id) {
     await authedFetch('/api/notifications', { method: 'PATCH', body: JSON.stringify({ id }) });
@@ -67,7 +74,7 @@ export default function NotificationBell() {
 
   return (
     <div className="notif-wrap" ref={box}>
-      <button type="button" className="notif-bell" aria-label="Notifications" onClick={() => setOpen((v) => !v)}>
+      <button type="button" className="notif-bell" aria-label="Notifications" onClick={toggleOpen}>
         Notifications{unread > 0 ? <span className="notif-count">{unread > 99 ? '99+' : unread}</span> : null}
       </button>
       {open && (
