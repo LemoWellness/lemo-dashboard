@@ -5,16 +5,67 @@
 import { adminDb } from '../../../lib/firebaseAdmin';
 import { withAuth } from '../../../lib/auth';
 
+function shiftMonth(monthKey, delta) {
+  const [y, m] = monthKey.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function monthKeysFromTo(startKey, endKey) {
+  if (!startKey || !endKey || startKey > endKey) return [];
+  const keys = [];
+  let k = startKey;
+  while (k <= endKey) {
+    keys.push(k);
+    k = shiftMonth(k, 1);
+    if (keys.length > 120) break;
+  }
+  return keys;
+}
+function firstBillMonthKey(goLiveDate) {
+  const raw = String(goLiveDate || '').slice(0, 10);
+  const parts = raw.split('-').map(Number);
+  if (!parts[0] || !parts[1]) return '';
+  const day = parts[2] || 1;
+  const goMonth = `${parts[0]}-${String(parts[1]).padStart(2, '0')}`;
+  return shiftMonth(goMonth, day <= 1 ? 1 : 2);
+}
+function incomeBelongsToSite(incomeLocation, name) {
+  const loc = String(incomeLocation || '').trim().toLowerCase();
+  if (!loc) return false;
+  return String(name || '').trim().toLowerCase() === loc;
+}
+function cwOwes(project, allIncome, monthKey) {
+  if (project.businessModel !== 'Corporate Wellness') return false;
+  const fee = Number(project.monthlyFee) || 0;
+  if (fee <= 0) return false;
+  const start = firstBillMonthKey(project.goLiveDate);
+  if (!start || start > monthKey) return false;
+  const expected = monthKeysFromTo(start, monthKey).length * fee;
+  const received = allIncome.reduce((s, i) => {
+    const mk = String(i.date || '').slice(0, 7);
+    if (mk.length !== 7 || mk > monthKey) return s;
+    if (!incomeBelongsToSite(i.location, project.name)) return s;
+    return s + (Number(i.amount) || 0);
+  }, 0);
+  return expected - received > 0.5;
+}
+
 export default withAuth(async (req, res, session) => {
   if (req.method === 'GET') {
-    const snap = await adminDb.collection('projects').orderBy('name').get();
-    const projects = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const monthKey = new Date().toISOString().slice(0, 7);
+    const [snap, incomeSnap] = await Promise.all([
+      adminDb.collection('projects').orderBy('name').get(),
+      adminDb.collection('income').get(),
+    ]);
+    const allIncome = incomeSnap.docs.map((d) => d.data());
+    const projects = snap.docs.map((d) => {
+      const data = { id: d.id, ...d.data() };
+      return { ...data, owes: cwOwes(data, allIncome, monthKey) };
+    });
     return res.status(200).json({ projects });
   }
 
   if (req.method === 'POST') {
-    // Creating/editing a project's core details is admin-only, mirroring how
-    // addExpense/addIncome (the other mutating calls) required Admin.
     if (session.role !== 'Admin') {
       return res.status(403).json({ error: 'Only an administrator can do that.' });
     }
@@ -27,7 +78,7 @@ export default withAuth(async (req, res, session) => {
         name: docId,
         businessModel: body.businessModel || '',
         numberOfChairs: body.numberOfChairs ?? null,
-        goLiveDate: body.goLiveDate || '', // stored as 'yyyy-MM-dd' string
+        goLiveDate: body.goLiveDate || '',
         monthlyFee: body.monthlyFee ?? null,
         revenueSharePercent: body.revenueSharePercent ?? null,
         streetAddress: body.streetAddress || '',
