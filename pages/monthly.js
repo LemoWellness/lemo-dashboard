@@ -179,20 +179,25 @@ export default function Monthly() {
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Accounts Receivable — Outstanding Balance</h3>
+        <h3 style={{ marginTop: 0 }}>Accounts Receivable</h3>
         <p className="muted" style={{ fontSize: '0.8rem', marginTop: -6 }}>
-          Cumulative billed vs cash received as of {data.asOfLabel || data.month} — not this month’s performance.
+          Only accounts with an unpaid balance as of {data.asOfLabel || data.month}.
         </p>
         {outstanding.length > 0 ? (
-          <div className="table-wrap wide"><table>
-            <thead><tr><th>Location</th><th>Business Model</th><th>Fee / mo</th><th>Months billable (to date)</th><th>Billed to date</th><th>Cash received to date</th><th>Balance owed</th></tr></thead>
+          <div className="table-wrap"><table>
+            <thead><tr><th>Location</th><th>Chairs</th><th>Months owed</th><th>Amount owed</th></tr></thead>
             <tbody>
               {outstanding.map((c, i) => (
-                <tr key={i}><td>{c.location}</td><td>{c.model}</td><td>{fmt(c.monthlyFee)}</td><td>{c.monthsBillable}</td><td>{fmt(c.expectedTotal)}</td><td>{fmt(c.totalReceived)}</td><td style={{ color: 'var(--ember-muted)' }}>{fmt(c.balanceOwed)}</td></tr>
+                <tr key={i}>
+                  <td>{c.location}</td>
+                  <td>{c.chairs ?? '—'}</td>
+                  <td>{c.monthsOwed ?? c.monthsBillable}</td>
+                  <td style={{ color: 'var(--ember-muted)' }}>{fmt(c.balanceOwed)}</td>
+                </tr>
               ))}
             </tbody>
           </table></div>
-        ) : <p className="muted">Nothing outstanding as of {data.asOfLabel || data.month}.</p>}
+        ) : <p className="muted">No accounts owe a balance as of {data.asOfLabel || data.month}.</p>}
       </div>
 
       <div className="card">
