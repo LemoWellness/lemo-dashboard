@@ -249,7 +249,7 @@ export default function Home() {
           {!loading && filteredProjects.length > 0 && (
             <div className="table-wrap"><table>
               <thead><tr><th>Name</th><th>Business Model</th><th>State</th><th>Monthly Fee</th></tr></thead>
-              <tbody>{filteredProjects.map((p) => (<tr key={p.id} onClick={() => setSelectedName(p.name)} style={{ cursor: 'pointer' }}><td>{p.name}</td><td>{p.businessModel}</td><td>{p.state}</td><td>{p.monthlyFee != null && p.monthlyFee !== '' ? `$${p.monthlyFee}` : ''}</td></tr>))}</tbody>
+              <tbody>{filteredProjects.map((p) => (<tr key={p.id} onClick={() => setSelectedName(p.name)} style={{ cursor: 'pointer' }}><td>{p.owes ? <span title="Past due" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 99, background: 'var(--ember-muted)', marginRight: 8, verticalAlign: 'middle' }} /> : null}{p.name}</td><td>{p.businessModel}</td><td>{p.state}</td><td>{p.monthlyFee != null && p.monthlyFee !== '' ? `$${p.monthlyFee}` : ''}</td></tr>))}</tbody>
             </table></div>
           )}
         </>
