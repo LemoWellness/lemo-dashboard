@@ -104,6 +104,16 @@ function monthKeysFromTo(startKey, endKey) {
   }
   return keys;
 }
+function firstBillMonthKey(goLiveDate) {
+  const raw = String(goLiveDate || '').slice(0, 10);
+  const parts = raw.split('-').map(Number);
+  if (!parts[0] || !parts[1]) return '';
+  const day = parts[2] || 1;
+  const goMonth = `${parts[0]}-${String(parts[1]).padStart(2, '0')}`;
+  // 1st-of-month go-live: first bill is the next 1st (LT 7/1 → 8/1).
+  // Mid-month go-live: skip install month and the next month (NBG 5/15 → 7/1).
+  return shiftMonth(goMonth, day <= 1 ? 1 : 2);
+}
 function incomeBelongsToSite(incomeLocation, name, project) {
   const loc = String(incomeLocation || '').trim().toLowerCase();
   if (!loc) return false;
@@ -174,9 +184,9 @@ export default withAuth(async (req, res) => {
     cwChairs += Number(data.numberOfChairs) > 0 ? Number(data.numberOfChairs) : 0;
     const fee = cwContractMonthly(data);
     if (fee <= 0) return;
-    const start = String(data.goLiveDate || '').slice(0, 7);
-    const monthsBillable = monthKeysFromTo(start, monthKey).length;
-    const expected = monthsBillable * fee;
+    const start = firstBillMonthKey(data.goLiveDate);
+    if (!start || start > monthKey) return;
+    const expected = monthKeysFromTo(start, monthKey).length * fee;
     const received = allIncome.reduce((s, i) => {
       const mk = String(i.date || '').slice(0, 7);
       if (mk.length !== 7 || mk > monthKey) return s;
