@@ -9,7 +9,6 @@ const TYPES = [
   { value: 'income', label: 'Income' },
   { value: 'communicationLog', label: 'Communication Log' },
   { value: 'dailyRawData', label: 'Daily Raw Data (POS export)' },
-  { value: 'usageRawData', label: 'Usage Raw Data (weekly venue export)' },
 ];
 
 export default function ImportData() {
@@ -30,8 +29,7 @@ export default function ImportData() {
     if (code === 'admin-users') return router.push('/admin/users');
     if (code === 'loc') return router.push('/');
     if (code === 'tasks') return router.push('/tasks');
-    if (code === 'daily') return router.push('/daily');
-    if (code === 'usage') return router.push('/usage');
+    if (code === 'daily' || code === 'usage' || code === 'reporting') return router.push('/reporting');
     if (code === 'mo') return router.push('/monthly');
     if (code === 'financials') return router.push('/financials');
     if (code === 'risk') return router.push('/risk');
@@ -84,7 +82,7 @@ export default function ImportData() {
     <Layout active="admin-import" onNavigate={navigate}>
       <h1>Import Data</h1>
       <p className="muted">
-        Upload CSV or Excel (.xlsx). Re-uploading the same Usage, Daily, Project, Expense, Income, or Communication Log rows overwrites the existing record instead of creating a duplicate. Reporting reads Daily Raw Data, so a Daily upload is what feeds Reporting. Keep Daily POS headers (Venue Name, Count Date, POS, etc.).
+        Upload CSV or Excel (.xlsx). Re-uploading the same Daily, Project, Expense, Income, or Communication Log rows overwrites the existing record instead of creating a duplicate. Reporting reads Daily Raw Data.
       </p>
       <form className="card inline-form" onSubmit={submit}>
         <label>
