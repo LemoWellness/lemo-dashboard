@@ -8,9 +8,11 @@ export default function AddExpenseModal({ venue, form, error, onChange, onClose,
         <h3 style={{ marginTop: 0 }}>Add Expense</h3>
         <p className="muted" style={{ marginTop: -8 }}>For: {venue}</p>
         {error && <p className="form-error">{error}</p>}
-        <label style={{ display: 'block', marginBottom: 12 }}>Date<input type="date" className="task-date" value={form.date} onChange={(e) => set('date', e.target.value)} required /></label>
-        <label style={{ display: 'block', marginBottom: 12 }}>Category
-          <select value={form.category} onChange={(e) => set('category', e.target.value)} required style={{ width: '100%', marginTop: 4 }}>
+        <label className="stack-field">Date
+          <input type="date" className="task-date" value={form.date} onChange={(e) => set('date', e.target.value)} required />
+        </label>
+        <label className="stack-field">Category
+          <select value={form.category} onChange={(e) => set('category', e.target.value)} required>
             <option value="">Select...</option>
             <option>Installation</option>
             <option>Maintenance</option>
@@ -20,14 +22,26 @@ export default function AddExpenseModal({ venue, form, error, onChange, onClose,
             <option>Other</option>
           </select>
         </label>
-        <label style={{ display: 'block', marginBottom: 12 }}>Item<input value={form.item} onChange={(e) => set('item', e.target.value)} /></label>
-        <label style={{ display: 'block', marginBottom: 12 }}>Description<input value={form.description} onChange={(e) => set('description', e.target.value)} /></label>
-        <label style={{ display: 'block', marginBottom: 12 }}>Source / Vendor<input value={form.source} onChange={(e) => set('source', e.target.value)} /></label>
+        <label className="stack-field">Item
+          <input className="stack-input" value={form.item} onChange={(e) => set('item', e.target.value)} />
+        </label>
+        <label className="stack-field">Description
+          <input className="stack-input" value={form.description} onChange={(e) => set('description', e.target.value)} />
+        </label>
+        <label className="stack-field">Source / Vendor
+          <input className="stack-input" value={form.source} onChange={(e) => set('source', e.target.value)} />
+        </label>
         <div className="form-grid-2" style={{ marginBottom: 12 }}>
-          <label>Quantity<input type="number" value={form.quantity} onChange={(e) => set('quantity', e.target.value)} /></label>
-          <label>Cost / Unit<input type="number" value={form.costPerUnit} onChange={(e) => set('costPerUnit', e.target.value)} /></label>
+          <label className="stack-field">Quantity
+            <input className="stack-input" type="number" value={form.quantity} onChange={(e) => set('quantity', e.target.value)} />
+          </label>
+          <label className="stack-field">Cost / Unit
+            <input className="stack-input" type="number" value={form.costPerUnit} onChange={(e) => set('costPerUnit', e.target.value)} />
+          </label>
         </div>
-        <label style={{ display: 'block', marginBottom: 16 }}>Notes (optional)<input value={form.notes} onChange={(e) => set('notes', e.target.value)} /></label>
+        <label className="stack-field">Notes (optional)
+          <input className="stack-input" value={form.notes} onChange={(e) => set('notes', e.target.value)} />
+        </label>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={onClose}>Cancel</button>
           <button type="submit" className="btn">Save Expense</button>

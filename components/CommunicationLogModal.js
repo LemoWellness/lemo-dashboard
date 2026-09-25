@@ -8,9 +8,11 @@ export default function CommunicationLogModal({ venue, form, error, onChange, on
         <h3 style={{ marginTop: 0 }}>Communication Log</h3>
         <p className="muted" style={{ marginTop: -8 }}>For: {venue}</p>
         {error && <p className="form-error">{error}</p>}
-        <label style={{ display: 'block', marginBottom: 12 }}>Date<input type="date" className="task-date" value={form.date || ''} onChange={(e) => set('date', e.target.value)} required /></label>
-        <label style={{ display: 'block', marginBottom: 12 }}>Channel
-          <select value={form.channel || 'Call'} onChange={(e) => set('channel', e.target.value)} style={{ width: '100%', marginTop: 4 }}>
+        <label className="stack-field">Date
+          <input type="date" className="task-date" value={form.date || ''} onChange={(e) => set('date', e.target.value)} required />
+        </label>
+        <label className="stack-field">Channel
+          <select value={form.channel || 'Call'} onChange={(e) => set('channel', e.target.value)}>
             <option>Call</option>
             <option>Email</option>
             <option>Text</option>
@@ -18,8 +20,8 @@ export default function CommunicationLogModal({ venue, form, error, onChange, on
             <option>Other</option>
           </select>
         </label>
-        <label style={{ display: 'block', marginBottom: 16 }}>Note
-          <textarea value={form.note} onChange={(e) => set('note', e.target.value)} required rows={4} style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4, fontFamily: 'inherit' }} />
+        <label className="stack-field">Note
+          <textarea className="stack-input" value={form.note} onChange={(e) => set('note', e.target.value)} required rows={4} />
         </label>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={onClose}>Cancel</button>
