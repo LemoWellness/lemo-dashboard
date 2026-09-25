@@ -39,6 +39,41 @@ export default withAuth(async (req, res, session) => {
 
   if (req.method === 'PATCH') {
     const { status, assignedTo, task: taskText, deadline, priority, notes, addUpdate } = req.body || {};
+    const editingFields = assignedTo !== undefined || taskText !== undefined || deadline !== undefined || priority !== undefined || notes !== undefined;
+
+    if (status !== undefined && !editingFields) {
+      if (!canWork(session, task)) {
+        return res.status(403).json({ error: 'Only the creator or assignee can update status.' });
+      }
+      const next = String(status);
+      const note = String(addUpdate || '').trim();
+      if ((next === 'On Hold' || next === 'Pending') && !note) {
+        return res.status(400).json({ error: 'Add a note before setting this status.' });
+      }
+      const now = new Date().toISOString();
+      const entries = [{
+        id: `u-${Date.now()}`,
+        at: now,
+        by: session.email,
+        byName: session.name || session.email,
+        text: `Status changed to ${next}`,
+        kind: 'status',
+      }];
+      if (note) {
+        entries.push({
+          id: `u-${Date.now()}-n`,
+          at: now,
+          by: session.email,
+          byName: session.name || session.email,
+          text: note,
+          kind: 'note',
+        });
+      }
+      const patch = { status: next, updates: [...history(task), ...entries] };
+      if (note) patch.notes = note;
+      await ref.update(patch);
+      return res.status(200).json({ success: true });
+    }
 
     if (addUpdate !== undefined) {
       if (!canWork(session, task)) {
@@ -55,23 +90,6 @@ export default withAuth(async (req, res, session) => {
         kind: 'note',
       };
       await ref.update({ updates: [...history(task), entry], notes: text });
-      return res.status(200).json({ success: true });
-    }
-
-    if (status !== undefined && assignedTo === undefined && taskText === undefined && deadline === undefined && priority === undefined && notes === undefined) {
-      if (!canWork(session, task)) {
-        return res.status(403).json({ error: 'Only the creator or assignee can update status.' });
-      }
-      const next = String(status);
-      const entry = {
-        id: `u-${Date.now()}`,
-        at: new Date().toISOString(),
-        by: session.email,
-        byName: session.name || session.email,
-        text: `Status changed to ${next}`,
-        kind: 'status',
-      };
-      await ref.update({ status: next, updates: [...history(task), entry] });
       return res.status(200).json({ success: true });
     }
 
