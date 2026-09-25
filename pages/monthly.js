@@ -7,6 +7,9 @@ import { authedFetch } from '../lib/firebaseClient';
 
 const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : '—');
 const PIE_COLORS = ['#E85D20', '#0C0A09', '#706B66', '#2A1A10'];
+const RS_LEMO = 0.7;
+const RS_VENUE = 0.2;
+const RS_BD = 0.1;
 
 function buildMonthOptions() {
   const opts = [];
@@ -28,6 +31,14 @@ function Hint({ text }) {
       width: 14, height: 14, marginLeft: 6, borderRadius: '50%',
       border: '1px solid var(--iron)', fontSize: 10, color: 'var(--ash)', cursor: 'help', verticalAlign: 'middle',
     }}>?</span>
+  );
+}
+
+function Row({ label, value }) {
+  return (
+    <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}>
+      <span>{label}</span><span>{value}</span>
+    </div>
   );
 }
 
@@ -84,6 +95,9 @@ export default function Monthly() {
   const breakdown = data.expenseBreakdown || [];
   const outstanding = data.outstandingPayments || [];
   const cmp = data.monthComparison || { current: {}, previous: {} };
+  const rsChairsFromTable = (data.locationTable || [])
+    .filter((l) => l.model === 'Revenue Sharing' && l.commercial !== false)
+    .reduce((s, l) => s + (Number(l.chairs) || 0), 0);
 
   return (
     <Layout active="mo" onNavigate={navigate}>
@@ -106,28 +120,25 @@ export default function Monthly() {
       <div className="grid-2">
         {comparison.map((c) => {
           const isCw = c.model === 'Corporate Wellness';
-          const chairs = isCw ? (c.chairs ?? 0) : (c.revenueGeneratingChairs ?? 0);
-          const perChair = !isCw && chairs > 0 ? c.income / chairs : null;
+          const chairs = isCw ? (c.chairs ?? 0) : (c.chairs || c.revenueGeneratingChairs || rsChairsFromTable || 0);
+          const rsTotal = Number(c.cash ?? c.income) || 0;
           return (
             <div className="card" key={c.model} style={{ marginBottom: 0 }}>
               <h3 style={{ marginTop: 0 }}>{c.model} Performance</h3>
               {isCw ? (
                 <>
-                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Received</span><span>{fmt(c.cash)}</span></div>
-                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Owed</span><span>{fmt(c.owed)}</span></div>
-                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Active locations</span><span>{c.activeLocations}</span></div>
+                  <Row label="Received" value={fmt(c.cash)} />
+                  <Row label="Owed" value={fmt(c.owed)} />
+                  <Row label="Active locations" value={c.activeLocations} />
                   <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span>Chairs</span><span>{chairs || '—'}</span></div>
                 </>
               ) : (
                 <>
-                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Income</span><span>{fmt(c.income)}</span></div>
-                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Direct expenses</span><span>{fmt(c.expenses)}</span></div>
-                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Contribution</span><span>{fmt(c.netProfit)}</span></div>
-                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 6 }}><span>Active locations</span><span>{c.activeLocations}</span></div>
-                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span>Revenue-generating chairs</span><span>{chairs || '—'}</span></div>
-                  <div className="muted" style={{ fontSize: '0.75rem', fontStyle: 'italic', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--warm-white)' }}>
-                    {perChair != null ? `${fmt(perChair)}/chair across ${chairs} revenue-generating chair${chairs === 1 ? '' : 's'}` : 'No revenue-generating chairs in this model this month'}
-                  </div>
+                  <Row label="Total Income" value={fmt(rsTotal)} />
+                  <Row label="LEMO Payout" value={fmt(rsTotal * RS_LEMO)} />
+                  <Row label="Venue Payout" value={fmt(rsTotal * RS_VENUE)} />
+                  <Row label="BD Consultant Payout" value={fmt(rsTotal * RS_BD)} />
+                  <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span># of Chairs</span><span>{chairs || '—'}</span></div>
                 </>
               )}
             </div>
