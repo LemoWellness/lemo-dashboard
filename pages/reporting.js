@@ -57,13 +57,15 @@ export default function Reporting() {
     load(next, next === 'monthly' ? selectedMonth : selectedDate);
   }
 
+  const outline = { background: 'transparent', color: 'var(--ember)', border: '1px solid var(--ember)' };
+
   return (
     <Layout active="reporting" onNavigate={navigate}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <h1>Reporting</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <button type="button" className={view === 'daily' ? 'btn' : 'signout'} onClick={() => switchView('daily')}>Daily</button>
-          <button type="button" className={view === 'monthly' ? 'btn' : 'signout'} onClick={() => switchView('monthly')}>Monthly</button>
+          <button type="button" className="btn" style={view === 'daily' ? undefined : outline} onClick={() => switchView('daily')}>Daily</button>
+          <button type="button" className="btn" style={view === 'monthly' ? undefined : outline} onClick={() => switchView('monthly')}>Monthly</button>
         </div>
       </div>
       <p className="muted">
