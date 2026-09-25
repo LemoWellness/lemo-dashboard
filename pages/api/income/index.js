@@ -12,11 +12,11 @@ export default withAuth(async (req, res, session) => {
     return res.status(200).json({ income: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
   }
 
-  if (req.method === 'POST') {
+  if (req.method === 'POST' || req.method === 'PUT') {
     if (session.role !== 'Admin') {
       return res.status(403).json({ error: 'Only an administrator can do that.' });
     }
-    const { location, date, amount, notes, grossRevenue, periodMonth } = req.body || {};
+    const { id, location, date, amount, notes, grossRevenue, periodMonth } = req.body || {};
     if (!location) return res.status(400).json({ error: 'No location specified.' });
     const amt = Number(amount);
     if (!amount || isNaN(amt) || amt <= 0) return res.status(400).json({ error: 'Amount must be a positive number.' });
@@ -32,7 +32,7 @@ export default withAuth(async (req, res, session) => {
       });
     }
 
-    const docRef = await adminDb.collection('income').add({
+    const payload = {
       location,
       date,
       periodMonth: paidFor,
@@ -40,10 +40,23 @@ export default withAuth(async (req, res, session) => {
       amount: amt,
       grossRevenue: grossRevenue != null && grossRevenue !== '' ? Number(grossRevenue) : null,
       notes: notes || '',
-      addedBy: session.email,
-      createdAt: new Date().toISOString(),
-    });
-    return res.status(200).json({ success: true, id: docRef.id });
+    };
+
+    if (req.method === 'POST') {
+      const docRef = await adminDb.collection('income').add({
+        ...payload,
+        addedBy: session.email,
+        createdAt: new Date().toISOString(),
+      });
+      return res.status(200).json({ success: true, id: docRef.id });
+    }
+
+    if (!id) return res.status(400).json({ error: 'Missing income id.' });
+    const ref = adminDb.collection('income').doc(id);
+    const existing = await ref.get();
+    if (!existing.exists) return res.status(404).json({ error: 'Income not found.' });
+    await ref.update({ ...payload, updatedBy: session.email, updatedAt: new Date().toISOString() });
+    return res.status(200).json({ success: true, id });
   }
 
   res.status(405).json({ error: 'Method not allowed.' });
