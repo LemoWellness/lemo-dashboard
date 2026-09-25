@@ -2,14 +2,33 @@ import { adminDb } from '../../../lib/firebaseAdmin';
 import { withAuth } from '../../../lib/auth';
 import { notifyTaskAssigned } from '../../../lib/notifications';
 
-function canModify(session, task) {
-  if (session.role === 'Admin') return true;
-  const email = session.email.toLowerCase();
-  return email === String(task.addedBy || '').toLowerCase() || email === String(task.assignedTo || '').toLowerCase();
+function emailOf(session) {
+  return String(session.email || '').toLowerCase();
 }
-function canDelete(session, task) {
-  if (session.role === 'Admin') return true;
-  return session.email.toLowerCase() === String(task.addedBy || '').toLowerCase();
+function isCreator(session, task) {
+  return emailOf(session) === String(task.addedBy || '').toLowerCase();
+}
+function isAssignee(session, task) {
+  return emailOf(session) === String(task.assignedTo || '').toLowerCase();
+}
+function canEditFields(session, task) {
+  return session.role === 'Admin' || isCreator(session, task);
+}
+function canWork(session, task) {
+  return canEditFields(session, task) || isAssignee(session, task);
+}
+function history(task) {
+  if (Array.isArray(task.updates) && task.updates.length) return task.updates;
+  const legacy = String(task.notes || '').trim();
+  if (!legacy) return [];
+  return [{
+    id: 'legacy-notes',
+    at: task.timestamp || new Date().toISOString(),
+    by: task.addedBy || '',
+    byName: task.addedBy || '',
+    text: legacy,
+    kind: 'note',
+  }];
 }
 
 export default withAuth(async (req, res, session) => {
@@ -19,27 +38,71 @@ export default withAuth(async (req, res, session) => {
   const task = doc.data();
 
   if (req.method === 'PATCH') {
-    const { status, assignedTo, task: taskText, deadline, priority, notes } = req.body || {};
-    if (status !== undefined) {
-      if (!canModify(session, task)) {
-        return res.status(403).json({ error: 'Only the person who added this task, the assignee, or an Admin can update it.' });
+    const { status, assignedTo, task: taskText, deadline, priority, notes, addUpdate } = req.body || {};
+
+    if (addUpdate !== undefined) {
+      if (!canWork(session, task)) {
+        return res.status(403).json({ error: 'Only the creator or assignee can add an update.' });
       }
-      await ref.update({ status });
+      const text = String(addUpdate || '').trim();
+      if (!text) return res.status(400).json({ error: 'Update text is required.' });
+      const entry = {
+        id: `u-${Date.now()}`,
+        at: new Date().toISOString(),
+        by: session.email,
+        byName: session.name || session.email,
+        text,
+        kind: 'note',
+      };
+      await ref.update({ updates: [...history(task), entry], notes: text });
       return res.status(200).json({ success: true });
     }
-    if (!canModify(session, task)) {
-      return res.status(403).json({ error: 'Only the person who added this task, the assignee, or an Admin can edit it.' });
+
+    if (status !== undefined && assignedTo === undefined && taskText === undefined && deadline === undefined && priority === undefined && notes === undefined) {
+      if (!canWork(session, task)) {
+        return res.status(403).json({ error: 'Only the creator or assignee can update status.' });
+      }
+      const next = String(status);
+      const entry = {
+        id: `u-${Date.now()}`,
+        at: new Date().toISOString(),
+        by: session.email,
+        byName: session.name || session.email,
+        text: `Status changed to ${next}`,
+        kind: 'status',
+      };
+      await ref.update({ status: next, updates: [...history(task), entry] });
+      return res.status(200).json({ success: true });
+    }
+
+    if (!canEditFields(session, task)) {
+      return res.status(403).json({ error: 'Only the person who created this task can edit it.' });
     }
     const nextAssigned = assignedTo ?? task.assignedTo;
     const nextTask = taskText ?? task.task;
     const nextDeadline = deadline ?? task.deadline;
-    await ref.update({
+    const patch = {
       assignedTo: nextAssigned,
       task: nextTask,
       deadline: nextDeadline,
       priority: priority ?? task.priority,
-      notes: notes ?? task.notes,
-    });
+    };
+    if (status !== undefined) patch.status = status;
+    if (notes !== undefined) {
+      const text = String(notes || '').trim();
+      if (text) {
+        patch.notes = text;
+        patch.updates = [...history(task), {
+          id: `u-${Date.now()}`,
+          at: new Date().toISOString(),
+          by: session.email,
+          byName: session.name || session.email,
+          text,
+          kind: 'note',
+        }];
+      }
+    }
+    await ref.update(patch);
     const prevEmail = String(task.assignedTo || '').toLowerCase();
     const nextEmail = String(nextAssigned || '').toLowerCase();
     if (nextEmail && nextEmail !== prevEmail) {
@@ -53,10 +116,9 @@ export default withAuth(async (req, res, session) => {
   }
 
   if (req.method === 'DELETE') {
-    if (!canDelete(session, task)) {
-      return res.status(403).json({ error: 'Only the person who created this task (or an Admin) can delete it.' });
+    if (!canEditFields(session, task)) {
+      return res.status(403).json({ error: 'Only the person who created this task can delete it.' });
     }
-    // TODO: also delete the linked Google Calendar event once Calendar is wired up.
     await ref.delete();
     return res.status(200).json({ success: true });
   }

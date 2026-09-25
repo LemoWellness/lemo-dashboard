@@ -2,19 +2,40 @@ import { adminDb } from '../../../lib/firebaseAdmin';
 import { withAuth } from '../../../lib/auth';
 import { notifyTaskAssigned } from '../../../lib/notifications';
 
-function canModify(session, task) {
-  if (session.role === 'Admin') return true;
-  const email = session.email.toLowerCase();
-  return email === String(task.addedBy || '').toLowerCase() || email === String(task.assignedTo || '').toLowerCase();
+function emailOf(session) {
+  return String(session.email || '').toLowerCase();
+}
+function isCreator(session, task) {
+  return emailOf(session) === String(task.addedBy || '').toLowerCase();
+}
+function isAssignee(session, task) {
+  return emailOf(session) === String(task.assignedTo || '').toLowerCase();
+}
+function isHq(session) {
+  return session.role === 'Admin' || session.taskDesk === 'hq';
+}
+function canSee(session, task) {
+  return isHq(session) || isCreator(session, task) || isAssignee(session, task);
+}
+function flags(session, task) {
+  const edit = session.role === 'Admin' || isCreator(session, task);
+  return {
+    canEdit: edit,
+    canDelete: edit,
+    canUpdateStatus: edit || isAssignee(session, task),
+    canAddUpdate: edit || isAssignee(session, task),
+  };
 }
 
 export default withAuth(async (req, res, session) => {
   if (req.method === 'GET') {
     const snap = await adminDb.collection('tasks').orderBy('timestamp', 'desc').get();
-    const tasks = snap.docs.map((d) => {
-      const t = d.data();
-      return { id: d.id, ...t, canEdit: canModify(session, t), canDelete: canModify(session, t) };
-    });
+    const tasks = snap.docs
+      .map((d) => {
+        const t = d.data();
+        return { id: d.id, ...t, ...flags(session, t) };
+      })
+      .filter((t) => canSee(session, t));
     return res.status(200).json({ tasks });
   }
 
@@ -23,18 +44,26 @@ export default withAuth(async (req, res, session) => {
     if (!assignedTo) return res.status(400).json({ error: 'Assigned To is required.' });
     if (!task || !String(task).trim()) return res.status(400).json({ error: 'Task description is required.' });
 
-    // TODO: Google Calendar invite on deadline (was CalendarApp in the old
-    // Code.gs). Needs a service account with Calendar API access — see
-    // .env.local.example. Left out of this first pass on purpose.
+    const firstNote = String(notes || '').trim();
+    const updates = firstNote ? [{
+      id: `u-${Date.now()}`,
+      at: new Date().toISOString(),
+      by: session.email,
+      byName: session.name || session.email,
+      text: firstNote,
+      kind: 'note',
+    }] : [];
+
     const docRef = await adminDb.collection('tasks').add({
       timestamp: new Date().toISOString(),
       addedBy: session.email,
       assignedTo,
-      task,
+      task: String(task).trim(),
       deadline: deadline || '',
       priority: priority || 'Medium',
       status: 'Not Started',
-      notes: notes || '',
+      notes: firstNote,
+      updates,
       calendarEventId: '',
     });
     try {

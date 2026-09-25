@@ -6,12 +6,13 @@ export default withAuth(async (req, res) => {
   const ref = adminDb.collection('users').doc(String(uid));
 
   if (req.method === 'PATCH') {
-    const { role, tabs, active, newPassword } = req.body || {};
+    const { role, tabs, active, newPassword, taskDesk } = req.body || {};
     const updates = {};
     if (role) updates.role = role === 'Admin' ? 'Admin' : 'Viewer';
     if (updates.role === 'Admin') updates.tabs = 'all';
     else if (tabs !== undefined) updates.tabs = Array.isArray(tabs) ? tabs : [];
     if (active !== undefined) updates.active = !!active;
+    if (taskDesk === 'hq' || taskDesk === 'contractor') updates.taskDesk = taskDesk;
     if (Object.keys(updates).length) await ref.update(updates);
 
     if (newPassword) {
