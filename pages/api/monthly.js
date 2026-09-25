@@ -110,8 +110,6 @@ function firstBillMonthKey(goLiveDate) {
   if (!parts[0] || !parts[1]) return '';
   const day = parts[2] || 1;
   const goMonth = `${parts[0]}-${String(parts[1]).padStart(2, '0')}`;
-  // 1st-of-month go-live: first bill is the next 1st (LT 7/1 → 8/1).
-  // Mid-month go-live: skip install month and the next month (NBG 5/15 → 7/1).
   return shiftMonth(goMonth, day <= 1 ? 1 : 2);
 }
 function incomeBelongsToSite(incomeLocation, name, project) {
@@ -210,15 +208,32 @@ export default withAuth(async (req, res) => {
   });
   const activeChairs = locationTable.reduce((s, l) => s + (Number(l.chairs) || 0), 0);
   const expenseBreakdown = breakdownFromReports(financialReports, monthKey, monthExpenses);
-  const allTimeReceivedByLocation = {}; allIncome.forEach((i) => { if (i.location) allTimeReceivedByLocation[i.location] = (allTimeReceivedByLocation[i.location] || 0) + (Number(i.amount) || 0); });
-  const outstandingPayments = Object.entries(projectsByName).filter(([, p]) => p.businessModel === 'Corporate Wellness' && Number(p.monthlyFee) > 0 && liveInMonth(p, monthKey)).map(([name, p]) => {
-    const monthsBillable = Math.floor(Number(p.tenureMonths) || 0);
-    if (monthsBillable <= 0) return null;
-    const expectedTotal = monthsBillable * cwContractMonthly(p);
-    const totalReceived = allTimeReceivedByLocation[name] || allTimeReceivedByLocation[p.name] || 0;
+  const outstandingPayments = cwSites.map(({ name, data }) => {
+    const fee = cwContractMonthly(data);
+    if (fee <= 0) return null;
+    const start = firstBillMonthKey(data.goLiveDate);
+    if (!start || start > monthKey) return null;
+    const monthsBillable = monthKeysFromTo(start, monthKey).length;
+    const expectedTotal = monthsBillable * fee;
+    const totalReceived = allIncome.reduce((s, i) => {
+      const mk = String(i.date || '').slice(0, 7);
+      if (mk.length !== 7 || mk > monthKey) return s;
+      if (!incomeBelongsToSite(i.location, name, data)) return s;
+      return s + (Number(i.amount) || 0);
+    }, 0);
     const balanceOwed = expectedTotal - totalReceived;
     if (balanceOwed <= 0.5) return null;
-    return { location: name, model: p.businessModel, monthlyFee: p.monthlyFee, monthsBillable, expectedTotal, totalReceived, balanceOwed };
+    return {
+      location: name,
+      model: data.businessModel,
+      monthlyFee: fee,
+      chairs: Number(data.numberOfChairs) > 0 ? Number(data.numberOfChairs) : 0,
+      monthsOwed: Math.round(balanceOwed / fee),
+      monthsBillable,
+      expectedTotal,
+      totalReceived,
+      balanceOwed,
+    };
   }).filter(Boolean).sort((a, b) => b.balanceOwed - a.balanceOwed);
   const trend = [];
   for (let i = 5; i >= 0; i--) {
