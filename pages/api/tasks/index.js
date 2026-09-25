@@ -26,7 +26,7 @@ function flags(session, task) {
     canDelete: edit,
     canUpdateStatus: work && !closed,
     canAddUpdate: work && task.status !== 'Cancelled',
-    canRequestCancel: work && !closed,
+    canRequestCancel: isAssignee(session, task) && !closed,
     canDecideCancel: edit && task.status === 'Cancel Requested',
   };
 }
