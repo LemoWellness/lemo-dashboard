@@ -25,7 +25,7 @@ export default function AccountUsage({ venue }) {
         <p className="muted">No Daily Raw Data matched this account name. Names must match the Daily import venue name.</p>
       )}
       {!loading && data && data.hasData && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+        <div className="usage-kpi-grid">
           <StatBox label="Usage (sessions)" value={count(data.totals.usage)} />
           <StatBox label="Refunds" value={money(data.totals.refunds)} />
           <StatBox label="RS Income" value={money(data.totals.rsIncome)} />
