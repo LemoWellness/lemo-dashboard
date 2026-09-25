@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import Layout from '../components/Layout';
 import AccountChrome from '../components/AccountChrome';
+import AccountUsage from '../components/AccountUsage';
 import AddExpenseModal from '../components/AddExpenseModal';
 import AddIncomeModal from '../components/AddIncomeModal';
 import CommunicationLogModal from '../components/CommunicationLogModal';
@@ -206,12 +207,13 @@ export default function Home() {
           <div className="grid-3">
             <div className="card"><h3 style={{ marginTop: 0 }}>ROI progress</h3>
               <div style={{ background: 'var(--warm-white)', border: '1px solid var(--iron)', borderRadius: 99, height: 10, overflow: 'hidden', marginBottom: 10 }}><div style={{ background: 'var(--ember)', height: '100%', width: `${(metrics.roiProgress || 0) * 100}%` }} /></div>
-              <div className="muted" style={{ fontSize: '0.8rem' }}>{metrics.roiProgress != null ? `${(metrics.roiProgress * 100).toFixed(1)}% of expenses recovered` : '-'} · {metrics.breakEvenDate === 'Not Reached' ? `Not Reached · ${metrics.daysToBreakEven}` : `Reached ${metrics.breakEvenDate}`}</div>
+              <div className="muted" style={{ fontSize: '0.8rem' }}>{metrics.roiProgress != null ? `${(metrics.roiProgress * 100).toFixed(1)}% of expenses recovered` : '-'} {String.fromCharCode(0x00b7)} {metrics.breakEvenDate === 'Not Reached' ? `Not Reached ${String.fromCharCode(0x00b7)} ${metrics.daysToBreakEven}` : `Reached ${metrics.breakEvenDate}`}</div>
               <div style={{ fontWeight: 500, marginTop: 16 }}>{selected.businessModel}</div>
             </div>
             <div className="card"><h3 style={{ marginTop: 0 }}>Expense categories (all-time)</h3>{metrics.expenseBreakdown.length > 0 ? (<ResponsiveContainer width="100%" height={200}><PieChart><Pie data={metrics.expenseBreakdown} dataKey="total" nameKey="category" outerRadius="75%" label={(e) => e.category}>{metrics.expenseBreakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}</Pie><Tooltip formatter={(v) => fmt(v)} /></PieChart></ResponsiveContainer>) : <p className="muted">No expenses yet.</p>}</div>
             <div className="card"><h3 style={{ marginTop: 0 }}>Monthly income</h3>{metrics.monthlyIncome.length > 0 ? (<ResponsiveContainer width="100%" height={220}><BarChart data={metrics.monthlyIncome}><XAxis dataKey="label" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip formatter={(v) => fmt(v)} /><Bar dataKey="total" fill="#E85D20" /></BarChart></ResponsiveContainer>) : <p className="muted">No income yet.</p>}</div>
           </div></>)}
+          <AccountUsage venue={selected.name} />
           <Collapsible title="Expenses" open={openSections.expenses} onToggle={() => setOpenSections({ ...openSections, expenses: !openSections.expenses })} actions={isAdmin && (<><button className="btn" style={{ background: 'transparent', color: 'var(--ember-muted)', border: '1px solid var(--ember-muted)' }} onClick={(e) => { e.stopPropagation(); downloadExpensePdf(); }}>Download PDF</button><button className="btn" onClick={(e) => { e.stopPropagation(); openExpenseModal(); }}>+ Add Expense</button></>)}>
             <div className="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Item</th><th>Amount</th></tr></thead><tbody>{expenses.slice(0, 10).map((e) => (<tr key={e.id}><td>{e.date}</td><td>{e.category}</td><td>{e.item}</td><td>{fmt(e.amount)}</td></tr>))}{expenses.length === 0 && <tr><td colSpan={4} className="muted">No expenses recorded.</td></tr>}</tbody></table></div>
           </Collapsible>
