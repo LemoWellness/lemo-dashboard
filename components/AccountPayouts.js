@@ -31,12 +31,13 @@ export default function AccountPayouts({ income, expenses }) {
     (expenses || []).forEach((e) => { const k = String(e.date || '').slice(0, 7); if (/^\d{4}-\d{2}$/.test(k)) set.add(k); });
     const now = new Date().toISOString().slice(0, 7);
     if (!set.has(now)) set.add(now);
-    return [...set].sort();
+    return [...set].sort().reverse();
   }, [income, expenses]);
 
   const [view, setView] = useState('payouts');
-  const [range, setRange] = useState('month');
-  const [month, setMonth] = useState(() => months[months.length - 1] || new Date().toISOString().slice(0, 7));
+  const [period, setPeriod] = useState(months[0] || new Date().toISOString().slice(0, 7));
+  const range = period === 'all' ? 'all' : 'month';
+  const month = period === 'all' ? (months[0] || '') : period;
 
   const totals = useMemo(() => {
     const inRows = (income || []).filter((i) => range === 'all' || monthKey(i) === month);
@@ -74,20 +75,20 @@ export default function AccountPayouts({ income, expenses }) {
 
   return (
     <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
         <h3 style={{ margin: 0 }}>{view === 'payouts' ? 'Monthly payouts' : 'Monthly income'}</h3>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           <button type="button" className="btn" style={view === 'payouts' ? undefined : outline} onClick={() => setView('payouts')}>Payouts</button>
           <button type="button" className="btn" style={view === 'income' ? undefined : outline} onClick={() => setView('income')}>Monthly Income</button>
-          <button type="button" className="btn" style={range === 'month' ? undefined : outline} onClick={() => setRange('month')}>Month</button>
-          <button type="button" className="btn" style={range === 'all' ? undefined : outline} onClick={() => setRange('all')}>All-time</button>
-          {range === 'month' && (
-            <select value={month} onChange={(e) => setMonth(e.target.value)}>
-              {months.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          )}
         </div>
       </div>
+      <label className="stack-field" style={{ maxWidth: 240, marginBottom: 14 }}>
+        Period
+        <select value={period} onChange={(e) => setPeriod(e.target.value)}>
+          <option value="all">All-time</option>
+          {months.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
+        </select>
+      </label>
 
       {view === 'payouts' && (
         <>
