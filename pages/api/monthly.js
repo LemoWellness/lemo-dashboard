@@ -148,6 +148,13 @@ export default withAuth(async (req, res) => {
   }
   const cwSites = Object.entries(projectsByName).map(([name, data]) => ({ name: data.name || name, data }))
     .filter(({ name, data }) => data.businessModel === 'Corporate Wellness' && isCommercialSite(name, data) && liveInMonth(data, monthKey));
+  let rsChairs = 0;
+  Object.entries(projectsByName).forEach(([id, data]) => {
+    const name = data.name || id;
+    if (data.businessModel === 'Revenue Sharing' && isCommercialSite(name, data) && liveInMonth(data, monthKey)) {
+      rsChairs += Number(data.numberOfChairs) > 0 ? Number(data.numberOfChairs) : 0;
+    }
+  });
   const corporateWellnessIncome = cwEarned(monthKey);
   const revenueSharingIncome = rsEarned(monthKey);
   const totalEarned = corporateWellnessIncome + revenueSharingIncome;
@@ -202,7 +209,7 @@ export default withAuth(async (req, res) => {
       model, income, cash, owed: model === 'Corporate Wellness' ? cwOwed : 0, expenses,
       netProfit: income - expenses,
       activeLocations: activeLocationNames.filter((n) => modelOf(n) === model).length,
-      chairs: model === 'Corporate Wellness' ? cwChairs : rows.reduce((s, l) => s + (Number(l.chairs) || 0), 0),
+      chairs: model === 'Corporate Wellness' ? cwChairs : rsChairs,
       revenueGeneratingChairs: rows.reduce((s, l) => s + (Number(l.chairs) || DEVICES_PER_VENUE), 0),
     };
   });
