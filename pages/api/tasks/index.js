@@ -19,11 +19,15 @@ function canSee(session, task) {
 }
 function flags(session, task) {
   const edit = session.role === 'Admin' || isCreator(session, task);
+  const work = edit || isAssignee(session, task);
+  const closed = task.status === 'Cancelled' || task.status === 'Cancel Requested';
   return {
-    canEdit: edit,
+    canEdit: edit && task.status !== 'Cancelled',
     canDelete: edit,
-    canUpdateStatus: edit || isAssignee(session, task),
-    canAddUpdate: edit || isAssignee(session, task),
+    canUpdateStatus: work && !closed,
+    canAddUpdate: work && task.status !== 'Cancelled',
+    canRequestCancel: work && !closed,
+    canDecideCancel: edit && task.status === 'Cancel Requested',
   };
 }
 
