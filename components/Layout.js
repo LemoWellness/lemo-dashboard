@@ -9,8 +9,6 @@ import PushEnableBanner from './PushEnableBanner';
 const NAV = [
   { code: 'mo', label: 'Monthly Overview' },
   { code: 'loc', label: 'Installations' },
-  { code: 'usage', label: 'Usage' },
-  { code: 'daily', label: 'Daily' },
   { code: 'reporting', label: 'Reporting' },
   { code: 'tasks', label: 'Tasks' },
   { code: 'financials', label: 'Financials' },
@@ -29,6 +27,7 @@ export default function Layout({ active, onNavigate, children }) {
   const { user, session } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const showBell = active === 'tasks';
 
   useEffect(() => {
     if (user === null) router.replace('/login');
@@ -55,7 +54,7 @@ export default function Layout({ active, onNavigate, children }) {
 
   function handleNav(code) {
     setMenuOpen(false);
-    if (code === 'reporting') {
+    if (code === 'reporting' || code === 'daily' || code === 'usage') {
       router.push('/reporting');
       return;
     }
@@ -67,7 +66,7 @@ export default function Layout({ active, onNavigate, children }) {
       <div className="mobile-topbar">
         <button onClick={() => setMenuOpen((o) => !o)} aria-label="Menu">☰</button>
         <h2>LEMO</h2>
-        <div style={{ marginLeft: 'auto' }}><NotificationBell /></div>
+        <div style={{ marginLeft: 'auto' }}>{showBell ? <NotificationBell /> : null}</div>
       </div>
       <div className={`sidebar-backdrop ${menuOpen ? 'show' : ''}`} onClick={() => setMenuOpen(false)} />
       <nav className={`sidebar ${menuOpen ? 'open' : ''}`}>
@@ -87,7 +86,6 @@ export default function Layout({ active, onNavigate, children }) {
             ))}
           </>
         )}
-        <NotificationBell />
         <div className="who">
           {session.name}
           <br />
@@ -96,6 +94,11 @@ export default function Layout({ active, onNavigate, children }) {
         <button className="signout" onClick={() => signOut(auth)}>Sign out</button>
       </nav>
       <main className="main">
+        {showBell && (
+          <div className="desktop-topbar">
+            <NotificationBell />
+          </div>
+        )}
         <PushEnableBanner />
         {hasAccess ? children : (
           <div className="card" style={{ maxWidth: 480 }}>
