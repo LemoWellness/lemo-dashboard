@@ -18,6 +18,7 @@ export default function AddExpenseModal({ venue, form, error, onChange, onClose,
             <option>Maintenance</option>
             <option>Shipping</option>
             <option>Payout to Venue</option>
+            <option>Payout to BD</option>
             <option>Payout to BD Consultants</option>
             <option>Other</option>
           </select>
