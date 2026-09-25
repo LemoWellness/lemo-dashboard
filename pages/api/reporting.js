@@ -1,4 +1,4 @@
-// Reporting only. Reads dailyRawData + projects. Does not change Daily or Usage.
+// Reporting only. Reads dailyRawData + projects.
 import { adminDb } from '../../lib/firebaseAdmin';
 import { withAuth } from '../../lib/auth';
 
@@ -53,6 +53,12 @@ function venueRow(name, v) {
   };
 }
 
+function rowDedupeKey(row) {
+  return [row.countDate, row.venueId, row.outletId, row.venueName, row.outletName]
+    .map((p) => String(p || '').trim().toLowerCase())
+    .join('|');
+}
+
 export default withAuth(async (req, res, session) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed.' });
   const tabs = session.tabs;
@@ -82,6 +88,7 @@ export default withAuth(async (req, res, session) => {
   const venueFirstSeen = {};
   let badDateCount = 0;
   const badDateExamples = [];
+  const seenKeys = new Set();
 
   dailySnap.forEach((doc) => {
     const row = doc.data();
@@ -95,6 +102,9 @@ export default withAuth(async (req, res, session) => {
       }
       return;
     }
+    const key = rowDedupeKey(row);
+    if (seenKeys.has(key)) return;
+    seenKeys.add(key);
     if (!dateVenue[dateKey]) dateVenue[dateKey] = {};
     if (!dateVenue[dateKey][venue]) dateVenue[dateKey][venue] = emptyVenue();
     addRow(dateVenue[dateKey][venue], row);
@@ -187,7 +197,7 @@ export default withAuth(async (req, res, session) => {
   const latestIsWeekend = isWeekendKey(latestKey);
   const latestVenues = dateVenue[latestKey];
   const latestIdx = dateKeys.indexOf(latestKey);
-  const previousKey = latestIdx > 0 ? dateKeys[latestIdx - 1] : null;
+  const previousKey = latestIdx > 0 ? dateKeys[dateKeys.length - 1] && dateKeys[latestIdx - 1] : null;
   const previousBusinessDayForCW = mostRecentBusinessDayBefore(latestKey, dateKeys);
   const rsPreviousVenues = previousKey ? dateVenue[previousKey] : {};
   const cwPreviousVenues = previousBusinessDayForCW ? dateVenue[previousBusinessDayForCW] : {};
