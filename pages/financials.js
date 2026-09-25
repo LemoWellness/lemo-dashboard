@@ -5,7 +5,8 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { authedFetch } from '../lib/firebaseClient';
 
-const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : '\u2014');
+const dash = String.fromCharCode(0x2014);
+const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : dash);
 const PIE_COLORS = ['#E85D20', '#0C0A09', '#706B66', '#2A1A10', '#d9a441', '#6b4c14'];
 
 export default function Financials() {
@@ -22,6 +23,7 @@ export default function Financials() {
     if (code === 'tasks') return router.push('/tasks');
     if (code === 'daily') return router.push('/daily');
     if (code === 'usage') return router.push('/usage');
+    if (code === 'reporting') return router.push('/reporting');
     if (code === 'mo') return router.push('/monthly');
     if (code === 'risk') return router.push('/risk');
   }
@@ -38,6 +40,7 @@ export default function Financials() {
   useEffect(() => { if (session) load(); }, [session]);
 
   async function deleteReport(id) {
+    if (String(id).startsWith('live-')) return;
     if (!window.confirm('Delete this report?')) return;
     await authedFetch(`/api/financials/${id}`, { method: 'DELETE' });
     load();
@@ -62,12 +65,12 @@ export default function Financials() {
 
       {isAdmin && (
         <p className="muted" style={{ fontSize: '0.8rem' }}>
-          Upload new Profit &amp; Loss / Top Expenses reports from <a href="/admin/import">Import Data</a>.
+          Live books update when CW or RS income and expenses are saved. Uploaded Profit &amp; Loss reports still come from <a href="/admin/import">Import Data</a>.
         </p>
       )}
 
-      {loading ? <p className="muted">Loading…</p> : !selected ? (
-        <p className="muted">No financial reports uploaded yet. An admin can bring one in from Import Data.</p>
+      {loading ? <p className="muted">Loading...</p> : !selected ? (
+        <p className="muted">No live books or uploaded financial reports yet.</p>
       ) : (
         <>
           <div className="grid-3">
@@ -83,7 +86,7 @@ export default function Financials() {
                 <BarChart data={selected.topExpenses} layout="vertical" margin={{ left: 10, right: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} horizontal={false} />
                   <XAxis type="number" tickFormatter={fmt} tick={{ fontSize: 10 }} />
-                  <YAxis type="category" dataKey="category" width={220} tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="category" width={140} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v) => fmt(v)} />
                   <Bar dataKey="amount" barSize={18}>
                     {selected.topExpenses.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
@@ -100,20 +103,20 @@ export default function Financials() {
                 <thead><tr><th>Category</th><th>Amount</th><th>% of Total</th></tr></thead>
                 <tbody>
                   {(selected.topExpenses || []).map((e, i) => (
-                    <tr key={i}><td>{e.category}</td><td>{fmt(e.amount)}</td><td>{e.percentOfTotal != null ? `${e.percentOfTotal}%` : '\u2014'}</td></tr>
+                    <tr key={i}><td>{e.category}</td><td>{fmt(e.amount)}</td><td>{e.percentOfTotal != null ? `${e.percentOfTotal}%` : dash}</td></tr>
                   ))}
                   {(!selected.topExpenses || selected.topExpenses.length === 0) && <tr><td colSpan={3} className="muted">No categories for this period.</td></tr>}
                 </tbody>
-                </table>
-              </div>
+              </table>
             </div>
+          </div>
 
           <div className="card">
             <h3 style={{ marginTop: 0 }}>Report history</h3>
-            <p className="muted" style={{ fontSize: '0.75rem', marginTop: -8 }}>Click a row to view that period above.</p>
+            <p className="muted" style={{ fontSize: '0.75rem', marginTop: -8 }}>Live books come from recorded income and expenses. Click a row to view that period.</p>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Period</th><th>Revenue</th><th>Expense</th><th>Net Profit</th><th>Uploaded</th>{isAdmin && <th></th>}</tr></thead>
+                <thead><tr><th>Period</th><th>Revenue</th><th>Expense</th><th>Net Profit</th><th>Source</th>{isAdmin && <th></th>}</tr></thead>
                 <tbody>
                   {reports.map((r) => (
                     <tr
@@ -123,8 +126,8 @@ export default function Financials() {
                     >
                       <td>{r.label || `${r.periodStart} to ${r.periodEnd}`}</td>
                       <td>{fmt(r.revenue)}</td><td>{fmt(r.expense)}</td><td>{fmt(r.netProfit)}</td>
-                      <td className="muted">{r.uploadedAt ? new Date(r.uploadedAt).toLocaleDateString() : '\u2014'}</td>
-                      {isAdmin && <td><button className="task-delete-btn" onClick={(e) => { e.stopPropagation(); deleteReport(r.id); }}>Delete</button></td>}
+                      <td className="muted">{r.source === 'live' ? 'Live books' : (r.uploadedAt ? new Date(r.uploadedAt).toLocaleDateString() : 'Upload')}</td>
+                      {isAdmin && <td>{r.source !== 'live' && <button className="task-delete-btn" onClick={(e) => { e.stopPropagation(); deleteReport(r.id); }}>Delete</button>}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -139,7 +142,7 @@ export default function Financials() {
 
 function Kpi({ label, value, negative }) {
   return (
-    <div className="card" style={{ marginBottom: 0 }}>
+    <div className="card kpi-card" style={{ marginBottom: 0 }}>
       <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>{label}</div>
       <div style={{ fontFamily: "'Lora', serif", fontSize: '1.5rem', color: negative ? 'var(--ember-muted)' : 'var(--obsidian)' }}>{value}</div>
     </div>
