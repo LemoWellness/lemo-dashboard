@@ -31,14 +31,6 @@ function reportCoversMonth(report, monthKey) {
   const me = monthEnd(monthKey);
   return (start || ms) <= me && (end || start || me) >= ms;
 }
-function usagePeriodOverlapsMonth(period, monthKey) {
-  const raw = String(period || '');
-  const parts = raw.includes('~') ? raw.split('~') : raw.includes(' to ') ? raw.split(' to ') : [raw];
-  const start = (parts[0] || '').trim().slice(0, 10);
-  const end = (parts[1] || parts[0] || '').trim().slice(0, 10);
-  if (!start) return false;
-  return start <= monthEnd(monthKey) && (end || start) >= monthStart(monthKey);
-}
 function expenseTotalFromReports(reports, monthKey, fallbackRows) {
   const matches = reports.filter((r) => reportCoversMonth(r, monthKey));
   if (matches.length) {
@@ -122,9 +114,9 @@ export default withAuth(async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed.' });
   try {
   const monthKey = req.query.month || new Date().toISOString().slice(0, 7);
-  const [projectsSnap, expensesSnap, incomeSnap, financialsSnap, dailySnap, usageSnap] = await Promise.all([
+  const [projectsSnap, expensesSnap, incomeSnap, financialsSnap, dailySnap] = await Promise.all([
     adminDb.collection('projects').get(), adminDb.collection('expenses').get(), adminDb.collection('income').get(),
-    adminDb.collection('financialReports').get(), adminDb.collection('dailyRawData').get(), adminDb.collection('usageRawData').get(),
+    adminDb.collection('financialReports').get(), adminDb.collection('dailyRawData').get(),
   ]);
   const projectsByName = {}; const projectsByLower = {};
   projectsSnap.forEach((doc) => {
@@ -167,10 +159,9 @@ export default withAuth(async (req, res) => {
   const perLocationIncome = {}; monthIncome.forEach((i) => { perLocationIncome[i.location] = (perLocationIncome[i.location] || 0) + (Number(i.amount) || 0); });
   const perLocationExpenses = {}; monthExpenses.forEach((e) => { perLocationExpenses[e.location] = (perLocationExpenses[e.location] || 0) + (Number(e.amount) || 0); });
   const dailyActive = new Set(); dailySnap.forEach((doc) => { const row = doc.data(); const venue = String(row.venueName || '').trim(); if (venue && (row.countDate || '').startsWith(monthKey)) dailyActive.add(venue); });
-  const usageActive = new Set(); usageSnap.forEach((doc) => { const row = doc.data(); const venue = String(row.venueName || '').trim(); if (venue && usagePeriodOverlapsMonth(row.period, monthKey)) usageActive.add(venue); });
   const displayNames = {};
   function remember(name) { if (!name) return; const { key } = findProject(projectsByName, projectsByLower, name); displayNames[String(key).trim().toLowerCase()] = key || name; }
-  Object.keys(perLocationIncome).forEach(remember); Object.keys(perLocationExpenses).forEach(remember); dailyActive.forEach(remember); usageActive.forEach(remember); cwSites.forEach(({ name }) => remember(name));
+  Object.keys(perLocationIncome).forEach(remember); Object.keys(perLocationExpenses).forEach(remember); dailyActive.forEach(remember); cwSites.forEach(({ name }) => remember(name));
   const activeLocationNames = Array.from(new Set(Object.values(displayNames).filter(Boolean)))
     .filter((name) => liveInMonth(findProject(projectsByName, projectsByLower, name).data, monthKey));
   const activeLocations = activeLocationNames.length;
