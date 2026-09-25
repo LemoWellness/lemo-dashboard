@@ -60,6 +60,7 @@ h1, h2, h3 { font-family: 'Lora', serif; font-weight: 400; letter-spacing: -0.01
 
 .main { flex: 1; padding: 28px 36px; }
 .main h1 { font-size: 1.3rem; margin-top: 0; }
+.desktop-topbar { display: flex; justify-content: flex-end; margin: 0 0 12px; }
 
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
@@ -192,6 +193,7 @@ select option:hover {
   .main h1 { font-size: 1.15rem; }
   table.data, table { font-size: 0.82rem; }
   th, td { padding: 7px 6px; }
+  .desktop-topbar { display: none; }
 
   .mobile-topbar {
     display: flex; align-items: center; gap: 12px;
