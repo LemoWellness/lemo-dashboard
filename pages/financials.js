@@ -43,7 +43,7 @@ export default function Financials() {
     const row = reports.find((r) => r.id === id);
     const uploadIds = row?.uploadIds || [];
     if (!uploadIds.length) return;
-    if (!window.confirm('Delete the uploaded report for this period? Recorded income and expenses stay.')) return;
+    if (!window.confirm('Delete this report?')) return;
     await Promise.all(uploadIds.map((uid) => authedFetch(`/api/financials/${uid}`, { method: 'DELETE' })));
     load();
   }
@@ -67,12 +67,12 @@ export default function Financials() {
 
       {isAdmin && (
         <p className="muted" style={{ fontSize: '0.8rem' }}>
-          Upload Profit &amp; Loss reports from <a href="/admin/import">Import Data</a>. Recorded CW and RS income is included in each month.
+          Upload Profit &amp; Loss / Top Expenses reports from <a href="/admin/import">Import Data</a>.
         </p>
       )}
 
       {loading ? <p className="muted">Loading...</p> : !selected ? (
-        <p className="muted">No financials yet.</p>
+        <p className="muted">No financial reports uploaded yet. An admin can bring one in from Import Data.</p>
       ) : (
         <>
           <div className="grid-3">

@@ -13,57 +13,71 @@ function monthKeyOf(date) {
   const k = String(date || '').slice(0, 7);
   return /^\d{4}-\d{2}$/.test(k) ? k : '';
 }
+function incomeInRange(rows, start, end) {
+  return rows.filter((i) => {
+    const d = String(i.date || '').slice(0, 10);
+    if (d.length !== 10) return false;
+    if (start && d < start) return false;
+    if (end && d > end) return false;
+    return true;
+  });
+}
 
 export default withAuth(async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed.' });
-  const [reportSnap, incomeSnap, expenseSnap] = await Promise.all([
+  const [reportSnap, incomeSnap] = await Promise.all([
     adminDb.collection('financialReports').orderBy('periodStart', 'desc').get(),
     adminDb.collection('income').get(),
-    adminDb.collection('expenses').get(),
   ]);
-
   const incomeRows = incomeSnap.docs.map((d) => d.data());
-  const expenseRows = expenseSnap.docs.map((d) => d.data());
-  const uploaded = reportSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const used = new Set();
 
-  const months = new Set();
-  incomeRows.forEach((i) => { const k = monthKeyOf(i.date); if (k) months.add(k); });
-  expenseRows.forEach((e) => { const k = monthKeyOf(e.date); if (k) months.add(k); });
-  uploaded.forEach((r) => { const k = monthKeyOf(r.periodStart); if (k) months.add(k); });
-
-  const reports = [...months].sort().reverse().map((key) => {
-    const inMonth = incomeRows.filter((i) => monthKeyOf(i.date) === key);
-    const exMonth = expenseRows.filter((e) => monthKeyOf(e.date) === key);
-    const uploads = uploaded.filter((r) => monthKeyOf(r.periodStart) === key);
-    const liveRevenue = inMonth.reduce((s, i) => s + (Number(i.amount) || 0), 0);
-    const liveExpense = exMonth.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-    const uploadRevenue = uploads.reduce((s, r) => s + (Number(r.revenue) || 0), 0);
-    const uploadExpense = uploads.reduce((s, r) => s + (Number(r.expense) || 0), 0);
-    const revenue = liveRevenue || uploadRevenue;
-    const expense = liveExpense || uploadExpense;
-    const byCat = {};
-    exMonth.forEach((e) => {
-      const cat = e.category || 'Uncategorized';
-      byCat[cat] = (byCat[cat] || 0) + (Number(e.amount) || 0);
-    });
-    let topExpenses = Object.entries(byCat)
-      .map(([category, amount]) => ({ category, amount, percentOfTotal: expense ? Math.round((amount / expense) * 100) : null }))
-      .sort((a, b) => b.amount - a.amount);
-    if (!topExpenses.length) {
-      uploads.forEach((r) => { (r.topExpenses || []).forEach((c) => { topExpenses.push({ category: c.category, amount: Number(c.amount) || 0, percentOfTotal: c.percentOfTotal ?? null }); }); });
-    }
+  const uploaded = reportSnap.docs.map((d) => {
+    const data = d.data();
+    const matched = incomeInRange(incomeRows, data.periodStart, data.periodEnd);
+    matched.forEach((i) => used.add(`${i.location || ''}|${i.date || ''}|${i.amount || ''}`));
+    const added = matched.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    const revenue = (Number(data.revenue) || 0) + added;
+    const expense = data.expense == null || data.expense === '' ? 0 : Number(data.expense) || 0;
     return {
-      id: `month-${key}`,
-      periodStart: `${key}-01`,
-      periodEnd: monthEnd(key),
-      label: monthLabel(key),
+      id: d.id,
+      ...data,
       revenue,
       expense,
       netProfit: revenue - expense,
-      topExpenses,
-      uploadIds: uploads.map((u) => u.id),
+      uploadIds: [d.id],
     };
   });
 
+  const leftoverMonths = new Set();
+  incomeRows.forEach((i) => {
+    const key = `${i.location || ''}|${i.date || ''}|${i.amount || ''}`;
+    if (used.has(key)) return;
+    const mk = monthKeyOf(i.date);
+    if (mk) leftoverMonths.add(mk);
+  });
+
+  const extra = [...leftoverMonths].sort().reverse().map((key) => {
+    const start = `${key}-01`;
+    const end = monthEnd(key);
+    const matched = incomeRows.filter((i) => {
+      const stamp = `${i.location || ''}|${i.date || ''}|${i.amount || ''}`;
+      return !used.has(stamp) && monthKeyOf(i.date) === key;
+    });
+    const revenue = matched.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    return {
+      id: `income-${key}`,
+      periodStart: start,
+      periodEnd: end,
+      label: monthLabel(key),
+      revenue,
+      expense: 0,
+      netProfit: revenue,
+      topExpenses: [],
+      uploadIds: [],
+    };
+  });
+
+  const reports = [...uploaded, ...extra].sort((a, b) => String(b.periodStart || '').localeCompare(String(a.periodStart || '')));
   return res.status(200).json({ reports });
 }, { tab: 'financials' });
