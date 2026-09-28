@@ -11,14 +11,17 @@ function isCreator(session, task) {
 function isAssignee(session, task) {
   return emailOf(session) === String(task.assignedTo || '').toLowerCase();
 }
+function isTaskAdmin(session) {
+  return session.role === 'Admin' || !!session.taskAdmin;
+}
 function isHq(session) {
-  return session.role === 'Admin' || session.role === 'Tasks Admin' || session.taskDesk === 'hq';
+  return isTaskAdmin(session) || session.taskDesk === 'hq';
 }
 function canSee(session, task) {
   return isHq(session) || isCreator(session, task) || isAssignee(session, task);
 }
 function flags(session, task) {
-  const edit = session.role === 'Admin' || session.role === 'Tasks Admin' || isCreator(session, task);
+  const edit = isTaskAdmin(session) || isCreator(session, task);
   const work = edit || isAssignee(session, task);
   const closed = task.status === 'Cancelled' || task.status === 'Cancel Requested';
   return {

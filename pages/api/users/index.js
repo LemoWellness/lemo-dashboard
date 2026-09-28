@@ -21,10 +21,11 @@ export default withAuth(async (req, res) => {
       uid: u.uid,
       email: u.email || '',
       name: u.name || '',
-      role: u.role || 'Viewer',
+      role: u.role === 'Admin' ? 'Admin' : 'Viewer',
       tabs: u.tabs,
       active: u.active !== false,
-      taskDesk: (u.role === 'Admin' || u.role === 'Tasks Admin' || u.taskDesk === 'hq') ? 'hq' : 'contractor',
+      taskDesk: (u.role === 'Admin' || u.role === 'Tasks Admin' || u.taskAdmin || u.taskDesk === 'hq') ? 'hq' : 'contractor',
+      taskAdmin: u.role === 'Admin' || u.role === 'Tasks Admin' || !!u.taskAdmin,
       lastLogin: authByUid[u.uid] || '',
       homeScreen: !!u.lastStandaloneAt,
       lastStandaloneAt: u.lastStandaloneAt || '',
@@ -39,14 +40,15 @@ export default withAuth(async (req, res) => {
     if (!password || String(password).length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
     const userRecord = await adminAuth.createUser({ email, password, displayName: name || email });
-    const finalRole = role === 'Admin' ? 'Admin' : (role === 'Tasks Admin' ? 'Tasks Admin' : 'Viewer');
+    const finalRole = role === 'Admin' ? 'Admin' : 'Viewer';
     await adminDb.collection('users').doc(userRecord.uid).set({
       email: email.toLowerCase(),
       name: name || email,
       role: finalRole,
-      tabs: finalRole === 'Admin' ? 'all' : (Array.isArray(tabs) ? tabs : (finalRole === 'Tasks Admin' ? ['tasks'] : [])),
+      tabs: finalRole === 'Admin' ? 'all' : (Array.isArray(tabs) ? tabs : []),
       active: true,
-      taskDesk: finalRole === 'Viewer' ? 'contractor' : 'hq',
+      taskDesk: finalRole === 'Admin' ? 'hq' : 'contractor',
+      taskAdmin: finalRole === 'Admin',
       createdAt: new Date().toISOString(),
     });
     return res.status(200).json({ success: true, uid: userRecord.uid });
