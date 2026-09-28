@@ -3,13 +3,17 @@ import { withAuth } from '../../../lib/auth';
 import { notifyTaskAssigned } from '../../../lib/notifications';
 
 function isTaskAdmin(session) {
-  return session.role === 'Admin' || session.role === 'Tasks Admin';
+  return session.role === 'Admin' || !!session.taskAdmin || session.role === 'Tasks Admin';
 }
 
 function weekFromNow() {
   const d = new Date();
   d.setDate(d.getDate() + 7);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function tokens(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9@.\s-]/g, ' ').split(/\s+/).filter(Boolean);
 }
 
 function parseNextSteps(raw) {
@@ -32,12 +36,23 @@ function parseNextSteps(raw) {
 }
 
 function matchUser(names, users) {
-  const first = String(names[0] || '').toLowerCase();
-  if (!first) return null;
-  const exact = users.find((u) => String(u.name || '').toLowerCase() === first || String(u.email || '').toLowerCase() === first);
-  if (exact) return exact;
-  const last = first.split(/\s+/).pop();
-  return users.find((u) => String(u.name || '').toLowerCase().includes(last) || String(u.email || '').toLowerCase().includes(last)) || null;
+  for (const raw of names || []) {
+    const ntoks = tokens(raw);
+    if (!ntoks.length) continue;
+    const exact = users.find((u) => tokens(u.name).join(' ') === ntoks.join(' ') || String(u.email || '').toLowerCase() === String(raw).toLowerCase());
+    if (exact) return exact;
+    const first = ntoks[0];
+    const hits = users.filter((u) => {
+      const ut = tokens(u.name);
+      const email = String(u.email || '').toLowerCase();
+      return ut[0] === first || ut.includes(first) || email.split('@')[0] === first || email.startsWith(first + '.');
+    });
+    if (hits.length === 1) return hits[0];
+    if (hits.length > 1) {
+      return hits.find((u) => tokens(u.name).length === 1) || hits[0];
+    }
+  }
+  return null;
 }
 
 async function extractText(body) {
@@ -58,39 +73,10 @@ export default withAuth(async (req, res, session) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
   if (!isTaskAdmin(session)) return res.status(403).json({ error: 'Only an Admin or Tasks Admin can import meeting notes.' });
 
-  let text;
-  try {
-    text = await extractText(req.body || {});
-  } catch (err) {
-    return res.status(400).json({ error: 'Could not read that file. Paste the Next steps text instead.' });
-  }
-  const parsed = parseNextSteps(text);
-  if (!parsed.length) {
-    return res.status(400).json({ error: 'No Next steps found. Use a Gemini notes file or paste the Next steps section.' });
-  }
-
-  const snap = await adminDb.collection('users').where('active', '==', true).get();
-  const users = snap.docs.map((d) => d.data());
-  const deadline = weekFromNow();
-  const preview = parsed.map((item, i) => {
-    const user = matchUser(item.names, users);
-    const extra = item.names.slice(1).join(', ');
-    const notes = [item.body, extra ? `Also with: ${extra}` : '', 'Imported from meeting notes. Due date set to 1 week.'].filter(Boolean).join(' ');
-    return {
-      key: String(i),
-      task: item.title,
-      assignedTo: user ? String(user.email || '').toLowerCase() : '',
-      assignedName: user ? (user.name || user.email) : item.names[0] || '',
-      unmatched: !user,
-      deadline,
-      notes,
-    };
-  });
-
-  if (req.body && req.body.create) {
-    const selected = Array.isArray(req.body.items) && req.body.items.length ? req.body.items : preview.filter((p) => p.assignedTo);
+  if (req.body && req.body.create && Array.isArray(req.body.items) && req.body.items.length) {
+    const deadline = weekFromNow();
     const created = [];
-    for (const row of selected) {
+    for (const row of req.body.items) {
       const assignedTo = String(row.assignedTo || '').toLowerCase();
       const task = String(row.task || '').trim();
       if (!assignedTo || !task) continue;
@@ -124,8 +110,38 @@ export default withAuth(async (req, res, session) => {
       }
       created.push(docRef.id);
     }
-    return res.status(200).json({ success: true, created: created.length, ids: created, deadline });
+    if (!created.length) return res.status(400).json({ error: 'No tasks created. Assign each task to a user first.' });
+    return res.status(200).json({ success: true, created: created.length, ids: created });
   }
+
+  let text;
+  try {
+    text = await extractText(req.body || {});
+  } catch (err) {
+    return res.status(400).json({ error: 'Could not read that file. Paste the Next steps text instead.' });
+  }
+  const parsed = parseNextSteps(text);
+  if (!parsed.length) {
+    return res.status(400).json({ error: 'No Next steps found. Use a Gemini notes file or paste the Next steps section.' });
+  }
+
+  const snap = await adminDb.collection('users').where('active', '==', true).get();
+  const users = snap.docs.map((d) => d.data());
+  const deadline = weekFromNow();
+  const preview = parsed.map((item, i) => {
+    const user = matchUser(item.names, users);
+    const extra = item.names.slice(1).join(', ');
+    const notes = [item.body, extra ? `Also with: ${extra}` : '', 'Imported from meeting notes. Due date set to 1 week.'].filter(Boolean).join(' ');
+    return {
+      key: String(i),
+      task: item.title,
+      assignedTo: user ? String(user.email || '').toLowerCase() : '',
+      assignedName: user ? (user.name || user.email) : item.names[0] || '',
+      unmatched: !user,
+      deadline,
+      notes,
+    };
+  });
 
   return res.status(200).json({ items: preview, deadline });
 }, { tab: 'tasks' });

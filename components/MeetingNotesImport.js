@@ -1,18 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { authedFetch } from '../lib/firebaseClient';
 
 export default function MeetingNotesImport({ onCreated }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [items, setItems] = useState([]);
+  const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    authedFetch('/api/assignable-users').then((r) => r.json()).then((d) => setUsers(d.users || [])).catch(() => {});
+  }, [open]);
 
   function close() {
     setOpen(false);
     setText('');
     setItems([]);
     setError('');
+    setStatus('');
   }
 
   async function fileToPayload(file) {
@@ -26,6 +34,7 @@ export default function MeetingNotesImport({ onCreated }) {
   async function preview(payload) {
     setBusy(true);
     setError('');
+    setStatus('');
     try {
       const res = await authedFetch('/api/tasks/from-notes', { method: 'POST', body: JSON.stringify(payload) });
       const data = await res.json();
@@ -50,14 +59,22 @@ export default function MeetingNotesImport({ onCreated }) {
     preview({ text });
   }
 
+  function setAssignee(index, email) {
+    const user = users.find((u) => u.email === email);
+    setItems((list) => list.map((item, i) => (
+      i === index ? { ...item, assignedTo: email, assignedName: user ? user.name : email, unmatched: !email } : item
+    )));
+  }
+
   async function create() {
-    const ready = items.filter((i) => i.assignedTo);
+    const ready = items.filter((i) => i.assignedTo && i.task);
     if (!ready.length) {
-      setError('Match each task to a user before creating.');
+      setError('Assign each task to a person, then click Create tasks.');
       return;
     }
     setBusy(true);
     setError('');
+    setStatus('');
     try {
       const res = await authedFetch('/api/tasks/from-notes', {
         method: 'POST',
@@ -65,7 +82,8 @@ export default function MeetingNotesImport({ onCreated }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not create tasks.');
-      close();
+      setStatus(`Created ${data.created} task${data.created === 1 ? '' : 's'}.`);
+      setItems([]);
       if (onCreated) onCreated();
     } catch (err) {
       setError(err.message);
@@ -74,6 +92,8 @@ export default function MeetingNotesImport({ onCreated }) {
     }
   }
 
+  const readyCount = items.filter((i) => i.assignedTo).length;
+
   return (
     <>
       <button className="btn" type="button" style={{ background: 'transparent', color: 'var(--ember)', border: '1px solid var(--ember)' }} onClick={() => setOpen(true)}>Import notes</button>
@@ -81,7 +101,7 @@ export default function MeetingNotesImport({ onCreated }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 120, padding: 12 }} onClick={close}>
           <div className="card" style={{ width: 'min(640px, 100%)', maxHeight: '90vh', overflow: 'auto', margin: 0 }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>Import meeting notes</h3>
-            <p className="muted">Upload a Gemini notes PDF or paste the Next steps section. Due date is 1 week from today. You can change dates after the tasks are created.</p>
+            <p className="muted">Upload a Gemini notes PDF or paste the Next steps section. First names are enough. Due date is 1 week from today.</p>
             <label className="stack-field">PDF or text file
               <input type="file" accept=".pdf,.txt,.text" onChange={onFile} />
             </label>
@@ -90,19 +110,25 @@ export default function MeetingNotesImport({ onCreated }) {
             </label>
             <button className="btn" type="button" disabled={busy || !text.trim()} onClick={onPaste}>Preview pasted text</button>
             {error && <p className="form-error">{error}</p>}
+            {status && <p className="muted">{status}</p>}
             {items.length > 0 && (
               <div style={{ marginTop: 16 }}>
-                <p className="muted">{items.length} task{items.length === 1 ? '' : 's'} found. Unmatched names need an email before create.</p>
+                <p className="muted">{readyCount} of {items.length} assigned. Pick a person if the name did not match.</p>
                 {items.map((item, i) => (
                   <div key={item.key || i} className="card" style={{ marginBottom: 8, padding: 12 }}>
                     <strong>{item.task}</strong>
-                    <div className="muted">{item.assignedName || 'No owner'} {item.unmatched ? '(no matching user)' : ''}</div>
+                    <label className="stack-field" style={{ marginTop: 8 }}>Assign to
+                      <select value={item.assignedTo || ''} onChange={(e) => setAssignee(i, e.target.value)}>
+                        <option value="">Select...</option>
+                        {users.map((u) => <option key={u.email} value={u.email}>{u.name}</option>)}
+                      </select>
+                    </label>
                     <div className="muted">Due {item.deadline}</div>
                     <div className="muted">{item.notes}</div>
                   </div>
                 ))}
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button className="btn" type="button" disabled={busy} onClick={create}>{busy ? 'Creating...' : 'Create tasks'}</button>
+                  <button className="btn" type="button" disabled={busy || !readyCount} onClick={create}>{busy ? 'Creating...' : `Create ${readyCount} task${readyCount === 1 ? '' : 's'}`}</button>
                   <button className="btn btn-ghost" type="button" onClick={close}>Cancel</button>
                 </div>
               </div>
