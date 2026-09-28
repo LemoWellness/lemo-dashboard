@@ -69,7 +69,7 @@ export default function Reporting() {
         </div>
       </div>
       <p className="muted">
-        Built from Daily Raw Data only. Usage is chair sessions started. Gross Income is Total Amount. Income / Net Income is after refunds.
+        Usage, Gross, Refunds, and Net Income come from Daily Raw Data. Session mix comes from the Usage file uploaded in the Sessions table.
       </p>
       {loading && <p className="muted">Loading reporting data...</p>}
       {error && <p className="form-error">{error}</p>}
@@ -77,16 +77,16 @@ export default function Reporting() {
         <p className="muted">No daily data uploaded yet. Import Daily Raw Data to populate Reporting.</p>
       )}
       {!loading && !error && data && data.hasData && view === 'daily' && (
-        <DailyView data={data} selectedDate={selectedDate} onDate={(d) => { setSelectedDate(d); load('daily', d); }} />
+        <DailyView data={data} selectedDate={selectedDate} isAdmin={session?.role === 'Admin'} onUploaded={() => load('daily', selectedDate)} onDate={(d) => { setSelectedDate(d); load('daily', d); }} />
       )}
       {!loading && !error && data && data.hasData && view === 'monthly' && (
-        <MonthlyView data={data} selectedMonth={selectedMonth} onMonth={(m) => { setSelectedMonth(m); load('monthly', m); }} />
+        <MonthlyView data={data} selectedMonth={selectedMonth} isAdmin={session?.role === 'Admin'} onUploaded={() => load('monthly', selectedMonth)} onMonth={(m) => { setSelectedMonth(m); load('monthly', m); }} />
       )}
     </Layout>
   );
 }
 
-function DailyView({ data, selectedDate, onDate }) {
+function DailyView({ data, selectedDate, onDate, isAdmin, onUploaded }) {
   const anyAlert = data.duplicates.length || data.missingVenues.length || data.sustainedOutages.length || data.flags.length;
   const gross = Number(data.totals.gross != null ? data.totals.gross : data.totals.totalAmount) || ((Number(data.totals.netIncome)||0) + (Number(data.totals.refunds)||0));
   const net = Number(data.totals.netIncome) || 0;
@@ -158,11 +158,12 @@ function DailyView({ data, selectedDate, onDate }) {
         </div>
       )}
       <VenueTable rows={data.venueTable} />
+      <SessionsTable rows={data.sessionTable} isAdmin={isAdmin} onUploaded={onUploaded} />
     </>
   );
 }
 
-function MonthlyView({ data, selectedMonth, onMonth }) {
+function MonthlyView({ data, selectedMonth, onMonth, isAdmin, onUploaded }) {
   const gross = Number(data.totals.gross != null ? data.totals.gross : data.totals.totalAmount) || ((Number(data.totals.netIncome)||0) + (Number(data.totals.refunds)||0));
   const net = Number(data.totals.netIncome) || 0;
   return (
@@ -179,6 +180,12 @@ function MonthlyView({ data, selectedMonth, onMonth }) {
         </label>
       </div>
       {data.dataHealthIssues?.count > 0 && <HealthBanner issues={data.dataHealthIssues} />}
+      {data.story && (
+        <div className="card" style={{ borderLeft: '3px solid var(--ember)' }}>
+          <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>This month</div>
+          <p style={{ margin: 0 }}>{data.story}</p>
+        </div>
+      )}
       <div className="grid-4">
         <Kpi label="Usage" value={count(data.totals.orders)} />
         <Kpi label="Gross Income" value={fmt(gross)} />
@@ -193,6 +200,7 @@ function MonthlyView({ data, selectedMonth, onMonth }) {
       <UsageChart data={data.trend} xKey="month" title="Usage trend" />
       <IncomeChart data={data.trend} xKey="month" title="RS Net Income trend" />
       <VenueTable rows={data.venueTable} title="Venue totals - selected month (ranked by Usage)" />
+      <SessionsTable rows={data.sessionTable} isAdmin={isAdmin} onUploaded={onUploaded} />
     </>
   );
 }
@@ -243,7 +251,9 @@ function VenueTable({ rows, title }) {
           <thead>
             <tr>
               <th>Venue</th>
+              <th title="Chairs on the Installations account.">Chairs</th>
               <th title="Chair sessions started (orderNumber) from Daily Raw Data.">Usage</th>
+              <th title="Usage divided by chairs on the account. Blank if chair count is missing.">Avg / chair</th>
               <th title="Total Amount from Daily Raw Data, before refunds.">Gross Income</th>
               <th title="Refunds from Daily Raw Data.">Refunds</th>
               <th title="Gross minus refunds from Daily Raw Data.">Income</th>
@@ -254,14 +264,90 @@ function VenueTable({ rows, title }) {
             {rows.map((v, i) => (
               <tr key={i}>
                 <td>{v.venue}</td>
+                <td>{v.chairs != null ? count(v.chairs) : '-'}</td>
                 <td>{count(v.orders)}</td>
+                <td>{v.avgPerChair != null ? Math.round(v.avgPerChair * 10) / 10 : '-'}</td>
                 <td>{fmt(v.gross != null ? v.gross : (Number(v.netIncome)||0) + (Number(v.refunds)||0))}</td>
                 <td>{fmt(v.refunds)}</td>
                 <td>{fmt(v.netIncome)}</td>
                 <td>{Math.round(v.avgVisitors * 10) / 10}</td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={6} className="muted">No venue activity for this period</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={8} className="muted">No venue activity for this period</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function fmtPct(n) {
+  if (n == null || n === '') return '-';
+  const v = Number(n);
+  if (isNaN(v)) return '-';
+  const pct = v <= 1 && v >= 0 ? v * 100 : v;
+  return `${Math.round(pct * 10) / 10}%`;
+}
+
+function SessionsTable({ rows, isAdmin, onUploaded }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  async function onFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    setBusy(true); setMsg('');
+    try {
+      const body = new FormData();
+      body.append('type', 'usageRawData');
+      body.append('file', file);
+      const res = await authedFetch('/api/import', { method: 'POST', body });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) throw new Error(data.error || 'Upload failed.');
+      setMsg(`Saved ${data.written || 0} Usage rows.`);
+      if (onUploaded) onUploaded();
+    } catch (err) {
+      setMsg(err.message || 'Upload failed.');
+    }
+    setBusy(false);
+  }
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <h3 style={{ margin: 0 }}>Sessions</h3>
+        {isAdmin && (
+          <label className="btn" style={{ margin: 0, cursor: busy ? 'wait' : 'pointer' }}>
+            {busy ? 'Uploading...' : 'Upload Usage file'}
+            <input type="file" accept=".csv,.xlsx,.xls" onChange={onFile} disabled={busy} style={{ display: 'none' }} />
+          </label>
+        )}
+      </div>
+      <p className="muted" style={{ marginTop: 8 }}>
+        10 / 15 / 25 minute mix from the Usage export. This does not change Usage or income totals.
+      </p>
+      {msg && <p className="muted">{msg}</p>}
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Venue</th>
+              <th>10 min</th>
+              <th>15 min</th>
+              <th>25 min</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(rows || []).map((v, i) => (
+              <tr key={i}>
+                <td>{v.venue}</td>
+                <td>{fmtPct(v.firstGearRate)}</td>
+                <td>{fmtPct(v.secondGearRate)}</td>
+                <td>{fmtPct(v.thirdGearRate)}</td>
+              </tr>
+            ))}
+            {!(rows && rows.length) && (
+              <tr><td colSpan={4} className="muted">No Usage file for this month yet. Upload the Usage export to see session mix.</td></tr>
+            )}
           </tbody>
         </table>
       </div>
