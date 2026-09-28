@@ -46,6 +46,20 @@ function pick(row, ...names) {
   return '';
 }
 
+function pickContains(row, ...needles) {
+  for (const needle of needles) {
+    const n = normKey(needle);
+    for (const k of Object.keys(row || {})) {
+      const kn = normKey(k);
+      if (kn === n || kn.includes(n)) {
+        const v = row[k];
+        if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+      }
+    }
+  }
+  return '';
+}
+
 function normalizeUsagePeriod(v) {
   if (v instanceof Date && !isNaN(v.getTime())) {
     return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}`;
@@ -255,9 +269,9 @@ function rowToDoc(type, row, filename) {
         orderNumber: num(pick(row, 'Order number')),
         seatConversionRate: rate(pick(row, 'Seat conversion rate')),
         h5ConversionRate: rate(pick(row, 'H5 conversion rate')),
-        firstGearRate: rate(pick(row, 'First gear rate')),
-        secondGearRate: rate(pick(row, 'Second gear rate')),
-        thirdGearRate: rate(pick(row, 'Third gear rate')),
+        firstGearRate: rate(pickContains(row, 'First gear rate', 'first gear', '1st gear')),
+        secondGearRate: rate(pickContains(row, 'Second gear rate', 'second gear', '2nd gear')),
+        thirdGearRate: rate(pickContains(row, 'Third gear rate', 'third gear', '3rd gear')),
         placeCount: num(pick(row, 'Place count')),
         areaCount: num(pick(row, 'Area count')),
         currency: pick(row, 'Currency'),
