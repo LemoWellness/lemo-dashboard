@@ -12,7 +12,7 @@ function isAssignee(session, task) {
   return emailOf(session) === String(task.assignedTo || '').toLowerCase();
 }
 function canEditFields(session, task) {
-  return session.role === 'Admin' || isCreator(session, task);
+  return session.role === 'Admin' || session.role === 'Tasks Admin' || isCreator(session, task);
 }
 function canWork(session, task) {
   return canEditFields(session, task) || isAssignee(session, task);
@@ -42,7 +42,7 @@ export default withAuth(async (req, res, session) => {
     const editingFields = assignedTo !== undefined || taskText !== undefined || deadline !== undefined || priority !== undefined || notes !== undefined;
 
     if (cancelRequest) {
-      if (!isAssignee(session, task) && session.role !== 'Admin') {
+      if (!isAssignee(session, task) && session.role !== 'Admin' && session.role !== 'Tasks Admin') {
         return res.status(403).json({ error: 'Only the assignee can request cancellation.' });
       }
       if (task.status === 'Cancelled' || task.status === 'Cancel Requested') {
