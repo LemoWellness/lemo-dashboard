@@ -88,9 +88,19 @@ function usagePeriodMonth(period) {
   return ym ? ym[0] : '';
 }
 
-function buildSessionTable(usageSnap, month) {
-  const byVenue = {};
+function usageMonths(usageSnap) {
+  const months = new Set();
   if (!usageSnap || usageSnap.empty) return [];
+  usageSnap.forEach((doc) => {
+    const m = usagePeriodMonth(doc.data().period);
+    if (m) months.add(m);
+  });
+  return [...months].sort();
+}
+
+function rowsForUsageMonth(usageSnap, month) {
+  const byVenue = {};
+  if (!usageSnap || usageSnap.empty || !month) return [];
   usageSnap.forEach((doc) => {
     const row = doc.data();
     if (usagePeriodMonth(row.period) !== month) return;
@@ -114,6 +124,17 @@ function buildSessionTable(usageSnap, month) {
     secondGearRate: v.weight ? v.second / v.weight : null,
     thirdGearRate: v.weight ? v.third / v.weight : null,
   })).sort((a, b) => b.orders - a.orders);
+}
+
+function buildSessionTable(usageSnap, month) {
+  const months = usageMonths(usageSnap);
+  const used = months.includes(month) ? month : (months[months.length - 1] || month);
+  return {
+    month: used || month,
+    requestedMonth: month,
+    availableMonths: months,
+    rows: rowsForUsageMonth(usageSnap, used),
+  };
 }
 
 function buildSessionMeta(usageSnap, month) {
@@ -286,6 +307,7 @@ export default withAuth(async (req, res, session) => {
       return { month: m, orders, corporateWellnessOrders: cw, revenueSharingOrders: rs, revenueSharingIncome: income };
     });
 
+    const sessionPack = buildSessionTable(usageSnap, month);
     return res.status(200).json({
       hasData: true,
       view: 'monthly',
@@ -301,7 +323,8 @@ export default withAuth(async (req, res, session) => {
         orders: trend[trend.length - 2].orders,
         netIncome: trend[trend.length - 2].revenueSharingIncome,
       } : null, venueTable),
-      sessionTable: buildSessionTable(usageSnap, month),
+      sessionPack,
+      sessionTable: sessionPack.rows,
       sessionMeta: buildSessionMeta(usageSnap, month),
       dataHealthIssues,
       unsupportedUsageMetrics: ['seating', 'idle', 'occupied', 'scanned', 'payCount', 'h5Conversion'],
@@ -423,6 +446,7 @@ export default withAuth(async (req, res, session) => {
     return { date: dKey, corporateWellnessOrders: cwTotal, revenueSharingOrders: rsTotal, revenueSharingIncome: rsIncomeTotal };
   });
 
+  const sessionPack = buildSessionTable(usageSnap, latestKey.slice(0, 7));
   return res.status(200).json({
     hasData: true,
     view: 'daily',
@@ -436,7 +460,8 @@ export default withAuth(async (req, res, session) => {
     duplicates,
     sustainedOutages,
     trend,
-    sessionTable: buildSessionTable(usageSnap, latestKey.slice(0, 7)),
+    sessionPack,
+    sessionTable: sessionPack.rows,
     sessionMeta: buildSessionMeta(usageSnap, latestKey.slice(0, 7)),
     dataHealthIssues,
     availableDates: dateKeys,
