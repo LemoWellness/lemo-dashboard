@@ -65,7 +65,7 @@ export default function ManageUsers() {
       uid: u.uid,
       name: u.name || '',
       email: u.email || '',
-      role: u.role === 'Admin' ? 'Admin' : 'Viewer',
+      role: u.role === 'Admin' ? 'Admin' : (u.role === 'Tasks Admin' ? 'Tasks Admin' : 'Viewer'),
       tabs: u.tabs === 'all' ? ALL_TABS.map((t) => t.code) : [...(u.tabs || [])],
       newPassword: '',
     });
@@ -109,11 +109,11 @@ export default function ManageUsers() {
           <label>Temporary password<input type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required /></label>
           <label>Role
             <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              <option>Viewer</option><option>Admin</option>
+              <option>Viewer</option><option>Tasks Admin</option><option>Admin</option>
             </select>
           </label>
         </div>
-        {form.role === 'Viewer' && (
+        {form.role !== 'Admin' && (
           <div style={{ margin: '10px 0' }}>
             <span className="muted">Tabs: </span>
             {ALL_TABS.map((t) => (
@@ -132,12 +132,12 @@ export default function ManageUsers() {
           <div className="inline-form">
             <label>Role
               <select value={editing.role} onChange={(e) => setEditing({ ...editing, role: e.target.value })}>
-                <option>Viewer</option><option>Admin</option>
+                <option>Viewer</option><option>Tasks Admin</option><option>Admin</option>
               </select>
             </label>
             <label>New password (optional)<input type="text" value={editing.newPassword} onChange={(e) => setEditing({ ...editing, newPassword: e.target.value })} placeholder="Leave blank to keep" /></label>
           </div>
-          {editing.role === 'Viewer' && (
+          {editing.role !== 'Admin' && (
             <div style={{ margin: '10px 0' }}>
               <span className="muted">Tabs: </span>
               {ALL_TABS.map((t) => (
