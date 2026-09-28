@@ -88,11 +88,17 @@ function usagePeriodMonth(period) {
   return ym ? ym[0] : '';
 }
 
+function rowUsageMonth(row) {
+  const stored = String((row && row.periodMonth) || '');
+  if (/^\d{4}-\d{2}$/.test(stored)) return stored;
+  return usagePeriodMonth(row && row.period);
+}
+
 function usageMonths(usageSnap) {
   const months = new Set();
   if (!usageSnap || usageSnap.empty) return [];
   usageSnap.forEach((doc) => {
-    const m = usagePeriodMonth(doc.data().period);
+    const m = rowUsageMonth(doc.data());
     if (m) months.add(m);
   });
   return [...months].sort();
@@ -103,7 +109,7 @@ function rowsForUsageMonth(usageSnap, month) {
   if (!usageSnap || usageSnap.empty || !month) return [];
   usageSnap.forEach((doc) => {
     const row = doc.data();
-    if (usagePeriodMonth(row.period) !== month) return;
+    if (rowUsageMonth(row) !== month) return;
     const name = String(row.venueName || '').trim();
     if (!name) return;
     if (!byVenue[name]) byVenue[name] = { venue: name, orders: 0, first: 0, second: 0, third: 0, weight: 0 };
@@ -144,7 +150,7 @@ function buildSessionMeta(usageSnap, month) {
   usageSnap.forEach((doc) => {
     const row = doc.data();
     total += 1;
-    const m = usagePeriodMonth(row.period);
+    const m = rowUsageMonth(row);
     if (m === month) matched += 1;
     if (samples.length < 6) {
       samples.push({ period: String(row.period || ''), month: m || '', venue: String(row.venueName || '') });
