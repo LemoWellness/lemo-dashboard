@@ -27,7 +27,7 @@ function emptyVenue() {
 
 function addRow(target, row) {
   target.orders += Number(row.orderNumber) || 0;
-  target.netIncome += Number(row.pos) || 0;
+  target.netIncome += Number(row.totalAmount) || 0;
   target.refunds += Number(row.refund) || 0;
   target.completed += Number(row.completeNum) || 0;
   target.totalAmount += Number(row.totalAmount) || 0;
@@ -168,9 +168,11 @@ export default withAuth(async (req, res, session) => {
         const venuesThisDay = dateVenue[dKey];
         Object.keys(venuesThisDay).forEach((v) => {
           orders += venuesThisDay[v].orders;
-          income += venuesThisDay[v].netIncome;
           if (isCorporateWellness(v)) cw += venuesThisDay[v].orders;
-          else rs += venuesThisDay[v].orders;
+          else {
+            rs += venuesThisDay[v].orders;
+            income += venuesThisDay[v].netIncome;
+          }
         });
       });
       return { month: m, orders, corporateWellnessOrders: cw, revenueSharingOrders: rs, revenueSharingIncome: income };
