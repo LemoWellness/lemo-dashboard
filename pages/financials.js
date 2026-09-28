@@ -96,8 +96,11 @@ export default function Financials() {
         <p className="muted">No financial reports uploaded yet. An admin can bring one in from Import Data.</p>
       ) : (
         <>
+          {selected.expenseMissing && (
+            <p className="muted" style={{ marginTop: 0 }}>Expense report for this period has not been uploaded yet. It is usually added at month end.</p>
+          )}
           <div className="grid-3">
-            <Kpi label="Revenue" value={fmt(selected.revenue)} />
+            <Kpi label="Net Income" value={fmt(selected.revenue)} />
             <Kpi label="Expense" value={fmt(selected.expense)} />
             <Kpi label="Net Profit" value={fmt(selected.netProfit)} negative={selected.netProfit < 0} />
           </div>
@@ -147,7 +150,7 @@ export default function Financials() {
             <h3 style={{ marginTop: 0 }}>Report history</h3>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Period</th><th>Revenue</th><th>Expense</th><th>Net Profit</th>{isAdmin && <th></th>}</tr></thead>
+                <thead><tr><th>Period</th><th>Net Income</th><th>Expense</th><th>Net Profit</th>{isAdmin && <th></th>}</tr></thead>
                 <tbody>
                   {reports.map((r) => (
                     <tr
@@ -178,7 +181,7 @@ export default function Financials() {
             ) : (
               <p style={{ whiteSpace: 'pre-wrap' }}>{noteRow.note || 'No note yet.'}</p>
             )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'end', gap: 10 }}>
               <button type="button" className="btn btn-ghost" onClick={() => setNoteRow(null)}>Close</button>
               {isAdmin && <button type="submit" className="btn">Save note</button>}
             </div>
