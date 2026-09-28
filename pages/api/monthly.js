@@ -145,14 +145,28 @@ export default withAuth(async (req, res) => {
       const p = findProject(projectsByName, projectsByLower, venue).data || {};
       if (p.businessModel !== 'Revenue Sharing') return;
       if (!isCommercialSite(venue, p)) return;
-      if (!byVenue[venue]) byVenue[venue] = { total: 0, refund: 0 };
-      byVenue[venue].total += Number(row.totalAmount) || 0;
-      byVenue[venue].refund += Number(row.refund) || 0;
+      if (!byVenue[venue]) byVenue[venue] = { total: 0, refund: 0, net: 0 };
+      const gross = Number(row.totalAmount) || 0;
+      const refund = Number(row.refund) || 0;
+      byVenue[venue].total += gross;
+      byVenue[venue].refund += refund;
+      byVenue[venue].net += gross - refund;
     });
     return byVenue;
   }
   function rsEarned(forMonth) {
-    return Object.values(rsDailyByVenue(forMonth)).reduce((s, v) => s + v.total, 0);
+    return Object.values(rsDailyByVenue(forMonth)).reduce((s, v) => s + (v.net != null ? v.net : (v.total - v.refund)), 0);
+  }
+  function rsRefunds(forMonth) {
+    return Object.values(rsDailyByVenue(forMonth)).reduce((s, v) => s + v.refund, 0);
+  }
+  function cwCash(forMonth) {
+    return allIncome.reduce((s, i) => {
+      if (!(i.date || '').startsWith(forMonth)) return s;
+      const p = findProject(projectsByName, projectsByLower, i.location).data || {};
+      if (p.businessModel !== 'Corporate Wellness') return s;
+      return s + (Number(i.amount) || 0);
+    }, 0);
   }
   const cwSites = Object.entries(projectsByName).map(([name, data]) => ({ name: data.name || name, data }))
     .filter(({ name, data }) => data.businessModel === 'Corporate Wellness' && isCommercialSite(name, data) && liveInMonth(data, monthKey));
@@ -167,12 +181,15 @@ export default withAuth(async (req, res) => {
   });
   const rsThisMonth = rsDailyByVenue(monthKey);
   const corporateWellnessIncome = cwEarned(monthKey);
+  const corporateWellnessCash = cwCash(monthKey);
   const revenueSharingIncome = rsEarned(monthKey);
-  const totalEarned = corporateWellnessIncome + revenueSharingIncome;
+  const totalRefunds = rsRefunds(monthKey);
+  const totalEarned = corporateWellnessCash + revenueSharingIncome;
   const totalLemoIncome = totalEarned;
-  const totalCashCollected = cashInMonth(allIncome, monthKey);
+  const totalIncome = totalEarned;
+  const totalCashCollected = totalEarned;
   const totalExpenses = expenseTotalFromReports(financialReports, monthKey, monthExpenses);
-  const netProfitLoss = totalCashCollected - totalExpenses;
+  const netProfitLoss = totalIncome - totalExpenses;
   const perLocationIncome = {}; monthIncome.forEach((i) => { perLocationIncome[i.location] = (perLocationIncome[i.location] || 0) + (Number(i.amount) || 0); });
   const perLocationExpenses = {}; monthExpenses.forEach((e) => { perLocationExpenses[e.location] = (perLocationExpenses[e.location] || 0) + (Number(e.amount) || 0); });
   const dailyActive = new Set(); dailySnap.forEach((doc) => { const row = doc.data(); const venue = String(row.venueName || '').trim(); if (venue && (row.countDate || '').startsWith(monthKey)) dailyActive.add(venue); });
@@ -218,7 +235,7 @@ export default withAuth(async (req, res) => {
   const comparison = ['Corporate Wellness', 'Revenue Sharing'].map((model) => {
     const rows = locationTable.filter((l) => l.model === model && l.commercial !== false);
     const rsGross = Object.values(rsThisMonth).reduce((s, v) => s + v.total, 0);
-    const rsRefunds = Object.values(rsThisMonth).reduce((s, v) => s + v.refund, 0);
+    const rsRefundsTot = Object.values(rsThisMonth).reduce((s, v) => s + v.refund, 0);
     const income = model === 'Corporate Wellness' ? corporateWellnessIncome : rsGross;
     const cash = model === 'Corporate Wellness'
       ? monthIncome.filter((i) => modelOf(i.location) === model).reduce((s, i) => s + (Number(i.amount) || 0), 0)
@@ -226,8 +243,8 @@ export default withAuth(async (req, res) => {
     const expenses = monthExpenses.filter((e) => modelOf(e.location) === model).reduce((s, e) => s + (Number(e.amount) || 0), 0);
     return {
       model, income, cash,
-      refunds: model === 'Revenue Sharing' ? rsRefunds : 0,
-      netIncome: model === 'Revenue Sharing' ? rsGross - rsRefunds : cash,
+      refunds: model === 'Revenue Sharing' ? rsRefundsTot : 0,
+      netIncome: model === 'Revenue Sharing' ? rsGross - rsRefundsTot : cash,
       owed: model === 'Corporate Wellness' ? cwOwed : 0, expenses,
       netProfit: income - expenses,
       activeLocations: activeLocationNames.filter((n) => modelOf(n) === model).length,
@@ -268,23 +285,23 @@ export default withAuth(async (req, res) => {
   const trend = [];
   for (let i = 5; i >= 0; i--) {
     const key = shiftMonth(monthKey, -i);
-    const income = cashInMonth(allIncome, key);
+    const income = rsEarned(key) + cwCash(key);
     const expenseTotal = expenseTotalFromReports(financialReports, key, allExpenses.filter((r) => (r.date || '').startsWith(key)));
     trend.push({ month: monthLabel(key).replace(/, /, ' '), income, expenses: expenseTotal, net: income - expenseTotal });
   }
   const prevMonthKey = shiftMonth(monthKey, -1);
-  const prevCash = cashInMonth(allIncome, prevMonthKey);
+  const prevIncome = rsEarned(prevMonthKey) + cwCash(prevMonthKey);
   const prevExpenses = expenseTotalFromReports(financialReports, prevMonthKey, allExpenses.filter((r) => (r.date || '').startsWith(prevMonthKey)));
   res.status(200).json({
     month: monthLabel(monthKey), monthKey, asOf: monthEnd(monthKey), asOfLabel: asOfLabel(monthKey),
-    totalEarned, totalCashCollected, totalLemoIncome, corporateWellnessIncome, revenueSharingIncome, totalExpenses, netProfitLoss,
+    totalEarned, totalIncome, totalCashCollected, totalLemoIncome, corporateWellnessIncome, corporateWellnessCash, revenueSharingIncome, totalRefunds, totalExpenses, netProfitLoss,
     activeLocations,
     corporateWellnessLocations: activeLocationNames.filter((n) => modelOf(n) === 'Corporate Wellness').length,
     revenueSharingLocations: activeLocationNames.filter((n) => modelOf(n) === 'Revenue Sharing').length,
     activeChairs, comparison, trend,
     monthComparison: {
-      current: { label: monthLabel(monthKey).split(' ')[0], cash: totalCashCollected, income: totalCashCollected, expenses: totalExpenses, net: netProfitLoss },
-      previous: { label: monthLabel(prevMonthKey).split(' ')[0], cash: prevCash, income: prevCash, expenses: prevExpenses, net: prevCash - prevExpenses },
+      current: { label: monthLabel(monthKey).split(' ')[0], cash: totalIncome, income: totalIncome, expenses: totalExpenses, net: netProfitLoss },
+      previous: { label: monthLabel(prevMonthKey).split(' ')[0], cash: prevIncome, income: prevIncome, expenses: prevExpenses, net: prevIncome - prevExpenses },
     },
     locationTable, expenseBreakdown, outstandingPayments,
   });
