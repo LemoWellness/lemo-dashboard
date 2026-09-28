@@ -86,6 +86,20 @@ function normalizeCountDate(v) {
   return s;
 }
 
+function usageMonthFromFilename(name) {
+  const m = String(name || '').match(/(\d{2})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/);
+  if (!m) return '';
+  return `20${m[1]}-${m[2]}`;
+}
+
+function usageMonthFromPeriod(period) {
+  const s = String(period || '');
+  const dates = s.match(/\d{4}-\d{2}-\d{2}/g) || [];
+  if (dates.length) return dates[0].slice(0, 7);
+  const ym = s.match(/\d{4}-\d{2}/);
+  return ym ? ym[0] : '';
+}
+
 function stableId(prefix, parts) {
   const key = parts.map((p) => String(p || '').trim().toLowerCase()).join('|');
   return prefix + crypto.createHash('sha1').update(key).digest('hex');
@@ -94,7 +108,7 @@ function stableId(prefix, parts) {
 function docIdFor(type, doc) {
   if (type === 'projects') return doc.name;
   if (type === 'usageRawData') {
-    return stableId('u_', [doc.period, doc.outletId, doc.venueName, doc.outletName]);
+    return stableId('u_', [doc.periodMonth || doc.period, doc.outletId, doc.venueName, doc.outletName]);
   }
   if (type === 'dailyRawData') {
     return stableId('d_', [doc.countDate, doc.venueId, doc.outletId, doc.venueName, doc.outletName]);
@@ -134,7 +148,7 @@ function parseTableFile(fileObj) {
   return parsed.data;
 }
 
-function rowToDoc(type, row) {
+function rowToDoc(type, row, filename) {
   switch (type) {
     case 'projects':
       return {
@@ -220,9 +234,11 @@ function rowToDoc(type, row) {
         orderPrice: num(pick(row, 'Order Price', 'Order price')),
         avgVisitors: num(pick(row, 'Average Number of Visitors', 'Average number of visitors')),
       };
-    case 'usageRawData':
+    case 'usageRawData': {
+      const period = normalizeUsagePeriod(pick(row, 'Date', 'Period', 'Statistical Period', 'Count Date'));
       return {
-        period: normalizeUsagePeriod(pick(row, 'Date', 'Period', 'Statistical Period', 'Count Date')),
+        period,
+        periodMonth: usageMonthFromFilename(filename) || usageMonthFromPeriod(period),
         outletId: pick(row, 'Outlet ID'),
         outletName: pick(row, 'Outlet Name'),
         province: pick(row, 'Province'),
@@ -246,6 +262,7 @@ function rowToDoc(type, row) {
         areaCount: num(pick(row, 'Area count')),
         currency: pick(row, 'Currency'),
       };
+    }
     default:
       return null;
   }
@@ -344,6 +361,7 @@ export default async function handler(req, res) {
 
     const fileObj = Array.isArray(files.file) ? files.file[0] : files.file;
     if (!fileObj) return res.status(400).json({ error: 'No file uploaded.' });
+    const original = fileObj.originalFilename || fileObj.newFilename || fileObj.filepath || '';
 
     const rows = parseTableFile(fileObj);
 
@@ -361,7 +379,7 @@ export default async function handler(req, res) {
       const batch = adminDb.batch();
       const chunk = rows.slice(i, i + batchSize);
       chunk.forEach((row) => {
-        const doc = rowToDoc(type, row);
+        const doc = rowToDoc(type, row, original);
         const hasKey = doc && (doc.name || doc.location || doc.venueName || doc.outletId || doc.venueId);
         if (!hasKey) {
           skipped++;
