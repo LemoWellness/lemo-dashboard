@@ -222,6 +222,82 @@ function rowToDoc(type, row) {
   }
 }
 
+async function deleteDailyRowsForDates(dates) {
+  const dateSet = new Set(dates.filter(Boolean));
+  if (!dateSet.size) return 0;
+  const snap = await adminDb.collection('dailyRawData').get();
+  let removed = 0;
+  let batch = adminDb.batch();
+  let n = 0;
+  for (const doc of snap.docs) {
+    const d = String(doc.data().countDate || '');
+    if (!dateSet.has(d)) continue;
+    batch.delete(doc.ref);
+    n += 1;
+    removed += 1;
+    if (n === 400) {
+      await batch.commit();
+      batch = adminDb.batch();
+      n = 0;
+    }
+  }
+  if (n) await batch.commit();
+  return removed;
+}
+
+async function syncRsIncomeFromDaily(dates) {
+  const months = [...new Set(dates.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).map((d) => d.slice(0, 7)))];
+  if (!months.length) return 0;
+  const [projectsSnap, dailySnap] = await Promise.all([
+    adminDb.collection('projects').get(),
+    adminDb.collection('dailyRawData').get(),
+  ]);
+  const rsNames = new Set();
+  projectsSnap.forEach((doc) => {
+    const p = doc.data();
+    if (p.businessModel === 'Revenue Sharing' && p.name) rsNames.add(String(p.name).trim());
+  });
+  const totals = {};
+  dailySnap.forEach((doc) => {
+    const row = doc.data();
+    const venue = String(row.venueName || '').trim();
+    const month = String(row.countDate || '').slice(0, 7);
+    if (!rsNames.has(venue) || !months.includes(month)) return;
+    const key = venue + '|' + month;
+    totals[key] = (totals[key] || 0) + (Number(row.pos) || 0);
+  });
+  const incomeSnap = await adminDb.collection('income').get();
+  let updated = 0;
+  for (const key of Object.keys(totals)) {
+    const [location, month] = key.split('|');
+    const amount = Math.round(totals[key] * 100) / 100;
+    const existing = incomeSnap.docs.find((d) => {
+      const row = d.data();
+      const notes = String(row.notes || '');
+      const paid = String(row.periodMonth || row.date || '').slice(0, 7);
+      return row.location === location && paid === month && notes.includes('Auto-synced from Daily Raw Data');
+    });
+    const payload = {
+      location,
+      date: `${month}-01`,
+      periodMonth: month,
+      businessModel: 'Revenue Sharing',
+      amount,
+      notes: 'Auto-synced from Daily Raw Data',
+      addedBy: 'daily-sync',
+      updatedAt: new Date().toISOString(),
+    };
+    if (amount <= 0) {
+      if (existing) await existing.ref.delete();
+      continue;
+    }
+    if (existing) await existing.ref.set(payload, { merge: true });
+    else await adminDb.collection('income').add({ ...payload, createdAt: new Date().toISOString() });
+    updated += 1;
+  }
+  return updated;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
@@ -241,6 +317,13 @@ export default async function handler(req, res) {
     if (!fileObj) return res.status(400).json({ error: 'No file uploaded.' });
 
     const rows = parseTableFile(fileObj);
+
+    let replacedDates = 0;
+    let syncedIncome = 0;
+    if (type === 'dailyRawData') {
+      const dates = [...new Set(rows.map((row) => normalizeCountDate(pick(row, 'Count Date', 'Count date'))).filter(Boolean))];
+      replacedDates = await deleteDailyRowsForDates(dates);
+    }
 
     let written = 0;
     let skipped = 0;
@@ -265,7 +348,12 @@ export default async function handler(req, res) {
       await batch.commit();
     }
 
-    return res.status(200).json({ success: true, written, skipped, totalRows: rows.length });
+    if (type === 'dailyRawData') {
+      const dates = [...new Set(rows.map((row) => normalizeCountDate(pick(row, 'Count Date', 'Count date'))).filter(Boolean))];
+      syncedIncome = await syncRsIncomeFromDaily(dates);
+    }
+
+    return res.status(200).json({ success: true, written, skipped, totalRows: rows.length, replacedDates, syncedIncome });
   } catch (err) {
     const status = err.status || 500;
     if (status === 500) console.error(err);
