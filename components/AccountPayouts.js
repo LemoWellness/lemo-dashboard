@@ -92,7 +92,7 @@ export default function AccountPayouts({ income, expenses }) {
 
       {view === 'payouts' && (
         <>
-          <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Income</div>
+          <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Net Income</div>
           <div style={{ fontFamily: "'Lora', serif", fontSize: '1.7rem', marginBottom: 12 }}>{money(totals.totalIncome)}</div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={payoutBars} layout="vertical" margin={{ left: 8, right: 16 }}>
