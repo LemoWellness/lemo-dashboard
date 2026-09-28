@@ -26,6 +26,12 @@ function num(v) {
   return isNaN(n) ? null : n;
 }
 
+function rate(v) {
+  if (v === '' || v === undefined || v === null) return null;
+  const n = Number(String(v).replace(/,/g, '').replace(/%/g, '').trim());
+  return isNaN(n) ? null : n;
+}
+
 function normKey(k) {
   return String(k || '').replace(/^\uFEFF/, '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
 }
@@ -40,8 +46,31 @@ function pick(row, ...names) {
   return '';
 }
 
+function normalizeUsagePeriod(v) {
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}`;
+  }
+  if (typeof v === 'number' && v > 20000 && v < 80000) {
+    const parsed = XLSX.SSF.parse_date_code(v);
+    if (parsed) {
+      return `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
+    }
+  }
+  let s = String(v || '').trim();
+  if (!s) return '';
+  s = s.replace(/\s+to\s+/ig, '~').replace(/\s*~\s*/g, '~');
+  s = s.replace(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/g, (_, m, d, y) => {
+    const year = String(y).length === 2 ? (Number(y) >= 70 ? `19${y}` : `20${y}`) : y;
+    return `${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  });
+  s = s.replace(/\b(\d{4})\/(\d{1,2})\/(\d{1,2})\b/g, (_, y, m, d) => (
+    `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+  ));
+  return s;
+}
+
 function normPeriod(p) {
-  return String(p || '').trim().replace(/\s+to\s+/ig, '~');
+  return normalizeUsagePeriod(p);
 }
 
 function normalizeCountDate(v) {
@@ -193,7 +222,7 @@ function rowToDoc(type, row) {
       };
     case 'usageRawData':
       return {
-        period: normPeriod(pick(row, 'Date')),
+        period: normalizeUsagePeriod(pick(row, 'Date', 'Period', 'Statistical Period', 'Count Date')),
         outletId: pick(row, 'Outlet ID'),
         outletName: pick(row, 'Outlet Name'),
         province: pick(row, 'Province'),
@@ -210,9 +239,9 @@ function rowToDoc(type, row) {
         orderNumber: num(pick(row, 'Order number')),
         seatConversionRate: num(pick(row, 'Seat conversion rate')),
         h5ConversionRate: num(pick(row, 'H5 conversion rate')),
-        firstGearRate: num(pick(row, 'First gear rate')),
-        secondGearRate: num(pick(row, 'Second gear rate')),
-        thirdGearRate: num(pick(row, 'Third gear rate')),
+        firstGearRate: rate(pick(row, 'First gear rate')),
+        secondGearRate: rate(pick(row, 'Second gear rate')),
+        thirdGearRate: rate(pick(row, 'Third gear rate')),
         placeCount: num(pick(row, 'Place count')),
         areaCount: num(pick(row, 'Area count')),
         currency: pick(row, 'Currency'),
