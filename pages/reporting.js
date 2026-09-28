@@ -98,15 +98,7 @@ function DailyView({ data, selectedDate, onDate, isAdmin, onUploaded }) {
         </p>
         <label className="muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
           Select day
-          <input
-            id="reporting-day"
-            name="reportingDay"
-            type="date"
-            value={selectedDate}
-            min={data.availableDates[0]}
-            max={data.availableDates[data.availableDates.length - 1]}
-            onChange={(e) => onDate(e.target.value)}
-          />
+          <input id="reporting-day" name="reportingDay" type="date" value={selectedDate} min={data.availableDates[0]} max={data.availableDates[data.availableDates.length - 1]} onChange={(e) => onDate(e.target.value)} />
         </label>
       </div>
       {data.dataHealthIssues?.count > 0 && <HealthBanner issues={data.dataHealthIssues} />}
@@ -160,7 +152,7 @@ function DailyView({ data, selectedDate, onDate, isAdmin, onUploaded }) {
         </div>
       )}
       <VenueTable rows={data.venueTable} />
-      <SessionsTable rows={data.sessionTable} isAdmin={isAdmin} onUploaded={onUploaded} />
+      <SessionsTable rows={(data.sessionPack && data.sessionPack.rows) || data.sessionTable} pack={data.sessionPack} isAdmin={isAdmin} onUploaded={onUploaded} />
     </>
   );
 }
@@ -202,7 +194,7 @@ function MonthlyView({ data, selectedMonth, onMonth, isAdmin, onUploaded }) {
       <UsageChart data={data.trend} xKey="month" title="Usage trend" />
       <IncomeChart data={data.trend} xKey="month" title="RS Net Income trend" />
       <VenueTable rows={data.venueTable} title="Venue totals - selected month (ranked by Usage)" />
-      <SessionsTable rows={data.sessionTable} isAdmin={isAdmin} onUploaded={onUploaded} />
+      <SessionsTable rows={(data.sessionPack && data.sessionPack.rows) || data.sessionTable} pack={data.sessionPack} isAdmin={isAdmin} onUploaded={onUploaded} />
     </>
   );
 }
@@ -291,7 +283,7 @@ function fmtPct(n) {
   return `${Math.round(pct * 10) / 10}%`;
 }
 
-function SessionsTable({ rows, isAdmin, onUploaded }) {
+function SessionsTable({ rows, pack, isAdmin, onUploaded }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   async function onFile(e) {
@@ -326,6 +318,9 @@ function SessionsTable({ rows, isAdmin, onUploaded }) {
       </div>
       <p className="muted" style={{ marginTop: 8 }}>
         10 / 15 / 25 minute mix from the Usage export. This does not change Usage or income totals.
+        {pack && pack.month ? ` Showing ${pack.month}.` : ''}
+        {pack && pack.requestedMonth && pack.month && pack.requestedMonth !== pack.month ? ` No Usage file for ${pack.requestedMonth} yet.` : ''}
+        {pack && pack.availableMonths && pack.availableMonths.length ? ` Files on file: ${pack.availableMonths.join(', ')}.` : ''}
       </p>
       {msg && <p className="muted">{msg}</p>}
       <div className="table-wrap">
@@ -348,7 +343,7 @@ function SessionsTable({ rows, isAdmin, onUploaded }) {
               </tr>
             ))}
             {!(rows && rows.length) && (
-              <tr><td colSpan={4} className="muted">No Usage file for this month yet. Upload the Usage export to see session mix.</td></tr>
+              <tr><td colSpan={4} className="muted">No Usage file uploaded yet. Use the UserUsage Venue or Outlet export.</td></tr>
             )}
           </tbody>
         </table>
