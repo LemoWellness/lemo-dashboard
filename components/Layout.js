@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 import PushEnableBanner from './PushEnableBanner';
 import MeetingNotesImport from './MeetingNotesImport';
+import ChangePassword from './ChangePassword';
 
 const NAV = [
   { code: 'tasks', label: 'Tasks' },
@@ -96,6 +97,7 @@ export default function Layout({ active, onNavigate, children }) {
           <br />
           {session.role}
         </div>
+        <ChangePassword />
         <button className="signout" onClick={() => signOut(auth)}>Sign out</button>
       </nav>
       <main className="main">
