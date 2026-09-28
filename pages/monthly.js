@@ -13,6 +13,7 @@ const PIE_COLORS = ['#E85D20', '#0C0A09', '#706B66', '#2A1A10'];
 const RS_LEMO = 0.7;
 const RS_VENUE = 0.2;
 const RS_BD = 0.1;
+const NET_HINT = 'Net income after refunds';
 
 function buildMonthOptions() {
   const opts = [];
@@ -248,12 +249,15 @@ export default function Monthly() {
             <th>Chairs</th>
             <th>Expected</th>
             <th>Received / Revenue</th>
+            <th title={NET_HINT}>Net Income <Hint text={NET_HINT} /></th>
           </tr></thead>
           <tbody>
             {filteredLocations.map((l, i) => {
               const isCw = l.model === 'Corporate Wellness';
               const expected = isCw && l.commercial !== false ? fmt(l.billableRevenue ?? l.lemoIncome) : DASH;
               const received = l.commercial === false ? DASH : fmt(l.received ?? 0);
+              const netValue = l.netIncome != null ? l.netIncome : (Number(l.received) || 0) - (Number(l.refunds) || 0);
+              const netInc = l.commercial === false ? DASH : fmt(netValue);
               return (
               <tr key={i}>
                 <td>{l.location}</td>
@@ -261,10 +265,11 @@ export default function Monthly() {
                 <td>{l.chairs ?? DASH}</td>
                 <td>{expected}</td>
                 <td>{received}</td>
+                <td title={NET_HINT}>{netInc}</td>
               </tr>
               );
             })}
-            {filteredLocations.length === 0 && <tr><td colSpan={5} className="muted">No location activity for this month</td></tr>}
+            {filteredLocations.length === 0 && <tr><td colSpan={6} className="muted">No location activity for this month</td></tr>}
           </tbody>
         </table></div>
       </div>
