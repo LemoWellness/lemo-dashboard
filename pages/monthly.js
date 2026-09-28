@@ -132,7 +132,8 @@ export default function Monthly() {
                   <Row label="Received" value={fmt(c.cash)} />
                   <Row label="Backpay" value={fmt(c.owed)} />
                   <Row label="# of Installs" value={installs} />
-                  <Row label="# of Chairs" value={chairs || '—'} last />
+                  <Row label="# of Chairs" value={chairs || '—'} />
+                  <Row label="Unsigned contracts" value={c.unsignedContracts ?? 0} last />
                 </>
               ) : (
                 <>
@@ -141,7 +142,8 @@ export default function Monthly() {
                   <Row label="Venue Payout" value={fmt(rsTotal * RS_VENUE)} />
                   <Row label="BD Consultant Payout" value={fmt(rsTotal * RS_BD)} />
                   <Row label="# of Installs" value={installs} />
-                  <Row label="# of Chairs" value={chairs || '—'} last />
+                  <Row label="# of Chairs" value={chairs || '—'} />
+                  <Row label="Unsigned contracts" value={c.unsignedContracts ?? 0} last />
                 </>
               )}
             </div>
