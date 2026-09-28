@@ -135,8 +135,24 @@ export default withAuth(async (req, res) => {
       .filter(({ name, data }) => data.businessModel === 'Corporate Wellness' && isCommercialSite(name, data) && liveInMonth(data, forMonth))
       .reduce((s, { data }) => s + cwContractMonthly(data), 0);
   }
+  function rsDailyByVenue(forMonth) {
+    const byVenue = {};
+    dailySnap.forEach((doc) => {
+      const row = doc.data();
+      if (!(row.countDate || '').startsWith(forMonth)) return;
+      const venue = String(row.venueName || '').trim();
+      if (!venue) return;
+      const p = findProject(projectsByName, projectsByLower, venue).data || {};
+      if (p.businessModel !== 'Revenue Sharing') return;
+      if (!isCommercialSite(venue, p)) return;
+      if (!byVenue[venue]) byVenue[venue] = { total: 0, refund: 0 };
+      byVenue[venue].total += Number(row.totalAmount) || 0;
+      byVenue[venue].refund += Number(row.refund) || 0;
+    });
+    return byVenue;
+  }
   function rsEarned(forMonth) {
-    return allIncome.filter((i) => (i.date || '').startsWith(forMonth) && modelOf(i.location) === 'Revenue Sharing').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    return Object.values(rsDailyByVenue(forMonth)).reduce((s, v) => s + v.total, 0);
   }
   const cwSites = Object.entries(projectsByName).map(([name, data]) => ({ name: data.name || name, data }))
     .filter(({ name, data }) => data.businessModel === 'Corporate Wellness' && isCommercialSite(name, data) && liveInMonth(data, monthKey));
@@ -149,6 +165,7 @@ export default withAuth(async (req, res) => {
       rsChairs += Number(data.numberOfChairs) > 0 ? Number(data.numberOfChairs) : 0;
     }
   });
+  const rsThisMonth = rsDailyByVenue(monthKey);
   const corporateWellnessIncome = cwEarned(monthKey);
   const revenueSharingIncome = rsEarned(monthKey);
   const totalEarned = corporateWellnessIncome + revenueSharingIncome;
@@ -170,7 +187,10 @@ export default withAuth(async (req, res) => {
     const p = findProject(projectsByName, projectsByLower, name).data || {};
     const commercial = isCommercialSite(name, p);
     const chairs = chairsOf(p);
-    const received = perLocationIncome[name] || perLocationIncome[p.name] || 0;
+    const rsRow = rsThisMonth[name] || rsThisMonth[p.name];
+    const received = p.businessModel === 'Revenue Sharing'
+      ? (rsRow ? rsRow.total : 0)
+      : (perLocationIncome[name] || perLocationIncome[p.name] || 0);
     const billableRevenue = p.businessModel === 'Corporate Wellness' ? (commercial ? cwContractMonthly(p) : 0) : received;
     const expenses = perLocationExpenses[name] || perLocationExpenses[p.name] || 0;
     const netProfit = billableRevenue - expenses;
@@ -195,11 +215,18 @@ export default withAuth(async (req, res) => {
   });
   const comparison = ['Corporate Wellness', 'Revenue Sharing'].map((model) => {
     const rows = locationTable.filter((l) => l.model === model && l.commercial !== false);
-    const income = model === 'Corporate Wellness' ? corporateWellnessIncome : revenueSharingIncome;
-    const cash = monthIncome.filter((i) => modelOf(i.location) === model).reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    const rsGross = Object.values(rsThisMonth).reduce((s, v) => s + v.total, 0);
+    const rsRefunds = Object.values(rsThisMonth).reduce((s, v) => s + v.refund, 0);
+    const income = model === 'Corporate Wellness' ? corporateWellnessIncome : rsGross;
+    const cash = model === 'Corporate Wellness'
+      ? monthIncome.filter((i) => modelOf(i.location) === model).reduce((s, i) => s + (Number(i.amount) || 0), 0)
+      : rsGross;
     const expenses = monthExpenses.filter((e) => modelOf(e.location) === model).reduce((s, e) => s + (Number(e.amount) || 0), 0);
     return {
-      model, income, cash, owed: model === 'Corporate Wellness' ? cwOwed : 0, expenses,
+      model, income, cash,
+      refunds: model === 'Revenue Sharing' ? rsRefunds : 0,
+      netIncome: model === 'Revenue Sharing' ? rsGross - rsRefunds : cash,
+      owed: model === 'Corporate Wellness' ? cwOwed : 0, expenses,
       netProfit: income - expenses,
       activeLocations: activeLocationNames.filter((n) => modelOf(n) === model).length,
       installs: model === 'Corporate Wellness' ? cwSites.length : rsInstalls,
