@@ -6,6 +6,13 @@ import { authedFetch } from '../../lib/firebaseClient';
 
 const ALL_TABS = [{ code: 'mo', label: 'Monthly Overview' }, { code: 'loc', label: 'Installations' }, { code: 'reporting', label: 'Reporting' }, { code: 'tasks', label: 'Tasks' }, { code: 'financials', label: 'Financials' }, { code: 'risk', label: 'Deployment Risk' }];
 
+function fmtWhen(iso) {
+  if (!iso) return 'Never';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'Never';
+  return d.toLocaleString();
+}
+
 export default function ManageUsers() {
   const router = useRouter();
   const { session } = useAuth();
@@ -142,14 +149,14 @@ export default function ManageUsers() {
           )}
           {editError && <p className="form-error">{editError}</p>}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn" type="submit" disabled={editBusy}>{editBusy ? 'Saving…' : 'Save role'}</button>
+            <button className="btn" type="submit" disabled={editBusy}>{editBusy ? 'Saving...' : 'Save role'}</button>
             <button className="btn" type="button" onClick={() => setEditing(null)}>Cancel</button>
           </div>
         </form>
       )}
       <div className="table-wrap">
       <table>
-        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tabs</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tabs</th><th>Status</th><th>Last login</th><th>Home screen</th><th></th></tr></thead>
         <tbody>
           {users.map((u) => (
             <tr key={u.uid}>
@@ -158,6 +165,8 @@ export default function ManageUsers() {
               <td>{u.role}</td>
               <td>{u.tabs === 'all' ? 'all' : (u.tabs || []).join(', ')}</td>
               <td>{u.active === false ? 'Deactivated' : 'Active'}</td>
+              <td>{fmtWhen(u.lastLogin)}</td>
+              <td>{u.homeScreen ? ('Yes' + (u.standalonePlatform ? ' (' + u.standalonePlatform + ')' : '')) : 'Unknown'}</td>
               <td style={{ whiteSpace: 'nowrap' }}>
                 <button className="btn" type="button" onClick={() => startEdit(u)} style={{ marginRight: 8 }}>Edit</button>
                 <button className="btn" type="button" onClick={() => toggleActive(u)}>{u.active === false ? 'Reactivate' : 'Deactivate'}</button>
