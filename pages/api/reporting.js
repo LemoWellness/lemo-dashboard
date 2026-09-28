@@ -1,4 +1,4 @@
-// Reporting only. Reads dailyRawData + projects.
+// Reporting. Reads dailyRawData + projects. Session mix from usageRawData.
 import { adminDb } from '../../lib/firebaseAdmin';
 import { withAuth } from '../../lib/auth';
 
@@ -43,10 +43,13 @@ function addRow(target, row) {
   }
 }
 
-function venueRow(name, v) {
+function venueRow(name, v, chairsByVenue) {
+  const chairs = chairsByVenue[String(name || '').trim().toLowerCase()] || null;
   return {
     venue: name,
     orders: v.orders,
+    chairs,
+    avgPerChair: chairs ? v.orders / chairs : null,
     gross: v.gross || v.totalAmount || 0,
     netIncome: v.netIncome,
     refunds: v.refunds,
@@ -54,6 +57,62 @@ function venueRow(name, v) {
     avgOrderPrice: v.orderPriceCount > 0 ? v.orderPriceSum / v.orderPriceCount : 0,
     avgVisitors: v.visitorsCount > 0 ? v.visitorsSum / v.visitorsCount : 0,
   };
+}
+
+function usagePeriodMonth(period) {
+  const s = String(period || '');
+  const dates = s.match(/\d{4}-\d{2}-\d{2}/g) || [];
+  if (dates.length) return dates[0].slice(0, 7);
+  const ym = s.match(/\d{4}-\d{2}/);
+  return ym ? ym[0] : '';
+}
+
+function buildSessionTable(usageSnap, month) {
+  const byVenue = {};
+  if (!usageSnap || usageSnap.empty) return [];
+  usageSnap.forEach((doc) => {
+    const row = doc.data();
+    if (usagePeriodMonth(row.period) !== month) return;
+    const name = String(row.venueName || '').trim();
+    if (!name) return;
+    if (!byVenue[name]) byVenue[name] = { venue: name, orders: 0, first: 0, second: 0, third: 0, weight: 0 };
+    const w = Number(row.orderNumber) || 0;
+    const weight = w > 0 ? w : 1;
+    byVenue[name].orders += w;
+    if (row.firstGearRate != null && row.firstGearRate !== '') {
+      byVenue[name].first += Number(row.firstGearRate) * weight;
+      byVenue[name].second += Number(row.secondGearRate) * weight;
+      byVenue[name].third += Number(row.thirdGearRate) * weight;
+      byVenue[name].weight += weight;
+    }
+  });
+  return Object.values(byVenue).map((v) => ({
+    venue: v.venue,
+    orders: v.orders,
+    firstGearRate: v.weight ? v.first / v.weight : null,
+    secondGearRate: v.weight ? v.second / v.weight : null,
+    thirdGearRate: v.weight ? v.third / v.weight : null,
+  })).sort((a, b) => b.orders - a.orders);
+}
+
+function monthStory(totals, prev, venueTable) {
+  const parts = [];
+  if (prev && prev.orders) {
+    const pct = Math.round(((totals.orders - prev.orders) / prev.orders) * 100);
+    parts.push(`Usage is ${pct >= 0 ? 'up' : 'down'} ${Math.abs(pct)}% vs last month (${Math.round(totals.orders)} vs ${Math.round(prev.orders)}).`);
+  } else {
+    parts.push(`${Math.round(totals.orders || 0)} sessions started this month.`);
+  }
+  if (prev && prev.netIncome != null && totals.netIncome != null && prev.netIncome) {
+    const pct = Math.round(((totals.netIncome - prev.netIncome) / Math.abs(prev.netIncome)) * 100);
+    parts.push(`Net Income is ${pct >= 0 ? 'up' : 'down'} ${Math.abs(pct)}%.`);
+  }
+  if (venueTable[0] && venueTable[0].orders > 0) {
+    parts.push(`${venueTable[0].venue} led usage.`);
+  }
+  const quiet = venueTable.filter((v) => !v.orders);
+  if (quiet.length) parts.push(`${quiet.length} site${quiet.length === 1 ? '' : 's'} at zero.`);
+  return parts.join(' ');
 }
 
 function rowDedupeKey(row) {
@@ -71,17 +130,23 @@ export default withAuth(async (req, res, session) => {
 
   const view = String(req.query.view || 'daily') === 'monthly' ? 'monthly' : 'daily';
 
-  const [dailySnap, projectsSnap] = await Promise.all([
+  const [dailySnap, projectsSnap, usageSnap] = await Promise.all([
     adminDb.collection('dailyRawData').get(),
     adminDb.collection('projects').get(),
+    adminDb.collection('usageRawData').get(),
   ]);
 
   if (dailySnap.empty) return res.status(200).json({ hasData: false, view });
 
   const businessModelByVenue = {};
+  const chairsByVenue = {};
   projectsSnap.forEach((doc) => {
     const p = doc.data();
-    if (p.name) businessModelByVenue[String(p.name).trim().toLowerCase()] = p.businessModel;
+    const key = String(p.name || '').trim().toLowerCase();
+    if (!key) return;
+    businessModelByVenue[key] = p.businessModel;
+    const chairs = Number(p.numberOfChairs);
+    if (!isNaN(chairs) && chairs > 0) chairsByVenue[key] = chairs;
   });
   const isCorporateWellness = (venueName) =>
     businessModelByVenue[String(venueName || '').trim().toLowerCase()] === 'Corporate Wellness';
@@ -161,7 +226,7 @@ export default withAuth(async (req, res, session) => {
     });
 
     const venueTable = Object.keys(byVenue)
-      .map((name) => venueRow(name, byVenue[name]))
+      .map((name) => venueRow(name, byVenue[name], chairsByVenue))
       .sort((a, b) => b.orders - a.orders);
 
     const trend = months.slice(-12).map((m) => {
@@ -194,6 +259,11 @@ export default withAuth(async (req, res, session) => {
       completedRate: totals.orders > 0 ? totals.completed / totals.orders : 0,
       venueTable,
       trend,
+      story: monthStory(totals, trend.length > 1 ? {
+        orders: trend[trend.length - 2].orders,
+        netIncome: trend[trend.length - 2].revenueSharingIncome,
+      } : null, venueTable),
+      sessionTable: buildSessionTable(usageSnap, month),
       dataHealthIssues,
       unsupportedUsageMetrics: ['seating', 'idle', 'occupied', 'scanned', 'payCount', 'h5Conversion'],
     });
@@ -218,7 +288,7 @@ export default withAuth(async (req, res, session) => {
     totals.refunds += lv.refunds;
     totals.gross += lv.gross || 0;
     totals.completed += lv.completed;
-    venueTable.push(venueRow(v, lv));
+    venueTable.push(venueRow(v, lv, chairsByVenue));
   });
   venueTable.sort((a, b) => b.orders - a.orders);
 
@@ -327,6 +397,7 @@ export default withAuth(async (req, res, session) => {
     duplicates,
     sustainedOutages,
     trend,
+    sessionTable: buildSessionTable(usageSnap, latestKey.slice(0, 7)),
     dataHealthIssues,
     availableDates: dateKeys,
     unsupportedUsageMetrics: ['seating', 'idle', 'occupied', 'scanned', 'payCount', 'h5Conversion'],
