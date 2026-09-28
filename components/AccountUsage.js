@@ -27,8 +27,9 @@ export default function AccountUsage({ venue }) {
       {!loading && data && data.hasData && (
         <div className="usage-kpi-grid">
           <StatBox label="Usage (sessions)" value={count(data.totals.usage)} />
-          <StatBox label="Refunds" value={money(data.totals.refunds)} />
           <StatBox label="RS Income" value={money(data.totals.rsIncome)} />
+          <StatBox label="Refunds" value={money(data.totals.refunds)} />
+          <StatBox label="Net Income" value={money(data.totals.netIncome)} />
           <StatBox label="Avg # of Visitors" value={Math.round((data.totals.avgVisitors || 0) * 10) / 10} />
         </div>
       )}

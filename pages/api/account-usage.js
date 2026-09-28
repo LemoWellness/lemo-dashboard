@@ -19,7 +19,7 @@ export default withAuth(async (req, res) => {
   const empty = {
     hasData: false,
     location,
-    totals: { usage: 0, refunds: 0, rsIncome: 0, avgVisitors: 0 },
+    totals: { usage: 0, refunds: 0, rsIncome: 0, netIncome: 0, avgVisitors: 0 },
   };
   if (snap.empty) return res.status(200).json(empty);
 
@@ -35,7 +35,7 @@ export default withAuth(async (req, res) => {
     seenKeys.add(key);
     totals.usage += Number(row.orderNumber) || 0;
     totals.refunds += Number(row.refund) || 0;
-    totals.rsIncome += Number(row.pos) || 0;
+    totals.rsIncome += Number(row.totalAmount) || 0;
     if (row.avgVisitors !== '' && row.avgVisitors != null) {
       totals.visitorsSum += Number(row.avgVisitors) || 0;
       totals.visitorsCount += 1;
@@ -51,6 +51,7 @@ export default withAuth(async (req, res) => {
       usage: totals.usage,
       refunds: totals.refunds,
       rsIncome: totals.rsIncome,
+      netIncome: totals.rsIncome - totals.refunds,
       avgVisitors: totals.visitorsCount > 0 ? totals.visitorsSum / totals.visitorsCount : 0,
     },
   });
