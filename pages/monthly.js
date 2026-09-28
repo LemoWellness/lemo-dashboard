@@ -5,7 +5,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { authedFetch } from '../lib/firebaseClient';
 
-const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : '—');
+const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : '\u2014');
 const PIE_COLORS = ['#E85D20', '#0C0A09', '#706B66', '#2A1A10'];
 const RS_LEMO = 0.7;
 const RS_VENUE = 0.2;
@@ -50,6 +50,7 @@ export default function Monthly() {
   const [error, setError] = useState('');
   const [modelFilter, setModelFilter] = useState('All');
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [unsigned, setUnsigned] = useState({ cw: 0, rs: 0 });
   const monthOptions = buildMonthOptions();
 
   function navigate(code) {
@@ -77,9 +78,17 @@ export default function Monthly() {
       .catch((e) => { setError(e.message); setData(null); setLoading(false); });
   }
   useEffect(() => { if (session) load(month); }, [session]); // eslint-disable-line
+  useEffect(() => {
+    if (!session) return;
+    authedFetch('/api/projects').then((r) => r.json()).then((d) => {
+      const list = d.projects || [];
+      const count = (model) => list.filter((p) => p.businessModel === model && !p.signedContract).length;
+      setUnsigned({ cw: count('Corporate Wellness'), rs: count('Revenue Sharing') });
+    }).catch(() => {});
+  }, [session]);
   function onMonthChange(e) { setMonth(e.target.value); load(e.target.value); }
 
-  if (loading) return <Layout active="mo" onNavigate={navigate}><p className="muted">Loading monthly overview…</p></Layout>;
+  if (loading) return <Layout active="mo" onNavigate={navigate}><p className="muted">Loading monthly overview\u2026</p></Layout>;
   if (error) return <Layout active="mo" onNavigate={navigate}><p className="form-error">{error}</p></Layout>;
   if (!data) return null;
 
@@ -108,20 +117,20 @@ export default function Monthly() {
           <select value={month} onChange={onMonthChange}>{monthOptions.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</select>
         </label>
       </div>
-      <p className="muted">{data.month} performance · AR balances as of {data.asOfLabel || data.month}</p>
+      <p className="muted">{data.month} performance \u00b7 AR balances as of {data.asOfLabel || data.month}</p>
 
       <div className="grid-4">
         <Kpi label="Total income" value={fmt(totalIncome)} hint="Cash received this month from income records. Unpaid CW contracts are not included." />
         <Kpi label="Total expenses" value={fmt(data.totalExpenses)} hint="Company-wide expenses from Financials for this month." />
         <Kpi label="Net profit / loss" value={fmt(net)} negative={net < 0} hint="Total income minus company-wide expenses." />
-        <Kpi label="Active chairs" value={data.activeChairs?.toLocaleString() ?? '—'} hint="Chairs at locations with activity this month." />
+        <Kpi label="Active chairs" value={data.activeChairs?.toLocaleString() ?? '\u2014'} hint="Chairs at locations with activity this month." />
       </div>
 
       <div className="grid-2">
         {comparison.map((c) => {
           const isCw = c.model === 'Corporate Wellness';
           const chairs = isCw ? (c.chairs ?? 0) : (c.chairs || c.revenueGeneratingChairs || rsChairsFromTable || 0);
-          const installs = c.installs ?? c.activeLocations ?? '—';
+          const installs = c.installs ?? c.activeLocations ?? '\u2014';
           const rsTotal = Number(c.cash ?? c.income) || 0;
           return (
             <div className="card" key={c.model} style={{ marginBottom: 0 }}>
@@ -132,8 +141,8 @@ export default function Monthly() {
                   <Row label="Received" value={fmt(c.cash)} />
                   <Row label="Backpay" value={fmt(c.owed)} />
                   <Row label="# of Installs" value={installs} />
-                  <Row label="# of Chairs" value={chairs || '—'} />
-                  <Row label="Unsigned contracts" value={c.unsignedContracts ?? 0} last />
+                  <Row label="# of Chairs" value={chairs || '\u2014'} />
+                  <Row label="Unsigned contracts" value={isCw ? unsigned.cw : unsigned.rs} last />
                 </>
               ) : (
                 <>
@@ -142,8 +151,8 @@ export default function Monthly() {
                   <Row label="Venue Payout" value={fmt(rsTotal * RS_VENUE)} />
                   <Row label="BD Consultant Payout" value={fmt(rsTotal * RS_BD)} />
                   <Row label="# of Installs" value={installs} />
-                  <Row label="# of Chairs" value={chairs || '—'} />
-                  <Row label="Unsigned contracts" value={c.unsignedContracts ?? 0} last />
+                  <Row label="# of Chairs" value={chairs || '\u2014'} />
+                  <Row label="Unsigned contracts" value={isCw ? unsigned.cw : unsigned.rs} last />
                 </>
               )}
             </div>
@@ -206,7 +215,7 @@ export default function Monthly() {
               {outstanding.map((c, i) => (
                 <tr key={i}>
                   <td>{c.location}</td>
-                  <td>{c.chairs ?? '—'}</td>
+                  <td>{c.chairs ?? '\u2014'}</td>
                   <td>{c.monthsOwed ?? c.monthsBillable}</td>
                   <td style={{ color: 'var(--ember-muted)' }}>{fmt(c.balanceOwed)}</td>
                 </tr>
@@ -218,7 +227,7 @@ export default function Monthly() {
 
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
-          <h3 style={{ margin: 0 }}>Location performance — {data.month} only</h3>
+          <h3 style={{ margin: 0 }}>Location performance \u2014 {data.month} only</h3>
           <select value={modelFilter} onChange={(e) => setModelFilter(e.target.value)}>
             <option value="All">All models</option>
             <option value="Corporate Wellness">Corporate Wellness</option>
@@ -236,13 +245,13 @@ export default function Monthly() {
           <tbody>
             {filteredLocations.map((l, i) => {
               const isCw = l.model === 'Corporate Wellness';
-              const expected = isCw && l.commercial !== false ? fmt(l.billableRevenue ?? l.lemoIncome) : '—';
-              const received = l.commercial === false ? '—' : fmt(l.received ?? 0);
+              const expected = isCw && l.commercial !== false ? fmt(l.billableRevenue ?? l.lemoIncome) : '\u2014';
+              const received = l.commercial === false ? '\u2014' : fmt(l.received ?? 0);
               return (
               <tr key={i}>
                 <td>{l.location}</td>
-                <td>{isCw ? 'CW' : l.model === 'Revenue Sharing' ? 'RS' : (l.model || '—')}</td>
-                <td>{l.chairs ?? '—'}</td>
+                <td>{isCw ? 'CW' : l.model === 'Revenue Sharing' ? 'RS' : (l.model || '\u2014')}</td>
+                <td>{l.chairs ?? '\u2014'}</td>
                 <td>{expected}</td>
                 <td>{received}</td>
               </tr>
@@ -268,11 +277,11 @@ function Kpi({ label, value, negative, hint }) {
 }
 
 function CompareRow({ label, current, previous, lowerIsBetter }) {
-  let changeText = '—'; let color = 'var(--ash)';
+  let changeText = '\u2014'; let color = 'var(--ash)';
   if (typeof current === 'number' && typeof previous === 'number' && previous !== 0) {
     const pct = ((current - previous) / Math.abs(previous)) * 100;
     const isUp = pct > 0;
-    changeText = `${pct === 0 ? '→' : isUp ? '↑' : '↓'} ${Math.abs(pct).toFixed(0)}%`;
+    changeText = `${pct === 0 ? '\u2192' : isUp ? '\u2191' : '\u2193'} ${Math.abs(pct).toFixed(0)}%`;
     const isGood = lowerIsBetter ? !isUp : isUp;
     color = pct === 0 ? 'var(--ash)' : isGood ? '#16a34a' : 'var(--ember-muted)';
   }
