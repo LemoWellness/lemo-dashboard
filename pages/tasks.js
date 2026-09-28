@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
+import MeetingNotesImport from '../components/MeetingNotesImport';
+import TaskModal from '../components/TaskModal';
 import { useAuth } from '../context/AuthContext';
 import { authedFetch } from '../lib/firebaseClient';
 
@@ -24,15 +26,21 @@ export default function Tasks() {
   const { session } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
+  const [deskUsers, setDeskUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [subtab, setSubtab] = useState('active');
+  const [filterAssigned, setFilterAssigned] = useState('');
   const [form, setForm] = useState(EMPTY);
   const [showAdd, setShowAdd] = useState(false);
   const [openTask, setOpenTask] = useState(null);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState([]);
   const [bulkStatus, setBulkStatus] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+  const [deskBusy, setDeskBusy] = useState('');
+  const isAdmin = session?.role === 'Admin';
+  const live = openTask ? (tasks.find((t) => t.id === openTask.id) || openTask) : null;
 
   function navigate(code) {
     if (code === 'admin-users') return router.push('/admin/users');
@@ -57,12 +65,15 @@ export default function Tasks() {
   }
   function load() {
     setLoading(true);
-    Promise.all([
+    const reqs = [
       authedFetch('/api/tasks').then((r) => r.json()),
       authedFetch('/api/assignable-users').then((r) => r.json()),
-    ]).then(([t, u]) => {
+    ];
+    if (isAdmin) reqs.push(authedFetch('/api/users').then((r) => r.ok ? r.json() : { users: [] }));
+    Promise.all(reqs).then(([t, u, staff]) => {
       setTasks(t.tasks || []);
       setUsers(u.users || []);
+      if (staff) setDeskUsers(staff.users || []);
       setLoading(false);
     }).catch((e) => { setError(e.message); setLoading(false); });
   }
@@ -71,11 +82,15 @@ export default function Tasks() {
   const hold = (s) => s === 'On Hold' || s === 'Pending';
   const parked = (s) => s === 'Done' || s === 'Cancelled' || hold(s);
   const filtered = useMemo(() => tasks.filter((t) => {
+    if (filterAssigned) {
+      const want = filterAssigned.toLowerCase();
+      if (String(t.assignedTo || '').toLowerCase() !== want && String(t.assignedTo2 || '').toLowerCase() !== want) return false;
+    }
     if (subtab === 'active') return !parked(t.status);
     if (subtab === 'hold') return hold(t.status);
     if (subtab === 'cancelled') return t.status === 'Cancelled';
     return t.status === 'Done';
-  }), [tasks, subtab]);
+  }), [tasks, subtab, filterAssigned]);
   const counts = {
     active: tasks.filter((t) => !parked(t.status)).length,
     hold: tasks.filter((t) => hold(t.status)).length,
@@ -109,16 +124,23 @@ export default function Tasks() {
     if (!res.ok) { setError((await res.json()).error); return; }
     setShowAdd(false); setForm(EMPTY); load();
   }
-  async function setStatus(id, status) {
-    await authedFetch(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
-    load();
+  async function setDesk(uid, taskDesk) {
+    setDeskBusy(uid);
+    await authedFetch(`/api/users/${uid}`, { method: 'PATCH', body: JSON.stringify({ taskDesk }) });
+    const staff = await authedFetch('/api/users').then((r) => r.json());
+    setDeskUsers(staff.users || []);
+    setDeskBusy('');
   }
 
   return (
     <Layout active="tasks" onNavigate={navigate}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <h1 style={{ margin: 0 }}>Tasks</h1>
-        <button className="btn" onClick={() => setShowAdd(true)}>+ Add Task</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {isAdmin && <button className="btn" type="button" style={{ background: 'transparent', color: 'var(--ember)', border: '1px solid var(--ember)' }} onClick={() => setShowSettings(true)}>Settings</button>}
+          {isAdmin && <MeetingNotesImport onCreated={load} />}
+          <button className="btn" onClick={() => setShowAdd(true)}>+ Add Task</button>
+        </div>
       </div>
       {loading && <p className="muted">Loading tasks...</p>}
       {error && <p className="form-error">{error}</p>}
@@ -129,6 +151,14 @@ export default function Tasks() {
             <button className={`seg-tab ${subtab === 'hold' ? 'active' : ''}`} onClick={() => setSubtab('hold')}>Pending / Hold ({counts.hold})</button>
             <button className={`seg-tab ${subtab === 'cancelled' ? 'active' : ''}`} onClick={() => setSubtab('cancelled')}>Cancelled ({counts.cancelled})</button>
             <button className={`seg-tab ${subtab === 'completed' ? 'active' : ''}`} onClick={() => setSubtab('completed')}>Completed ({counts.completed})</button>
+          </div>
+          <div className="card" style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem' }} className="muted">Assigned To
+              <select value={filterAssigned} onChange={(e) => setFilterAssigned(e.target.value)} style={{ minWidth: 150 }}>
+                <option value="">All</option>
+                {users.map((u) => <option key={u.email} value={u.email}>{u.name}</option>)}
+              </select>
+            </label>
           </div>
           {selected.length > 0 && (
             <div className="card" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -205,22 +235,30 @@ export default function Tasks() {
           </form>
         </div>
       )}
-      {openTask && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setOpenTask(null)}>
-          <div className="card" style={{ width: '92%', maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>{openTask.task}</h3>
-            <p><strong>For</strong> {people(openTask)}</p>
-            <p className="muted">Deadline {formatDeadline(openTask.deadline)}</p>
-            {openTask.canUpdateStatus && (
-              <label style={{ display: 'block', marginBottom: 12 }}>Status
-                <select value={openTask.status} onChange={(e) => { setStatus(openTask.id, e.target.value); setOpenTask(null); }} style={{ width: '100%', marginTop: 4 }}>
-                  <option>Not Started</option><option>In Progress</option><option>On Hold</option><option>Pending</option><option>Done</option>
-                </select>
-              </label>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" className="btn btn-ghost" onClick={() => setOpenTask(null)}>Close</button>
+      {live && <TaskModal task={live} users={users} onClose={() => setOpenTask(null)} onChanged={load} />}
+      {showSettings && isAdmin && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110 }} onClick={() => setShowSettings(false)}>
+          <div className="card" style={{ background: 'var(--warm-white)', width: '92%', maxWidth: 520, maxHeight: '88vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <h3 style={{ marginTop: 0 }}>Task settings</h3>
+              <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => setShowSettings(false)}>Close</button>
             </div>
+            <p className="muted" style={{ fontSize: '0.8rem' }}>HQ sees every task. Contractors only see tasks they created or that are assigned to them.</p>
+            <table>
+              <thead><tr><th>Name</th><th>Email</th><th>Desk</th></tr></thead>
+              <tbody>
+                {deskUsers.map((u) => (
+                  <tr key={u.uid}>
+                    <td>{u.name}</td><td>{u.email}</td>
+                    <td>
+                      <select disabled={deskBusy === u.uid} value={u.taskDesk === 'hq' ? 'hq' : 'contractor'} onChange={(e) => setDesk(u.uid, e.target.value)}>
+                        <option value="hq">HQ</option><option value="contractor">Contractor</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
