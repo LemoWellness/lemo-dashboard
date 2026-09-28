@@ -264,7 +264,7 @@ async function syncRsIncomeFromDaily(dates) {
     const month = String(row.countDate || '').slice(0, 7);
     if (!rsNames.has(venue) || !months.includes(month)) return;
     const key = venue + '|' + month;
-    totals[key] = (totals[key] || 0) + (Number(row.pos) || 0);
+    totals[key] = (totals[key] || 0) + ((Number(row.totalAmount) || 0) - (Number(row.refund) || 0));
   });
   const incomeSnap = await adminDb.collection('income').get();
   let updated = 0;
