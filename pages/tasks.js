@@ -18,12 +18,6 @@ function formatDeadline(ymd) {
   const parts = String(ymd).split('-');
   return parts.length === 3 ? `${parts[1]}/${parts[2]}/${parts[0]}` : ymd;
 }
-function tabFor(status) {
-  if (status === 'Done') return 'completed';
-  if (status === 'Cancelled') return 'cancelled';
-  if (status === 'On Hold' || status === 'Pending') return 'hold';
-  return 'active';
-}
 
 export default function Tasks() {
   const router = useRouter();
@@ -39,7 +33,6 @@ export default function Tasks() {
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState([]);
   const [bulkStatus, setBulkStatus] = useState('');
-  const isAdmin = session?.role === 'Admin';
 
   function navigate(code) {
     if (code === 'admin-users') return router.push('/admin/users');
@@ -51,11 +44,16 @@ export default function Tasks() {
     if (code === 'risk') return router.push('/risk');
   }
   function nameOf(email) {
-    const match = users.find((u) => String(u.email || '').toLowerCase() === String(email || '').toLowerCase());
-    return match ? match.name : email;
+    const raw = String(email || '').trim();
+    if (!raw) return '';
+    const match = users.find((u) => String(u.email || '').toLowerCase() === raw.toLowerCase());
+    return match ? match.name : raw;
   }
   function people(t) {
-    return [nameOf(t.assignedTo), t.assignedTo2 ? nameOf(t.assignedTo2) : ''].filter(Boolean).join(', ');
+    const first = nameOf(t.assignedTo);
+    const second = nameOf(t.assignedTo2);
+    if (first && second && first !== second) return first + ' + ' + second;
+    return first || second || '-';
   }
   function load() {
     setLoading(true);
@@ -211,7 +209,7 @@ export default function Tasks() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setOpenTask(null)}>
           <div className="card" style={{ width: '92%', maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>{openTask.task}</h3>
-            <p className="muted">For {people(openTask)}</p>
+            <p><strong>For</strong> {people(openTask)}</p>
             <p className="muted">Deadline {formatDeadline(openTask.deadline)}</p>
             {openTask.canUpdateStatus && (
               <label style={{ display: 'block', marginBottom: 12 }}>Status
