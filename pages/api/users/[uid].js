@@ -3,7 +3,6 @@ import { withAuth } from '../../../lib/auth';
 
 function normalizeRole(role) {
   if (role === 'Admin') return 'Admin';
-  if (role === 'Tasks Admin') return 'Tasks Admin';
   return 'Viewer';
 }
 
@@ -12,19 +11,31 @@ export default withAuth(async (req, res) => {
   const ref = adminDb.collection('users').doc(String(uid));
 
   if (req.method === 'PATCH') {
-    const { role, tabs, active, newPassword, taskDesk } = req.body || {};
+    const { role, tabs, active, newPassword, taskDesk, taskAdmin } = req.body || {};
     const updates = {};
-    if (role) updates.role = normalizeRole(role);
+    if (role) {
+      if (role === 'Tasks Admin') {
+        updates.role = 'Viewer';
+        updates.taskAdmin = true;
+        updates.taskDesk = 'hq';
+      } else {
+        updates.role = normalizeRole(role);
+      }
+    }
     if (updates.role === 'Admin') {
       updates.tabs = 'all';
       updates.taskDesk = 'hq';
-    } else if (updates.role === 'Tasks Admin') {
-      updates.taskDesk = 'hq';
-      if (tabs !== undefined) updates.tabs = Array.isArray(tabs) ? tabs : ['tasks'];
-    } else if (tabs !== undefined) updates.tabs = Array.isArray(tabs) ? tabs : [];
+      updates.taskAdmin = true;
+    } else if (tabs !== undefined) {
+      updates.tabs = Array.isArray(tabs) ? tabs : [];
+    }
     if (active !== undefined) updates.active = !!active;
+    if (taskAdmin !== undefined) {
+      updates.taskAdmin = !!taskAdmin;
+      if (updates.taskAdmin) updates.taskDesk = 'hq';
+    }
     if (taskDesk === 'hq' || taskDesk === 'contractor') {
-      if (updates.role !== 'Admin' && updates.role !== 'Tasks Admin') updates.taskDesk = taskDesk;
+      if (updates.role !== 'Admin') updates.taskDesk = taskDesk;
     }
     if (Object.keys(updates).length) await ref.update(updates);
 
