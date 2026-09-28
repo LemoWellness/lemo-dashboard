@@ -24,15 +24,20 @@ function isBdPayout(category) {
   return c === 'Payout to BD' || c === 'Payout to BD Consultants';
 }
 
-export default function AccountPayouts({ income, expenses }) {
+export default function AccountPayouts({ income, expenses, dailyMonths }) {
+  const dailyKeys = Object.keys(dailyMonths || {}).filter((k) => /^\d{4}-\d{2}$/.test(k)).sort().reverse();
+  const useDaily = dailyKeys.length > 0;
+
   const months = useMemo(() => {
-    const set = new Set();
-    (income || []).forEach((i) => { const k = monthKey(i); if (/^\d{4}-\d{2}$/.test(k)) set.add(k); });
+    const set = new Set(dailyKeys);
+    if (!useDaily) {
+      (income || []).forEach((i) => { const k = monthKey(i); if (/^\d{4}-\d{2}$/.test(k)) set.add(k); });
+    }
     (expenses || []).forEach((e) => { const k = String(e.date || '').slice(0, 7); if (/^\d{4}-\d{2}$/.test(k)) set.add(k); });
     const now = new Date().toISOString().slice(0, 7);
     if (!set.has(now)) set.add(now);
     return [...set].sort().reverse();
-  }, [income, expenses]);
+  }, [income, expenses, dailyKeys.join('|'), useDaily]);
 
   const [view, setView] = useState('payouts');
   const [period, setPeriod] = useState(months[0] || new Date().toISOString().slice(0, 7));
@@ -40,9 +45,15 @@ export default function AccountPayouts({ income, expenses }) {
   const month = period === 'all' ? (months[0] || '') : period;
 
   const totals = useMemo(() => {
-    const inRows = (income || []).filter((i) => range === 'all' || monthKey(i) === month);
+    let totalIncome = 0;
+    if (useDaily) {
+      if (range === 'all') totalIncome = dailyKeys.reduce((s, k) => s + (Number((dailyMonths[k] || {}).net) || 0), 0);
+      else totalIncome = Number((dailyMonths[month] || {}).net) || 0;
+    } else {
+      const inRows = (income || []).filter((i) => range === 'all' || monthKey(i) === month);
+      totalIncome = inRows.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    }
     const exRows = (expenses || []).filter((e) => range === 'all' || String(e.date || '').slice(0, 7) === month);
-    const totalIncome = inRows.reduce((s, i) => s + (Number(i.amount) || 0), 0);
     return {
       totalIncome,
       lemo: totalIncome * LEMO,
@@ -51,9 +62,17 @@ export default function AccountPayouts({ income, expenses }) {
       venuePaid: exRows.filter((e) => isVenuePayout(e.category)).reduce((s, e) => s + (Number(e.amount) || 0), 0),
       bdPaid: exRows.filter((e) => isBdPayout(e.category)).reduce((s, e) => s + (Number(e.amount) || 0), 0),
     };
-  }, [income, expenses, range, month]);
+  }, [income, expenses, range, month, useDaily, dailyMonths, dailyKeys.join('|')]);
 
   const monthlyIncome = useMemo(() => {
+    if (useDaily) {
+      const keys = range === 'all' ? Object.keys(dailyMonths || {}).sort() : [month].filter((k) => dailyMonths && dailyMonths[k]);
+      return keys.map((key) => ({
+        key,
+        total: Number((dailyMonths[key] || {}).net) || 0,
+        label: monthLabel(key),
+      }));
+    }
     const byMonth = {};
     (income || []).forEach((i) => {
       const key = monthKey(i);
@@ -63,7 +82,7 @@ export default function AccountPayouts({ income, expenses }) {
       byMonth[key].total += Number(i.amount) || 0;
     });
     return Object.values(byMonth).sort((a, b) => a.key.localeCompare(b.key));
-  }, [income, range, month]);
+  }, [income, range, month, useDaily, dailyMonths]);
 
   const payoutBars = [
     { name: 'LEMO 70%', value: totals.lemo },
@@ -115,10 +134,10 @@ export default function AccountPayouts({ income, expenses }) {
               <XAxis dataKey="label" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} />
               <Tooltip formatter={(v) => money(v)} />
-              <Bar dataKey="total" fill="#E85D20" name="Income" />
+              <Bar dataKey="total" fill="#E85D20" name="Net Income" />
             </BarChart>
           </ResponsiveContainer>
-        ) : <p className="muted">No income recorded for this range.</p>
+        ) : <p className="muted">No Daily net income for this range.</p>
       )}
     </div>
   );
