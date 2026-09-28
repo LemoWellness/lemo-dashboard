@@ -9,10 +9,11 @@ function isCreator(session, task) {
   return emailOf(session) === String(task.addedBy || '').toLowerCase();
 }
 function isAssignee(session, task) {
-  return emailOf(session) === String(task.assignedTo || '').toLowerCase();
+  const email = emailOf(session);
+  return email === String(task.assignedTo || '').toLowerCase() || email === String(task.assignedTo2 || '').toLowerCase();
 }
 function canEditFields(session, task) {
-  return session.role === 'Admin' || session.role === 'Tasks Admin' || isCreator(session, task);
+  return session.role === 'Admin' || session.role === 'Tasks Admin' || !!session.taskAdmin || isCreator(session, task);
 }
 function canWork(session, task) {
   return canEditFields(session, task) || isAssignee(session, task);
@@ -30,6 +31,11 @@ function history(task) {
     kind: 'note',
   }];
 }
+function cleanSecond(first, second) {
+  const a = String(first || '').toLowerCase();
+  const b = String(second || '').toLowerCase();
+  return b && b !== a ? b : '';
+}
 
 export default withAuth(async (req, res, session) => {
   const ref = adminDb.collection('tasks').doc(String(req.query.id));
@@ -38,11 +44,11 @@ export default withAuth(async (req, res, session) => {
   const task = doc.data();
 
   if (req.method === 'PATCH') {
-    const { status, assignedTo, task: taskText, deadline, priority, notes, addUpdate, cancelRequest, cancelDecision } = req.body || {};
-    const editingFields = assignedTo !== undefined || taskText !== undefined || deadline !== undefined || priority !== undefined || notes !== undefined;
+    const { status, assignedTo, assignedTo2, task: taskText, deadline, priority, notes, addUpdate, cancelRequest, cancelDecision } = req.body || {};
+    const editingFields = assignedTo !== undefined || assignedTo2 !== undefined || taskText !== undefined || deadline !== undefined || priority !== undefined || notes !== undefined;
 
     if (cancelRequest) {
-      if (!isAssignee(session, task) && session.role !== 'Admin' && session.role !== 'Tasks Admin') {
+      if (!isAssignee(session, task) && !canEditFields(session, task)) {
         return res.status(403).json({ error: 'Only the assignee can request cancellation.' });
       }
       if (task.status === 'Cancelled' || task.status === 'Cancel Requested') {
@@ -105,6 +111,7 @@ export default withAuth(async (req, res, session) => {
         });
         try {
           await notifyCancelApproved({ taskId: doc.id, assigneeEmail: task.assignedTo, taskName: task.task, dueDate: task.deadline || '' });
+          if (task.assignedTo2) await notifyCancelApproved({ taskId: doc.id, assigneeEmail: task.assignedTo2, taskName: task.task, dueDate: task.deadline || '' });
         } catch (err) {
           console.error('Cancel approved notification failed', err);
         }
@@ -128,6 +135,7 @@ export default withAuth(async (req, res, session) => {
         });
         try {
           await notifyCancelDenied({ taskId: doc.id, assigneeEmail: task.assignedTo, taskName: task.task, dueDate: task.deadline || '' });
+          if (task.assignedTo2) await notifyCancelDenied({ taskId: doc.id, assigneeEmail: task.assignedTo2, taskName: task.task, dueDate: task.deadline || '' });
         } catch (err) {
           console.error('Cancel denied notification failed', err);
         }
@@ -198,10 +206,12 @@ export default withAuth(async (req, res, session) => {
       return res.status(403).json({ error: 'Only the person who created this task can edit it.' });
     }
     const nextAssigned = assignedTo ?? task.assignedTo;
+    const nextSecond = cleanSecond(nextAssigned, assignedTo2 !== undefined ? assignedTo2 : task.assignedTo2);
     const nextTask = taskText ?? task.task;
     const nextDeadline = deadline ?? task.deadline;
     const patch = {
       assignedTo: nextAssigned,
+      assignedTo2: nextSecond,
       task: nextTask,
       deadline: nextDeadline,
       priority: priority ?? task.priority,
@@ -222,14 +232,19 @@ export default withAuth(async (req, res, session) => {
       }
     }
     await ref.update(patch);
-    const prevEmail = String(task.assignedTo || '').toLowerCase();
-    const nextEmail = String(nextAssigned || '').toLowerCase();
-    if (nextEmail && nextEmail !== prevEmail) {
-      try {
+    const prev1 = String(task.assignedTo || '').toLowerCase();
+    const prev2 = String(task.assignedTo2 || '').toLowerCase();
+    const next1 = String(nextAssigned || '').toLowerCase();
+    const next2 = String(nextSecond || '').toLowerCase();
+    try {
+      if (next1 && next1 !== prev1 && next1 !== prev2) {
         await notifyTaskAssigned({ taskId: doc.id, assignedTo: nextAssigned, taskName: nextTask, dueDate: nextDeadline || '' });
-      } catch (err) {
-        console.error('Reassignment notification failed', err);
       }
+      if (next2 && next2 !== prev1 && next2 !== prev2) {
+        await notifyTaskAssigned({ taskId: doc.id, assignedTo: nextSecond, taskName: nextTask, dueDate: nextDeadline || '' });
+      }
+    } catch (err) {
+      console.error('Reassignment notification failed', err);
     }
     return res.status(200).json({ success: true });
   }
