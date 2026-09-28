@@ -130,13 +130,13 @@ function isSpreadsheet(name) {
   return n.endsWith('.xlsx') || n.endsWith('.xls');
 }
 
-function parseTableFile(fileObj) {
+function parseTableFile(fileObj, asRaw) {
   const original = fileObj.originalFilename || fileObj.newFilename || fileObj.filepath || '';
   if (isSpreadsheet(original)) {
     const buf = fs.readFileSync(fileObj.filepath);
     const wb = XLSX.read(buf, { type: 'buffer', cellDates: true });
     const ws = wb.Sheets[wb.SheetNames[0]];
-    return XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+    return XLSX.utils.sheet_to_json(ws, { defval: '', raw: Boolean(asRaw) });
   }
   const csvText = fs.readFileSync(fileObj.filepath, 'utf8').replace(/^\uFEFF/, '');
   const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
@@ -253,8 +253,8 @@ function rowToDoc(type, row, filename) {
         scanNumber: num(pick(row, 'Scan number')),
         payNumber: num(pick(row, 'Pay number')),
         orderNumber: num(pick(row, 'Order number')),
-        seatConversionRate: num(pick(row, 'Seat conversion rate')),
-        h5ConversionRate: num(pick(row, 'H5 conversion rate')),
+        seatConversionRate: rate(pick(row, 'Seat conversion rate')),
+        h5ConversionRate: rate(pick(row, 'H5 conversion rate')),
         firstGearRate: rate(pick(row, 'First gear rate')),
         secondGearRate: rate(pick(row, 'Second gear rate')),
         thirdGearRate: rate(pick(row, 'Third gear rate')),
@@ -363,7 +363,7 @@ export default async function handler(req, res) {
     if (!fileObj) return res.status(400).json({ error: 'No file uploaded.' });
     const original = fileObj.originalFilename || fileObj.newFilename || fileObj.filepath || '';
 
-    const rows = parseTableFile(fileObj);
+    const rows = parseTableFile(fileObj, type === 'usageRawData');
 
     let replacedDates = 0;
     let syncedIncome = 0;
