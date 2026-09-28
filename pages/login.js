@@ -16,7 +16,7 @@ export default function Login() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/');
+      router.push('/tasks');
     } catch (err) {
       setError('Incorrect email or password.');
     } finally {

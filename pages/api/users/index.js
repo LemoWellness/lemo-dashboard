@@ -24,6 +24,7 @@ export default withAuth(async (req, res) => {
       role: u.role || 'Viewer',
       tabs: u.tabs,
       active: u.active !== false,
+      taskDesk: (u.role === 'Admin' || u.role === 'Tasks Admin' || u.taskDesk === 'hq') ? 'hq' : 'contractor',
       lastLogin: authByUid[u.uid] || '',
       homeScreen: !!u.lastStandaloneAt,
       lastStandaloneAt: u.lastStandaloneAt || '',

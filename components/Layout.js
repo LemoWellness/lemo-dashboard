@@ -5,13 +5,14 @@ import { auth } from '../lib/firebaseClient';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 import PushEnableBanner from './PushEnableBanner';
+import MeetingNotesImport from './MeetingNotesImport';
 
 const NAV = [
-  { code: 'mo', label: 'Monthly Overview' },
-  { code: 'loc', label: 'Installations' },
-  { code: 'reporting', label: 'Reporting' },
   { code: 'tasks', label: 'Tasks' },
+  { code: 'mo', label: 'Monthly Overview' },
   { code: 'financials', label: 'Financials' },
+  { code: 'reporting', label: 'Reporting' },
+  { code: 'loc', label: 'Installations' },
   { code: 'risk', label: 'Deployment Risk' },
 ];
 const ADMIN_NAV = [{ code: 'admin-users', label: 'Manage Users' }, { code: 'admin-import', label: 'Import Data' }];
@@ -28,6 +29,7 @@ export default function Layout({ active, onNavigate, children }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const showBell = active === 'tasks';
+  const isTaskAdmin = session?.role === 'Admin' || session?.role === 'Tasks Admin';
 
   useEffect(() => {
     if (user === null) router.replace('/login');
@@ -66,7 +68,10 @@ export default function Layout({ active, onNavigate, children }) {
       <div className="mobile-topbar">
         <button onClick={() => setMenuOpen((o) => !o)} aria-label="Menu">☰</button>
         <h2>LEMO</h2>
-        <div style={{ marginLeft: 'auto' }}>{showBell ? <NotificationBell /> : null}</div>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          {showBell && isTaskAdmin ? <MeetingNotesImport onCreated={() => router.replace('/tasks')} /> : null}
+          {showBell ? <NotificationBell /> : null}
+        </div>
       </div>
       <div className={`sidebar-backdrop ${menuOpen ? 'show' : ''}`} onClick={() => setMenuOpen(false)} />
       <nav className={`sidebar ${menuOpen ? 'open' : ''}`}>
@@ -95,7 +100,8 @@ export default function Layout({ active, onNavigate, children }) {
       </nav>
       <main className="main">
         {showBell && (
-          <div className="desktop-topbar">
+          <div className="desktop-topbar" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            {isTaskAdmin ? <MeetingNotesImport onCreated={() => router.replace('/tasks')} /> : <span />}
             <NotificationBell />
           </div>
         )}
