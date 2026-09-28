@@ -298,7 +298,9 @@ function SessionsTable({ rows, pack, isAdmin, onUploaded }) {
       const res = await authedFetch('/api/import', { method: 'POST', body });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.error) throw new Error(data.error || 'Upload failed.');
-      setMsg(`Saved ${data.written || 0} Usage rows.`);
+      const s = data.sample || {};
+      const mix = s.venue ? ` Read ${s.venue} ${s.periodMonth || ''} as ${s.firstGearRate}/${s.secondGearRate}/${s.thirdGearRate}.` : '';
+      setMsg(`Saved ${data.written || 0} Usage rows.${mix}`);
       if (onUploaded) onUploaded();
     } catch (err) {
       setMsg(err.message || 'Upload failed.');
@@ -317,8 +319,8 @@ function SessionsTable({ rows, pack, isAdmin, onUploaded }) {
         )}
       </div>
       <p className="muted" style={{ marginTop: 8 }}>
-        Every uploaded Usage file is listed with its month. Upload does not change Usage or income totals.
-        {pack && pack.allRows ? ` ${pack.allRows.length} venue-month row${pack.allRows.length === 1 ? '' : 's'} in the database.` : ''}
+        Session mix for {pack && pack.requestedMonth ? pack.requestedMonth : 'the selected month'}. Use the Venue UserUsage file, not Outlet.
+        {pack && pack.availableMonths && pack.availableMonths.length ? ` Stored months: ${pack.availableMonths.join(', ')}.` : ''}
       </p>
       {msg && <p className="muted">{msg}</p>}
       <div className="table-wrap">
@@ -333,18 +335,18 @@ function SessionsTable({ rows, pack, isAdmin, onUploaded }) {
             </tr>
           </thead>
           <tbody>
-            {((pack && pack.allRows) || rows || []).map((v, i) => (
+            {(rows || []).map((v, i) => (
               <tr key={i}>
-                <td>{v.month || '-'}</td>
+                <td>{v.month || (pack && pack.requestedMonth) || '-'}</td>
                 <td>{v.venue}</td>
                 <td>{fmtPct(v.firstGearRate)}</td>
                 <td>{fmtPct(v.secondGearRate)}</td>
                 <td>{fmtPct(v.thirdGearRate)}</td>
               </tr>
             ))}
-            {!(((pack && pack.allRows) || rows || []).length) && (
+            {!(rows && rows.length) && (
               <tr><td colSpan={5} className="muted">
-                No Usage rows in the database yet. Upload a UserUsage Venue or Outlet xlsx.
+                No session mix for {pack && pack.requestedMonth ? pack.requestedMonth : 'this month'}.
               </td></tr>
             )}
           </tbody>
