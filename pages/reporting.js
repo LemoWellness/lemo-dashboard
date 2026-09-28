@@ -69,7 +69,7 @@ export default function Reporting() {
         </div>
       </div>
       <p className="muted">
-        Built from Daily Raw Data only. Usage is chair sessions started. RS Income is Total Amount (gross). Net Income is after refunds.
+        Built from Daily Raw Data only. Usage is chair sessions started. Gross Income is Total Amount. Income / Net Income is after refunds.
       </p>
       {loading && <p className="muted">Loading reporting data...</p>}
       {error && <p className="form-error">{error}</p>}
@@ -88,7 +88,8 @@ export default function Reporting() {
 
 function DailyView({ data, selectedDate, onDate }) {
   const anyAlert = data.duplicates.length || data.missingVenues.length || data.sustainedOutages.length || data.flags.length;
-  const net = (Number(data.totals.netIncome) || 0) - (Number(data.totals.refunds) || 0);
+  const gross = Number(data.totals.gross != null ? data.totals.gross : data.totals.totalAmount) || ((Number(data.totals.netIncome)||0) + (Number(data.totals.refunds)||0));
+  const net = Number(data.totals.netIncome) || 0;
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
@@ -109,12 +110,12 @@ function DailyView({ data, selectedDate, onDate }) {
       {data.dataHealthIssues?.count > 0 && <HealthBanner issues={data.dataHealthIssues} />}
       <div className="grid-4">
         <Kpi label="Usage" value={count(data.totals.orders)} />
-        <Kpi label="RS Income" value={fmt(data.totals.netIncome)} />
+        <Kpi label="Gross Income" value={fmt(gross)} />
         <Kpi label="Refunds" value={fmt(data.totals.refunds)} />
         <Kpi label="Net Income" value={fmt(net)} />
       </div>
       <UsageChart data={data.trend} xKey="date" title="Usage (last 30 days)" />
-      <IncomeChart data={data.trend} xKey="date" title="RS Income (last 30 days)" />
+      <IncomeChart data={data.trend} xKey="date" title="RS Net Income (last 30 days)" />
       {data.duplicates.length > 0 && (
         <AlertPanel title="Possible duplicate upload">
           {data.duplicates.map((x, i) => (
@@ -162,7 +163,8 @@ function DailyView({ data, selectedDate, onDate }) {
 }
 
 function MonthlyView({ data, selectedMonth, onMonth }) {
-  const net = (Number(data.totals.netIncome) || 0) - (Number(data.totals.refunds) || 0);
+  const gross = Number(data.totals.gross != null ? data.totals.gross : data.totals.totalAmount) || ((Number(data.totals.netIncome)||0) + (Number(data.totals.refunds)||0));
+  const net = Number(data.totals.netIncome) || 0;
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
@@ -179,7 +181,7 @@ function MonthlyView({ data, selectedMonth, onMonth }) {
       {data.dataHealthIssues?.count > 0 && <HealthBanner issues={data.dataHealthIssues} />}
       <div className="grid-4">
         <Kpi label="Usage" value={count(data.totals.orders)} />
-        <Kpi label="RS Income" value={fmt(data.totals.netIncome)} />
+        <Kpi label="Gross Income" value={fmt(gross)} />
         <Kpi label="Refunds" value={fmt(data.totals.refunds)} />
         <Kpi label="Net Income" value={fmt(net)} />
       </div>
@@ -189,7 +191,7 @@ function MonthlyView({ data, selectedMonth, onMonth }) {
         <Kpi label="Days in month" value={count(data.dayCount)} />
       </div>
       <UsageChart data={data.trend} xKey="month" title="Usage trend" />
-      <IncomeChart data={data.trend} xKey="month" title="RS Income trend" />
+      <IncomeChart data={data.trend} xKey="month" title="RS Net Income trend" />
       <VenueTable rows={data.venueTable} title="Venue totals - selected month (ranked by Usage)" />
     </>
   );
@@ -225,7 +227,7 @@ function IncomeChart({ data, xKey, title }) {
           <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${Math.round(v).toLocaleString()}`} />
           <Tooltip formatter={(v) => fmt(v)} />
           <Legend />
-          <Line type="monotone" dataKey="revenueSharingIncome" name="RS Income" stroke="#D9A441" strokeWidth={2.5} dot={false} />
+          <Line type="monotone" dataKey="revenueSharingIncome" name="RS Net Income" stroke="#D9A441" strokeWidth={2.5} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -241,10 +243,11 @@ function VenueTable({ rows, title }) {
           <thead>
             <tr>
               <th>Venue</th>
-              <th>Usage</th>
-              <th>Refunds</th>
-              <th>RS Income</th>
-              <th>Avg # of Visitors</th>
+              <th title="Chair sessions started (orderNumber) from Daily Raw Data.">Usage</th>
+              <th title="Total Amount from Daily Raw Data, before refunds.">Gross Income</th>
+              <th title="Refunds from Daily Raw Data.">Refunds</th>
+              <th title="Gross minus refunds from Daily Raw Data.">Income</th>
+              <th title="Average visitors from Daily Raw Data.">Avg # of Visitors</th>
             </tr>
           </thead>
           <tbody>
@@ -252,12 +255,13 @@ function VenueTable({ rows, title }) {
               <tr key={i}>
                 <td>{v.venue}</td>
                 <td>{count(v.orders)}</td>
+                <td>{fmt(v.gross != null ? v.gross : (Number(v.netIncome)||0) + (Number(v.refunds)||0))}</td>
                 <td>{fmt(v.refunds)}</td>
                 <td>{fmt(v.netIncome)}</td>
                 <td>{Math.round(v.avgVisitors * 10) / 10}</td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={5} className="muted">No venue activity for this period</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={6} className="muted">No venue activity for this period</td></tr>}
           </tbody>
         </table>
       </div>
