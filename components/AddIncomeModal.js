@@ -1,7 +1,7 @@
 export default function AddIncomeModal({ venue, form, error, readOnly, canEdit, monthlyFee, onEdit, onChange, onClose, onSubmit }) {
   const months = (Array.isArray(form.periodMonths) && form.periodMonths.length)
     ? form.periodMonths.slice(0, 3)
-    : [form.periodMonth || ''].filter(Boolean);
+    : [form.periodMonth || ''];
   while (months.length < 1) months.push('');
 
   function set(field, value) {
@@ -9,15 +9,26 @@ export default function AddIncomeModal({ venue, form, error, readOnly, canEdit, 
     onChange({ ...form, [field]: value });
   }
 
+  function filledMonths(list) {
+    const out = [];
+    (list || []).forEach((m) => {
+      const key = String(m || '').trim().slice(0, 7);
+      if (/^\d{4}-\d{2}$/.test(key) && !out.includes(key)) out.push(key);
+    });
+    return out;
+  }
+
   function setMonths(next) {
     if (readOnly) return;
-    const cleaned = next.map((m) => String(m || '').trim()).filter(Boolean).slice(0, 3);
-    const unique = [];
-    cleaned.forEach((m) => { if (!unique.includes(m)) unique.push(m); });
-    unique.sort();
+    const slots = next.slice(0, 3).map((m) => String(m || '').trim());
+    const filled = filledMonths(slots);
     const fee = Number(monthlyFee) || 0;
-    const nextForm = { ...form, periodMonths: unique, periodMonth: unique[0] || '' };
-    if (fee > 0) nextForm.amount = String(fee * unique.length);
+    const nextForm = {
+      ...form,
+      periodMonths: slots,
+      periodMonth: filled[0] || '',
+    };
+    if (fee > 0) nextForm.amount = String(fee * Math.max(filled.length, 1));
     onChange(nextForm);
   }
 
