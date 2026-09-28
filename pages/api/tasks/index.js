@@ -9,7 +9,8 @@ function isCreator(session, task) {
   return emailOf(session) === String(task.addedBy || '').toLowerCase();
 }
 function isAssignee(session, task) {
-  return emailOf(session) === String(task.assignedTo || '').toLowerCase();
+  const email = emailOf(session);
+  return email === String(task.assignedTo || '').toLowerCase() || email === String(task.assignedTo2 || '').toLowerCase();
 }
 function isTaskAdmin(session) {
   return session.role === 'Admin' || !!session.taskAdmin;
@@ -38,6 +39,11 @@ function displayAddedBy(task) {
   if (task.source === 'meeting-notes') return 'Gemini';
   return task.addedBy;
 }
+function cleanSecond(first, second) {
+  const a = String(first || '').toLowerCase();
+  const b = String(second || '').toLowerCase();
+  return b && b !== a ? b : '';
+}
 
 export default withAuth(async (req, res, session) => {
   if (req.method === 'GET') {
@@ -52,9 +58,10 @@ export default withAuth(async (req, res, session) => {
   }
 
   if (req.method === 'POST') {
-    const { assignedTo, task, deadline, priority, notes } = req.body || {};
+    const { assignedTo, assignedTo2, task, deadline, priority, notes } = req.body || {};
     if (!assignedTo) return res.status(400).json({ error: 'Assigned To is required.' });
     if (!task || !String(task).trim()) return res.status(400).json({ error: 'Task description is required.' });
+    const second = cleanSecond(assignedTo, assignedTo2);
 
     const firstNote = String(notes || '').trim();
     const updates = firstNote ? [{
@@ -70,6 +77,7 @@ export default withAuth(async (req, res, session) => {
       timestamp: new Date().toISOString(),
       addedBy: session.email,
       assignedTo,
+      assignedTo2: second,
       task: String(task).trim(),
       deadline: deadline || '',
       priority: priority || 'Medium',
@@ -78,8 +86,10 @@ export default withAuth(async (req, res, session) => {
       updates,
       calendarEventId: '',
     });
+    const name = String(task).trim();
     try {
-      await notifyTaskAssigned({ taskId: docRef.id, assignedTo, taskName: String(task).trim(), dueDate: deadline || '' });
+      await notifyTaskAssigned({ taskId: docRef.id, assignedTo, taskName: name, dueDate: deadline || '' });
+      if (second) await notifyTaskAssigned({ taskId: docRef.id, assignedTo: second, taskName: name, dueDate: deadline || '' });
     } catch (err) {
       console.error('Assignment notification failed', err);
     }

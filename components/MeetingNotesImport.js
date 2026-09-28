@@ -59,11 +59,15 @@ export default function MeetingNotesImport({ onCreated }) {
     preview({ text });
   }
 
-  function setAssignee(index, email) {
+  function setAssignee(index, email, field) {
     const user = users.find((u) => u.email === email);
-    setItems((list) => list.map((item, i) => (
-      i === index ? { ...item, assignedTo: email, assignedName: user ? user.name : email, unmatched: !email } : item
-    )));
+    setItems((list) => list.map((item, i) => {
+      if (i !== index) return item;
+      if (field === 'assignedTo2') {
+        return { ...item, assignedTo2: email, assignedName2: user ? user.name : email };
+      }
+      return { ...item, assignedTo: email, assignedName: user ? user.name : email, unmatched: !email };
+    }));
   }
 
   async function create() {
@@ -113,13 +117,19 @@ export default function MeetingNotesImport({ onCreated }) {
             {status && <p className="muted">{status}</p>}
             {items.length > 0 && (
               <div style={{ marginTop: 16 }}>
-                <p className="muted">{readyCount} of {items.length} assigned. Pick a person if the name did not match.</p>
+                <p className="muted">{readyCount} of {items.length} assigned. Add a second person when two names are in the notes.</p>
                 {items.map((item, i) => (
                   <div key={item.key || i} className="card" style={{ marginBottom: 8, padding: 12 }}>
                     <strong>{item.task}</strong>
                     <label className="stack-field" style={{ marginTop: 8 }}>Assign to
-                      <select value={item.assignedTo || ''} onChange={(e) => setAssignee(i, e.target.value)}>
+                      <select value={item.assignedTo || ''} onChange={(e) => setAssignee(i, e.target.value, 'assignedTo')}>
                         <option value="">Select...</option>
+                        {users.map((u) => <option key={u.email} value={u.email}>{u.name}</option>)}
+                      </select>
+                    </label>
+                    <label className="stack-field">Second person (optional)
+                      <select value={item.assignedTo2 || ''} onChange={(e) => setAssignee(i, e.target.value, 'assignedTo2')}>
+                        <option value="">None</option>
                         {users.map((u) => <option key={u.email} value={u.email}>{u.name}</option>)}
                       </select>
                     </label>
