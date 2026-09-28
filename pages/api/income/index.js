@@ -3,6 +3,22 @@ import { withAuth } from '../../../lib/auth';
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 
+function normalizeMonths(body, date) {
+  const raw = Array.isArray(body.periodMonths) ? body.periodMonths : [];
+  const extra = String(body.periodMonth || '').split('+');
+  const out = [];
+  [...raw, ...extra].forEach((m) => {
+    const key = String(m || '').trim().slice(0, 7);
+    if (MONTH_RE.test(key) && !out.includes(key)) out.push(key);
+  });
+  if (!out.length) {
+    const fallback = String(date || '').slice(0, 7);
+    if (MONTH_RE.test(fallback)) out.push(fallback);
+  }
+  out.sort();
+  return out.slice(0, 3);
+}
+
 export default withAuth(async (req, res, session) => {
   if (req.method === 'GET') {
     const { location } = req.query;
@@ -16,13 +32,13 @@ export default withAuth(async (req, res, session) => {
     if (session.role !== 'Admin') {
       return res.status(403).json({ error: 'Only an administrator can do that.' });
     }
-    const { id, location, date, amount, notes, grossRevenue, periodMonth } = req.body || {};
+    const { id, location, date, amount, notes, grossRevenue } = req.body || {};
     if (!location) return res.status(400).json({ error: 'No location specified.' });
     const amt = Number(amount);
     if (!amount || isNaN(amt) || amt <= 0) return res.status(400).json({ error: 'Amount must be a positive number.' });
     if (!date) return res.status(400).json({ error: 'Date is required.' });
-    const paidFor = String(periodMonth || date).slice(0, 7);
-    if (!MONTH_RE.test(paidFor)) return res.status(400).json({ error: 'Paying for month is required.' });
+    const periodMonths = normalizeMonths(req.body || {}, date);
+    if (!periodMonths.length) return res.status(400).json({ error: 'Paying for month is required.' });
 
     const projectDoc = await adminDb.collection('projects').doc(location).get();
     const businessModel = projectDoc.exists ? projectDoc.data().businessModel : null;
@@ -35,7 +51,8 @@ export default withAuth(async (req, res, session) => {
     const payload = {
       location,
       date,
-      periodMonth: paidFor,
+      periodMonth: periodMonths.join('+'),
+      periodMonths,
       businessModel,
       amount: amt,
       grossRevenue: grossRevenue != null && grossRevenue !== '' ? Number(grossRevenue) : null,
