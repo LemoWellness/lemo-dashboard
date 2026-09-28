@@ -137,14 +137,14 @@ input.task-date:focus { outline: none; border-color: var(--ember); }
 
 .task-subtabs { display: flex; gap: 4px; border-bottom: 2px solid var(--iron); margin-bottom: 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .task-subtab-btn {
-  background: none; border: none; padding: 10px 18px; font-family: 'Poppins', sans-serif; font-weight: 500;
-  font-size: 0.85rem; color: var(--ash); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px;
+  background: none; border: none; padding: 8px 12px; font-family: 'Poppins', sans-serif; font-weight: 500;
+  font-size: 0.8rem; color: var(--ash); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px;
   white-space: nowrap; flex-shrink: 0;
 }
 .task-subtab-btn.active { color: var(--obsidian); border-bottom-color: var(--ember); }
 .task-subtab-count {
   background: var(--warm-white); color: var(--charcoal); border: 1px solid var(--iron); border-radius: 20px;
-  padding: 1px 8px; font-size: 0.7rem; margin-left: 6px;
+  padding: 1px 7px; font-size: 0.68rem; margin-left: 5px;
 }
 .task-subtab-btn.active .task-subtab-count { background: var(--ember); color: #fff; border-color: var(--ember); }
 
@@ -186,10 +186,21 @@ input.task-date:focus { outline: none; border-color: var(--ember); }
 }
 .task-locked-note { font-size: 0.7rem; color: var(--ash); font-style: italic; }
 
-.seg-tabs { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--iron); border-radius: 5px; overflow: hidden; margin-bottom: 16px; }
+.seg-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--iron);
+  border-radius: 5px;
+  margin-bottom: 16px;
+}
 .seg-tab {
-  background: #fff; border: none; padding: 9px 18px; font-family: 'Poppins', sans-serif; font-weight: 500;
-  font-size: 0.85rem; color: var(--charcoal); cursor: pointer; border-right: 1px solid var(--iron);
+  background: #fff; border: none; padding: 7px 12px; font-family: 'Poppins', sans-serif; font-weight: 500;
+  font-size: 0.78rem; color: var(--charcoal); cursor: pointer; border-right: 1px solid var(--iron);
+  white-space: nowrap; flex: 0 0 auto;
 }
 .seg-tab:last-child { border-right: none; }
 .seg-tab.active { background: var(--charcoal); color: var(--warm-white); }
@@ -217,19 +228,22 @@ input.task-date:focus { outline: none; border-color: var(--ember); }
   .grid-4 { grid-template-columns: 1fr; }
   .form-grid-2 { grid-template-columns: 1fr; }
   .usage-kpi-grid { grid-template-columns: 1fr; }
-  .main { padding: 16px 12px; }
-  .main h1 { font-size: 1.12rem; }
-  h2 { font-size: 1.05rem; }
-  h3 { font-size: 0.98rem; }
-  .card { padding: 14px; }
-  .btn { font-size: 0.82rem; padding: 8px 12px; }
-  table.data, table { font-size: 0.78rem; }
-  th, td { padding: 7px 6px; }
+  .main { padding: 14px 10px; }
+  .main h1 { font-size: 1.05rem; }
+  h2 { font-size: 1rem; }
+  h3 { font-size: 0.95rem; }
+  .card { padding: 12px; }
+  .btn { font-size: 0.75rem; padding: 6px 10px; }
+  table.data, table { font-size: 0.74rem; }
+  th, td { padding: 6px 5px; }
   .desktop-topbar { display: none; }
-  .task-subtab-btn { padding: 8px 12px; font-size: 0.78rem; }
-  .seg-tab { padding: 8px 12px; font-size: 0.78rem; }
+  .task-subtabs { margin-bottom: 12px; }
+  .task-subtab-btn { padding: 6px 8px; font-size: 0.72rem; }
+  .seg-tabs { margin-bottom: 12px; }
+  .seg-tab { padding: 6px 8px; font-size: 0.72rem; }
   .task-actions { width: 100%; align-items: stretch; }
   .task-btn-row { justify-content: flex-start; }
+  .muted { font-size: 0.78rem; }
 
   .mobile-topbar {
     display: flex; align-items: center; gap: 12px;
