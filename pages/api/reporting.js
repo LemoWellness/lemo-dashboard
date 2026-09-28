@@ -128,12 +128,11 @@ function rowsForUsageMonth(usageSnap, month) {
 
 function buildSessionTable(usageSnap, month) {
   const months = usageMonths(usageSnap);
-  const used = months.includes(month) ? month : (months[months.length - 1] || month);
   return {
-    month: used || month,
+    month,
     requestedMonth: month,
     availableMonths: months,
-    rows: rowsForUsageMonth(usageSnap, used),
+    rows: rowsForUsageMonth(usageSnap, month),
   };
 }
 
