@@ -116,10 +116,13 @@ function rowsForUsageMonth(usageSnap, month) {
     const w = Number(row.orderNumber) || 0;
     const weight = w > 0 ? w : 1;
     byVenue[name].orders += w;
-    if (row.firstGearRate != null && row.firstGearRate !== '') {
-      byVenue[name].first += Number(row.firstGearRate) * weight;
-      byVenue[name].second += Number(row.secondGearRate) * weight;
-      byVenue[name].third += Number(row.thirdGearRate) * weight;
+    const g1 = Number(row.firstGearRate);
+    const g2 = Number(row.secondGearRate);
+    const g3 = Number(row.thirdGearRate);
+    if (!isNaN(g1) || !isNaN(g2) || !isNaN(g3)) {
+      byVenue[name].first += (isNaN(g1) ? 0 : g1) * weight;
+      byVenue[name].second += (isNaN(g2) ? 0 : g2) * weight;
+      byVenue[name].third += (isNaN(g3) ? 0 : g3) * weight;
       byVenue[name].weight += weight;
     }
   });
@@ -132,6 +135,39 @@ function rowsForUsageMonth(usageSnap, month) {
   })).sort((a, b) => b.orders - a.orders);
 }
 
+function allSessionRows(usageSnap) {
+  const byKey = {};
+  if (!usageSnap || usageSnap.empty) return [];
+  usageSnap.forEach((doc) => {
+    const row = doc.data();
+    const month = rowUsageMonth(row);
+    const name = String(row.venueName || '').trim();
+    if (!name) return;
+    const key = month + '|' + name;
+    if (!byKey[key]) byKey[key] = { month, venue: name, orders: 0, first: 0, second: 0, third: 0, weight: 0 };
+    const w = Number(row.orderNumber) || 0;
+    const weight = w > 0 ? w : 1;
+    byKey[key].orders += w;
+    const g1 = Number(row.firstGearRate);
+    const g2 = Number(row.secondGearRate);
+    const g3 = Number(row.thirdGearRate);
+    if (!isNaN(g1) || !isNaN(g2) || !isNaN(g3)) {
+      byKey[key].first += (isNaN(g1) ? 0 : g1) * weight;
+      byKey[key].second += (isNaN(g2) ? 0 : g2) * weight;
+      byKey[key].third += (isNaN(g3) ? 0 : g3) * weight;
+      byKey[key].weight += weight;
+    }
+  });
+  return Object.values(byKey).map((v) => ({
+    month: v.month,
+    venue: v.venue,
+    orders: v.orders,
+    firstGearRate: v.weight ? v.first / v.weight : null,
+    secondGearRate: v.weight ? v.second / v.weight : null,
+    thirdGearRate: v.weight ? v.third / v.weight : null,
+  })).sort((a, b) => String(a.month).localeCompare(b.month) || String(a.venue).localeCompare(b.venue));
+}
+
 function buildSessionTable(usageSnap, month) {
   const months = usageMonths(usageSnap);
   return {
@@ -139,6 +175,7 @@ function buildSessionTable(usageSnap, month) {
     requestedMonth: month,
     availableMonths: months,
     rows: rowsForUsageMonth(usageSnap, month),
+    allRows: allSessionRows(usageSnap),
   };
 }
 
