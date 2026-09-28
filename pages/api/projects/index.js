@@ -50,6 +50,14 @@ function cwOwes(project, allIncome, monthKey) {
   return expected - received > 0.5;
 }
 
+const PROJECT_FIELDS = [
+  'businessModel', 'numberOfChairs', 'goLiveDate', 'monthlyFee', 'revenueSharePercent',
+  'streetAddress', 'city', 'state', 'zipCode', 'tenureMonths', 'avgMonthlyRevenue',
+  'customerContactName', 'customerContactPhone', 'customerContactEmail',
+  'bdConsultantName', 'bdConsultantPhone', 'bdConsultantEmail',
+  'contact2Name', 'contact2Phone', 'contact2Email', 'editNotes',
+];
+
 export default withAuth(async (req, res, session) => {
   if (req.method === 'GET') {
     const monthKey = new Date().toISOString().slice(0, 7);
@@ -73,35 +81,16 @@ export default withAuth(async (req, res, session) => {
     if (!body.name) return res.status(400).json({ error: 'Location name is required.' });
 
     const docId = String(body.name).trim();
-    await adminDb.collection('projects').doc(docId).set(
-      {
-        name: docId,
-        businessModel: body.businessModel || '',
-        numberOfChairs: body.numberOfChairs ?? null,
-        goLiveDate: body.goLiveDate || '',
-        monthlyFee: body.monthlyFee ?? null,
-        revenueSharePercent: body.revenueSharePercent ?? null,
-        streetAddress: body.streetAddress || '',
-        city: body.city || '',
-        state: body.state || '',
-        zipCode: body.zipCode || '',
-        tenureMonths: body.tenureMonths ?? null,
-        avgMonthlyRevenue: body.avgMonthlyRevenue ?? null,
-        customerContactName: body.customerContactName || '',
-        customerContactPhone: body.customerContactPhone || '',
-        customerContactEmail: body.customerContactEmail || '',
-        bdConsultantName: body.bdConsultantName || '',
-        bdConsultantPhone: body.bdConsultantPhone || '',
-        bdConsultantEmail: body.bdConsultantEmail || '',
-        contact2Name: body.contact2Name || '',
-        contact2Phone: body.contact2Phone || '',
-        contact2Email: body.contact2Email || '',
-        editNotes: body.editNotes || '',
-        updatedAt: new Date().toISOString(),
-        updatedBy: session.email,
-      },
-      { merge: true }
-    );
+    const updates = {
+      name: docId,
+      updatedAt: new Date().toISOString(),
+      updatedBy: session.email,
+    };
+    PROJECT_FIELDS.forEach((key) => {
+      if (body[key] !== undefined) updates[key] = body[key] === '' ? '' : body[key];
+    });
+    if (body.signedContract !== undefined) updates.signedContract = !!body.signedContract;
+    await adminDb.collection('projects').doc(docId).set(updates, { merge: true });
     return res.status(200).json({ success: true });
   }
 
