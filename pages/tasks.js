@@ -20,6 +20,12 @@ function formatDeadline(ymd) {
   const parts = String(ymd).split('-');
   return parts.length === 3 ? `${parts[1]}/${parts[2]}/${parts[0]}` : ymd;
 }
+function tabFor(status) {
+  if (status === 'Done') return 'completed';
+  if (status === 'Cancelled') return 'cancelled';
+  if (status === 'On Hold' || status === 'Pending') return 'hold';
+  return 'active';
+}
 
 export default function Tasks() {
   const router = useRouter();
@@ -31,6 +37,8 @@ export default function Tasks() {
   const [error, setError] = useState('');
   const [subtab, setSubtab] = useState('active');
   const [filterAssigned, setFilterAssigned] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [sortBy, setSortBy] = useState('created_desc');
   const [form, setForm] = useState(EMPTY);
   const [showAdd, setShowAdd] = useState(false);
   const [openTask, setOpenTask] = useState(null);
@@ -40,6 +48,7 @@ export default function Tasks() {
   const [showSettings, setShowSettings] = useState(false);
   const [deskBusy, setDeskBusy] = useState('');
   const isAdmin = session?.role === 'Admin';
+  const focusId = typeof router.query.task === 'string' ? router.query.task : '';
   const live = openTask ? (tasks.find((t) => t.id === openTask.id) || openTask) : null;
 
   function navigate(code) {
@@ -78,19 +87,39 @@ export default function Tasks() {
     }).catch((e) => { setError(e.message); setLoading(false); });
   }
   useEffect(() => { if (session) load(); }, [session]);
+  useEffect(() => {
+    if (!focusId || !tasks.length) return;
+    const hit = tasks.find((t) => t.id === focusId);
+    if (!hit) return;
+    setSubtab(tabFor(hit.status));
+    setOpenTask(hit);
+  }, [focusId, tasks]);
 
   const hold = (s) => s === 'On Hold' || s === 'Pending';
   const parked = (s) => s === 'Done' || s === 'Cancelled' || hold(s);
-  const filtered = useMemo(() => tasks.filter((t) => {
-    if (filterAssigned) {
-      const want = filterAssigned.toLowerCase();
-      if (String(t.assignedTo || '').toLowerCase() !== want && String(t.assignedTo2 || '').toLowerCase() !== want) return false;
-    }
-    if (subtab === 'active') return !parked(t.status);
-    if (subtab === 'hold') return hold(t.status);
-    if (subtab === 'cancelled') return t.status === 'Cancelled';
-    return t.status === 'Done';
-  }), [tasks, subtab, filterAssigned]);
+  const filtered = useMemo(() => {
+    let list = tasks.filter((t) => {
+      if (filterAssigned) {
+        const want = filterAssigned.toLowerCase();
+        if (String(t.assignedTo || '').toLowerCase() !== want && String(t.assignedTo2 || '').toLowerCase() !== want) return false;
+      }
+      if (subtab === 'active') {
+        if (parked(t.status)) return false;
+        if (filterStatus && t.status !== filterStatus) return false;
+        return true;
+      }
+      if (subtab === 'hold') return hold(t.status);
+      if (subtab === 'cancelled') return t.status === 'Cancelled';
+      return t.status === 'Done';
+    });
+    list = [...list].sort((a, b) => {
+      if (sortBy === 'created_asc') return new Date(a.timestamp) - new Date(b.timestamp);
+      if (sortBy === 'deadline_asc') return (a.deadline || '9999-12-31').localeCompare(b.deadline || '9999-12-31');
+      if (sortBy === 'deadline_desc') return (b.deadline || '0000-01-01').localeCompare(a.deadline || '0000-01-01');
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    });
+    return list;
+  }, [tasks, subtab, filterAssigned, filterStatus, sortBy]);
   const counts = {
     active: tasks.filter((t) => !parked(t.status)).length,
     hold: tasks.filter((t) => hold(t.status)).length,
@@ -159,6 +188,24 @@ export default function Tasks() {
                 {users.map((u) => <option key={u.email} value={u.email}>{u.name}</option>)}
               </select>
             </label>
+            {subtab === 'active' && (
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem' }} className="muted">Status
+                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ minWidth: 130 }}>
+                  <option value="">All</option>
+                  <option>Not Started</option>
+                  <option>In Progress</option>
+                  <option>Cancel Requested</option>
+                </select>
+              </label>
+            )}
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem' }} className="muted">Sort By
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ minWidth: 150 }}>
+                <option value="created_desc">Newest Created</option>
+                <option value="created_asc">Oldest Created</option>
+                <option value="deadline_asc">Deadline (Soonest)</option>
+                <option value="deadline_desc">Deadline (Latest)</option>
+              </select>
+            </label>
           </div>
           {selected.length > 0 && (
             <div className="card" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -187,8 +234,9 @@ export default function Tasks() {
                   {filtered.map((t) => {
                     const overdue = isOverdue(t);
                     const done = t.status === 'Done';
+                    const focused = focusId && t.id === focusId;
                     return (
-                      <tr key={t.id} onClick={() => setOpenTask(t)} style={{ cursor: 'pointer', ...(done ? { opacity: 0.55 } : overdue ? { background: '#fdeceb' } : {}) }}>
+                      <tr key={t.id} onClick={() => setOpenTask(t)} style={{ cursor: 'pointer', ...(focused ? { outline: '2px solid var(--ember)', background: '#f8f1ea' } : done ? { opacity: 0.55 } : overdue ? { background: '#fdeceb' } : {}) }}>
                         <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selected.includes(t.id)} onChange={(e) => toggleOne(t.id, e.target.checked)} /></td>
                         <td style={done ? { textDecoration: 'line-through' } : undefined}>{t.task}</td>
                         <td>{people(t)}</td>
@@ -208,7 +256,7 @@ export default function Tasks() {
       )}
       {showAdd && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <form className="card" onSubmit={addTask} style={{ width: '90%', maxWidth: 440 }}>
+          <form className="card" onSubmit={addTask} style={{ width: '90%', maxWidth: 440, maxHeight: '88vh', overflowY: 'auto' }}>
             <h3 style={{ marginTop: 0 }}>Add a Task</h3>
             <label style={{ display: 'block', marginBottom: 12 }}>Assigned To
               <select value={form.assignedTo} onChange={(e) => setForm({ ...form, assignedTo: e.target.value })} style={{ width: '100%', marginTop: 4 }}>
@@ -225,8 +273,13 @@ export default function Tasks() {
             <label style={{ display: 'block', marginBottom: 12 }}>Task
               <textarea value={form.task} onChange={(e) => setForm({ ...form, task: e.target.value })} rows={3} style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4 }} />
             </label>
-            <label style={{ display: 'block', marginBottom: 12 }}>Deadline
-              <input type="date" className="task-date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} />
+            <div className="form-grid-2" style={{ marginBottom: 12 }}>
+              <label>Deadline<input type="date" className="task-date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} /></label>
+              <label>Priority<select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} style={{ width: '100%', marginTop: 4 }}><option>Low</option><option>Medium</option><option>High</option></select></label>
+            </div>
+            <label style={{ display: 'block', marginBottom: 16 }}>Notes
+              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4, fontFamily: 'inherit' }} />
+              <span className="muted" style={{ display: 'block', fontSize: '0.75rem', marginTop: 6 }}>Write updates here if needed.</span>
             </label>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button type="button" className="btn btn-ghost" onClick={() => setShowAdd(false)}>Cancel</button>
