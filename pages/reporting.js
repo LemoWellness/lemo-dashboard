@@ -11,7 +11,7 @@ const count = (n) => (typeof n === 'number' ? Math.round(n).toLocaleString() : n
 export default function Reporting() {
   const router = useRouter();
   const { session } = useAuth();
-  const [view, setView] = useState('daily');
+  const [view, setView] = useState('monthly');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -50,7 +50,7 @@ export default function Reporting() {
       .catch((e) => { setError(e.message); setLoading(false); });
   }
 
-  useEffect(() => { if (session) load('daily'); }, [session]);
+  useEffect(() => { if (session) load('monthly'); }, [session]);
 
   function switchView(next) {
     setView(next);
