@@ -13,6 +13,18 @@ import { authedFetch } from '../lib/firebaseClient';
 
 const PIE_COLORS = ['#E85D20', '#0C0A09', '#706B66', '#2A1A10'];
 const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : (n ?? '-'));
+function formatPayingFor(row) {
+  const keys = Array.isArray(row.periodMonths) && row.periodMonths.length
+    ? row.periodMonths
+    : String(row.periodMonth || '').split('+').map((s) => s.trim()).filter(Boolean);
+  const list = keys.length ? keys : [String(row.date || '').slice(0, 7)].filter(Boolean);
+  return list.map((k) => {
+    const [y, m] = String(k).split('-').map(Number);
+    if (!y || !m) return k;
+    return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long' });
+  }).join(' + ');
+}
+
 function monthLabelFromKey(key) {
   const [y, m] = String(key).split('-').map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -216,6 +228,7 @@ export default function Home() {
       id: row.id,
       date: row.date || '',
       periodMonth: row.periodMonth || String(row.date || '').slice(0, 7),
+      periodMonths: Array.isArray(row.periodMonths) && row.periodMonths.length ? row.periodMonths : String(row.periodMonth || row.date || '').split('+').map((s) => s.trim().slice(0, 7)).filter(Boolean),
       amount: row.amount ?? '',
       notes: row.notes || '',
     });
@@ -284,10 +297,10 @@ export default function Home() {
           {selected.businessModel === 'Revenue Sharing' && <AccountPayouts income={income} expenses={expenses} dailyMonths={dailyMoney?.months} />}
           <AccountUsage venue={selected.name} businessModel={selected.businessModel} />
           <Collapsible title="Expenses" open={openSections.expenses} onToggle={() => setOpenSections({ ...openSections, expenses: !openSections.expenses })} actions={isAdmin && (<><button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); downloadExpensePdf(); }}>Download PDF</button><button className="btn" onClick={(e) => { e.stopPropagation(); openExpenseModal(); }}>+ Add Expense</button></>)}>
-            <div className="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Item</th><th>Amount</th></tr></thead><tbody>{expenses.slice(0, 10).map((e) => (<tr key={e.id} onClick={() => openExpenseRow(e)} style={{ cursor: 'pointer' }}><td>{e.date}</td><td>{e.category}</td><td>{e.item}</td><td>{fmt(e.amount)}</td></tr>))}{expenses.length === 0 && <tr><td colSpan={4} className="muted">No expenses recorded.</td></tr>}</tbody></table></div>
+            <div className="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Item</th><th>Amount</th></tr></thead><tbody>{expenses.slice(0, 10).map((e) => (<tr key={e.id} onClick={() => openExpenseRow(e)} style={{ cursor: 'pointer' }}><td>{e.date}</td><td>{e.category}</td><td>{e.item}</td><td>{fmt(e.amount)}</td></tr>))}{expenses.length === 0 && <tr><td colSpan={4} className="muted">No expenses recorded.</td></tr>)}</tbody></table></div>
           </Collapsible>
           <Collapsible title="Income" open={openSections.income} onToggle={() => setOpenSections({ ...openSections, income: !openSections.income })} actions={isAdmin && selected.businessModel === 'Corporate Wellness' && (<button className="btn" onClick={(e) => { e.stopPropagation(); openIncomeModal(); }}>+ Add Income</button>)}>
-            <div className="table-wrap"><table>{selected.businessModel === 'Revenue Sharing' ? (<><thead><tr><th>Month</th><th>Gross</th><th>Refunds</th><th>Net</th><th>Source</th></tr></thead><tbody>{Object.keys((dailyMoney && dailyMoney.months) || {}).sort().reverse().map((key) => { const m = dailyMoney.months[key]; return (<tr key={key}><td>{key}</td><td>{fmt(m.gross)}</td><td>{fmt(m.refunds)}</td><td>{fmt(m.net)}</td><td>Synced from Daily Raw Data</td></tr>); })}{!(dailyMoney && dailyMoney.months && Object.keys(dailyMoney.months).length) && <tr><td colSpan={5} className="muted">No Daily Raw Data for this account.</td></tr>}</tbody></>) : (<><thead><tr><th>Date received</th><th>Paying for</th><th>Amount</th><th>Notes</th></tr></thead><tbody>{income.slice(0, 10).map((i) => (<tr key={i.id} onClick={() => openIncomeRow(i)} style={{ cursor: 'pointer' }}><td>{i.date}</td><td>{i.periodMonth || String(i.date || '').slice(0, 7)}</td><td>{fmt(i.amount)}</td><td>{i.notes}</td></tr>))}{income.length === 0 && <tr><td colSpan={4} className="muted">No income recorded.</td></tr>}</tbody></>)}</table></div>
+            <div className="table-wrap"><table>{selected.businessModel === 'Revenue Sharing' ? (<><thead><tr><th>Month</th><th>Gross</th><th>Refunds</th><th>Net</th><th>Source</th></tr></thead><tbody>{Object.keys((dailyMoney && dailyMoney.months) || {}).sort().reverse().map((key) => { const m = dailyMoney.months[key]; return (<tr key={key}><td>{key}</td><td>{fmt(m.gross)}</td><td>{fmt(m.refunds)}</td><td>{fmt(m.net)}</td><td>Synced from Daily Raw Data</td></tr>); })}{!(dailyMoney && dailyMoney.months && Object.keys(dailyMoney.months).length) && <tr><td colSpan={5} className="muted">No Daily Raw Data for this account.</td></tr>)}</tbody></>) : (<><thead><tr><th>Date received</th><th>Paying for</th><th>Amount</th><th>Notes</th></tr></thead><tbody>{income.slice(0, 10).map((i) => (<tr key={i.id} onClick={() => openIncomeRow(i)} style={{ cursor: 'pointer' }}><td>{i.date}</td><td>{formatPayingFor(i)}</td><td>{fmt(i.amount)}</td><td>{i.notes}</td></tr>))}{income.length === 0 && <tr><td colSpan={4} className="muted">No income recorded.</td></tr>)}</tbody></>)}</table></div>
           </Collapsible>
           <Collapsible title="Communication Log" open={openSections.commlog} onToggle={() => setOpenSections({ ...openSections, commlog: !openSections.commlog })} actions={<button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); openNoteModal(); }}>+ Communication Log</button>}>
             {notes.map((n) => (<p key={n.id} onClick={() => openNoteRow(n)} style={{ cursor: 'pointer' }}><strong>{n.date}</strong> ({n.channel}) - {n.note} <span className="muted">- {n.loggedBy}</span></p>))}{notes.length === 0 && <p className="muted">No notes logged yet.</p>}
@@ -350,7 +363,7 @@ export default function Home() {
         </div>
       )}
       {showExpenseModal && <AddExpenseModal venue={selectedName} form={expForm} error={formError} readOnly={viewingExpense} canEdit={isAdmin} onEdit={() => setViewingExpense(false)} onChange={setExpForm} onClose={() => { setShowExpenseModal(false); setViewingExpense(false); }} onSubmit={submitExpense} />}
-      {showIncomeModal && <AddIncomeModal venue={selectedName} form={incForm} error={formError} readOnly={viewingIncome} canEdit={isAdmin} onEdit={() => setViewingIncome(false)} onChange={setIncForm} onClose={() => { setShowIncomeModal(false); setViewingIncome(false); }} onSubmit={submitIncome} />}
+      {showIncomeModal && <AddIncomeModal venue={selectedName} monthlyFee={Number(selected?.monthlyFee) || 0} form={incForm} error={formError} readOnly={viewingIncome} canEdit={isAdmin} onEdit={() => setViewingIncome(false)} onChange={setIncForm} onClose={() => { setShowIncomeModal(false); setViewingIncome(false); }} onSubmit={submitIncome} />}
       {showNoteModal && <CommunicationLogModal venue={selectedName} form={noteForm} error={formError} readOnly={viewingNote} canEdit={!!session} onEdit={() => setViewingNote(false)} onChange={setNoteForm} onClose={() => { setShowNoteModal(false); setViewingNote(false); }} onSubmit={submitNote} />}
     </Layout>
   );
