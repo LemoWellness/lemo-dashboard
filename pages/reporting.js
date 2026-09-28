@@ -317,13 +317,15 @@ function SessionsTable({ rows, pack, isAdmin, onUploaded }) {
         )}
       </div>
       <p className="muted" style={{ marginTop: 8 }}>
-        10 / 15 / 25 minute mix for this Reporting month only. Upload the UserUsage file for the same month. This does not change Usage or income totals.
+        Every uploaded Usage file is listed with its month. Upload does not change Usage or income totals.
+        {pack && pack.allRows ? ` ${pack.allRows.length} venue-month row${pack.allRows.length === 1 ? '' : 's'} in the database.` : ''}
       </p>
       {msg && <p className="muted">{msg}</p>}
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
+              <th>Month</th>
               <th>Venue</th>
               <th>10 min</th>
               <th>15 min</th>
@@ -331,20 +333,18 @@ function SessionsTable({ rows, pack, isAdmin, onUploaded }) {
             </tr>
           </thead>
           <tbody>
-            {(rows || []).map((v, i) => (
+            {((pack && pack.allRows) || rows || []).map((v, i) => (
               <tr key={i}>
+                <td>{v.month || '-'}</td>
                 <td>{v.venue}</td>
                 <td>{fmtPct(v.firstGearRate)}</td>
                 <td>{fmtPct(v.secondGearRate)}</td>
                 <td>{fmtPct(v.thirdGearRate)}</td>
               </tr>
             ))}
-            {!(rows && rows.length) && (
-              <tr><td colSpan={4} className="muted">
-                No Usage file for {pack && pack.requestedMonth ? pack.requestedMonth : 'this month'}.
-                {pack && pack.availableMonths && pack.availableMonths.length
-                  ? ` Uploaded months: ${pack.availableMonths.join(', ')}. Switch Reporting month or upload this month's UserUsage file.`
-                  : ' Upload the UserUsage Venue or Outlet export for this month.'}
+            {!(((pack && pack.allRows) || rows || []).length) && (
+              <tr><td colSpan={5} className="muted">
+                No Usage rows in the database yet. Upload a UserUsage Venue or Outlet xlsx.
               </td></tr>
             )}
           </tbody>
