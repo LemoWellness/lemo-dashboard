@@ -110,6 +110,43 @@ function incomeBelongsToSite(incomeLocation, name, project) {
   return [name, project?.name].filter(Boolean).some((s) => String(s).trim().toLowerCase() === loc);
 }
 
+const MONTH_RE = /^\d{4}-\d{2}$/;
+function incomeAppliedMonths(row) {
+  const out = [];
+  const push = (m) => {
+    const key = String(m || '').trim().slice(0, 7);
+    if (MONTH_RE.test(key) && !out.includes(key)) out.push(key);
+  };
+  if (Array.isArray(row.periodMonths)) row.periodMonths.forEach(push);
+  String(row.periodMonth || '').split('+').forEach(push);
+  if (!out.length) push(String(row.date || '').slice(0, 7));
+  return out;
+}
+function cwBalance(name, data, monthKey, allIncome) {
+  const fee = cwContractMonthly(data);
+  const start = firstBillMonthKey(data.goLiveDate);
+  if (fee <= 0 || !start || start > monthKey) return null;
+  const billable = monthKeysFromTo(start, monthKey);
+  const paid = new Set();
+  let cash = 0;
+  allIncome.forEach((i) => {
+    const receivedMonth = String(i.date || '').slice(0, 7);
+    if (receivedMonth.length !== 7 || receivedMonth > monthKey) return;
+    if (!incomeBelongsToSite(i.location, name, data)) return;
+    cash += Number(i.amount) || 0;
+    incomeAppliedMonths(i).forEach((m) => { if (m <= monthKey) paid.add(m); });
+  });
+  const unpaid = billable.filter((m) => !paid.has(m));
+  return {
+    fee,
+    monthsBillable: billable.length,
+    monthsOwed: unpaid.length,
+    expectedTotal: billable.length * fee,
+    totalReceived: cash,
+    balanceOwed: unpaid.length * fee,
+  };
+}
+
 export default withAuth(async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed.' });
   try {
@@ -219,18 +256,8 @@ export default withAuth(async (req, res) => {
   let cwChairs = 0;
   cwSites.forEach(({ name, data }) => {
     cwChairs += Number(data.numberOfChairs) > 0 ? Number(data.numberOfChairs) : 0;
-    const fee = cwContractMonthly(data);
-    if (fee <= 0) return;
-    const start = firstBillMonthKey(data.goLiveDate);
-    if (!start || start > monthKey) return;
-    const expected = monthKeysFromTo(start, monthKey).length * fee;
-    const received = allIncome.reduce((s, i) => {
-      const mk = String(i.date || '').slice(0, 7);
-      if (mk.length !== 7 || mk > monthKey) return s;
-      if (!incomeBelongsToSite(i.location, name, data)) return s;
-      return s + (Number(i.amount) || 0);
-    }, 0);
-    cwOwed += Math.max(0, expected - received);
+    const bal = cwBalance(name, data, monthKey, allIncome);
+    if (bal) cwOwed += bal.balanceOwed;
   });
   const comparison = ['Corporate Wellness', 'Revenue Sharing'].map((model) => {
     const rows = locationTable.filter((l) => l.model === model && l.commercial !== false);
@@ -256,30 +283,18 @@ export default withAuth(async (req, res) => {
   const activeChairs = locationTable.reduce((s, l) => s + (Number(l.chairs) || 0), 0);
   const expenseBreakdown = breakdownFromReports(financialReports, monthKey, monthExpenses);
   const outstandingPayments = cwSites.map(({ name, data }) => {
-    const fee = cwContractMonthly(data);
-    if (fee <= 0) return null;
-    const start = firstBillMonthKey(data.goLiveDate);
-    if (!start || start > monthKey) return null;
-    const monthsBillable = monthKeysFromTo(start, monthKey).length;
-    const expectedTotal = monthsBillable * fee;
-    const totalReceived = allIncome.reduce((s, i) => {
-      const mk = String(i.date || '').slice(0, 7);
-      if (mk.length !== 7 || mk > monthKey) return s;
-      if (!incomeBelongsToSite(i.location, name, data)) return s;
-      return s + (Number(i.amount) || 0);
-    }, 0);
-    const balanceOwed = expectedTotal - totalReceived;
-    if (balanceOwed <= 0.5) return null;
+    const bal = cwBalance(name, data, monthKey, allIncome);
+    if (!bal || bal.balanceOwed <= 0.5) return null;
     return {
       location: name,
       model: data.businessModel,
-      monthlyFee: fee,
+      monthlyFee: bal.fee,
       chairs: Number(data.numberOfChairs) > 0 ? Number(data.numberOfChairs) : 0,
-      monthsOwed: Math.round(balanceOwed / fee),
-      monthsBillable,
-      expectedTotal,
-      totalReceived,
-      balanceOwed,
+      monthsOwed: bal.monthsOwed,
+      monthsBillable: bal.monthsBillable,
+      expectedTotal: bal.expectedTotal,
+      totalReceived: bal.totalReceived,
+      balanceOwed: bal.balanceOwed,
     };
   }).filter(Boolean).sort((a, b) => b.balanceOwed - a.balanceOwed);
   const trend = [];
