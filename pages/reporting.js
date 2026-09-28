@@ -38,7 +38,7 @@ export default function Reporting() {
     const qs = v === 'monthly'
       ? `?view=monthly${key ? `&month=${encodeURIComponent(key)}` : ''}`
       : `?view=daily${key ? `&date=${encodeURIComponent(key)}` : ''}`;
-    authedFetch(`/api/reporting${qs}`)
+    authedFetch(`/api/reporting${qs}&_=${Date.now()}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => {
         if (d.error) throw new Error(d.error);
@@ -99,6 +99,8 @@ function DailyView({ data, selectedDate, onDate, isAdmin, onUploaded }) {
         <label className="muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
           Select day
           <input
+            id="reporting-day"
+            name="reportingDay"
             type="date"
             value={selectedDate}
             min={data.availableDates[0]}
@@ -174,7 +176,7 @@ function MonthlyView({ data, selectedMonth, onMonth, isAdmin, onUploaded }) {
         </p>
         <label className="muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
           Select month
-          <select value={selectedMonth} onChange={(e) => onMonth(e.target.value)}>
+          <select id="reporting-month" name="reportingMonth" value={selectedMonth} onChange={(e) => onMonth(e.target.value)}>
             {data.availableMonths.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
         </label>
@@ -318,7 +320,7 @@ function SessionsTable({ rows, isAdmin, onUploaded }) {
         {isAdmin && (
           <label className="btn" style={{ margin: 0, cursor: busy ? 'wait' : 'pointer' }}>
             {busy ? 'Uploading...' : 'Upload Usage file'}
-            <input type="file" accept=".csv,.xlsx,.xls" onChange={onFile} disabled={busy} style={{ display: 'none' }} />
+            <input id="usage-file-upload" name="file" type="file" accept=".csv,.xlsx,.xls" onChange={onFile} disabled={busy} style={{ display: 'none' }} />
           </label>
         )}
       </div>
