@@ -55,6 +55,21 @@ function matchUser(names, users) {
   return null;
 }
 
+function matchPeople(names, users) {
+  const hits = [];
+  const leftover = [];
+  let pool = users.slice();
+  for (const raw of names || []) {
+    const user = matchUser([raw], pool);
+    if (user) {
+      hits.push(user);
+      const email = String(user.email || '').toLowerCase();
+      pool = pool.filter((u) => String(u.email || '').toLowerCase() !== email);
+    } else leftover.push(raw);
+  }
+  return { hits, leftover };
+}
+
 async function extractText(body) {
   if (body.text) return String(body.text);
   const b64 = String(body.base64 || '');
@@ -78,6 +93,8 @@ export default withAuth(async (req, res, session) => {
     const created = [];
     for (const row of req.body.items) {
       const assignedTo = String(row.assignedTo || '').toLowerCase();
+      const assignedTo2 = String(row.assignedTo2 || '').toLowerCase();
+      const second = assignedTo2 && assignedTo2 !== assignedTo ? assignedTo2 : '';
       const task = String(row.task || '').trim();
       if (!assignedTo || !task) continue;
       const due = String(row.deadline || deadline);
@@ -94,6 +111,7 @@ export default withAuth(async (req, res, session) => {
         timestamp: new Date().toISOString(),
         addedBy: session.email,
         assignedTo,
+        assignedTo2: second,
         task,
         deadline: due,
         priority: 'Medium',
@@ -105,6 +123,7 @@ export default withAuth(async (req, res, session) => {
       });
       try {
         await notifyTaskAssigned({ taskId: docRef.id, assignedTo, taskName: task, dueDate: due });
+        if (second) await notifyTaskAssigned({ taskId: docRef.id, assignedTo: second, taskName: task, dueDate: due });
       } catch (err) {
         console.error('Assignment notification failed', err);
       }
@@ -129,15 +148,19 @@ export default withAuth(async (req, res, session) => {
   const users = snap.docs.map((d) => d.data());
   const deadline = weekFromNow();
   const preview = parsed.map((item, i) => {
-    const user = matchUser(item.names, users);
-    const extra = item.names.slice(1).join(', ');
-    const notes = [item.body, extra ? `Also with: ${extra}` : '', 'Imported from meeting notes. Due date set to 1 week.'].filter(Boolean).join(' ');
+    const { hits, leftover } = matchPeople(item.names, users);
+    const first = hits[0];
+    const second = hits[1];
+    const extra = leftover.join(', ');
+    const notes = [item.body, extra ? `Also mentioned: ${extra}` : '', 'Imported from meeting notes. Due date set to 1 week.'].filter(Boolean).join(' ');
     return {
       key: String(i),
       task: item.title,
-      assignedTo: user ? String(user.email || '').toLowerCase() : '',
-      assignedName: user ? (user.name || user.email) : item.names[0] || '',
-      unmatched: !user,
+      assignedTo: first ? String(first.email || '').toLowerCase() : '',
+      assignedName: first ? (first.name || first.email) : item.names[0] || '',
+      assignedTo2: second ? String(second.email || '').toLowerCase() : '',
+      assignedName2: second ? (second.name || second.email) : '',
+      unmatched: !first,
       deadline,
       notes,
     };
