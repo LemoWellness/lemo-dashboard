@@ -60,9 +60,30 @@ function venueRow(name, v, chairsByVenue) {
 }
 
 function usagePeriodMonth(period) {
-  const s = String(period || '');
-  const dates = s.match(/\d{4}-\d{2}-\d{2}/g) || [];
-  if (dates.length) return dates[0].slice(0, 7);
+  if (period instanceof Date && !isNaN(period.getTime())) {
+    return `${period.getFullYear()}-${String(period.getMonth() + 1).padStart(2, '0')}`;
+  }
+  if (typeof period === 'number' && period > 20000 && period < 80000) {
+    const d = new Date(Math.round((period - 25569) * 86400 * 1000));
+    if (!isNaN(d.getTime())) return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+  let s = String(period || '').trim();
+  if (!s) return '';
+  s = s.replace(/\s+to\s+/ig, '~');
+  const iso = s.match(/\d{4}-\d{2}-\d{2}/);
+  if (iso) return iso[0].slice(0, 7);
+  const ymd = s.match(/\b(\d{4})[\/](\d{1,2})[\/](\d{1,2})\b/);
+  if (ymd) return `${ymd[1]}-${String(ymd[2]).padStart(2, '0')}`;
+  const mdy = s.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/);
+  if (mdy) {
+    const year = mdy[3].length === 2 ? (Number(mdy[3]) >= 70 ? `19${mdy[3]}` : `20${mdy[3]}`) : mdy[3];
+    return `${year}-${String(mdy[1]).padStart(2, '0')}`;
+  }
+  const parsed = Date.parse(s.split('~')[0].trim());
+  if (!isNaN(parsed)) {
+    const d = new Date(parsed);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
   const ym = s.match(/\d{4}-\d{2}/);
   return ym ? ym[0] : '';
 }
@@ -93,6 +114,23 @@ function buildSessionTable(usageSnap, month) {
     secondGearRate: v.weight ? v.second / v.weight : null,
     thirdGearRate: v.weight ? v.third / v.weight : null,
   })).sort((a, b) => b.orders - a.orders);
+}
+
+function buildSessionMeta(usageSnap, month) {
+  let total = 0;
+  let matched = 0;
+  const samples = [];
+  if (!usageSnap || usageSnap.empty) return { total: 0, matched: 0, samples: [] };
+  usageSnap.forEach((doc) => {
+    const row = doc.data();
+    total += 1;
+    const m = usagePeriodMonth(row.period);
+    if (m === month) matched += 1;
+    if (samples.length < 6) {
+      samples.push({ period: String(row.period || ''), month: m || '', venue: String(row.venueName || '') });
+    }
+  });
+  return { total, matched, samples };
 }
 
 function monthStory(totals, prev, venueTable) {
@@ -264,6 +302,7 @@ export default withAuth(async (req, res, session) => {
         netIncome: trend[trend.length - 2].revenueSharingIncome,
       } : null, venueTable),
       sessionTable: buildSessionTable(usageSnap, month),
+      sessionMeta: buildSessionMeta(usageSnap, month),
       dataHealthIssues,
       unsupportedUsageMetrics: ['seating', 'idle', 'occupied', 'scanned', 'payCount', 'h5Conversion'],
     });
@@ -398,6 +437,7 @@ export default withAuth(async (req, res, session) => {
     sustainedOutages,
     trend,
     sessionTable: buildSessionTable(usageSnap, latestKey.slice(0, 7)),
+    sessionMeta: buildSessionMeta(usageSnap, latestKey.slice(0, 7)),
     dataHealthIssues,
     availableDates: dateKeys,
     unsupportedUsageMetrics: ['seating', 'idle', 'occupied', 'scanned', 'payCount', 'h5Conversion'],
