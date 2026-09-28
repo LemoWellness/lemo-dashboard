@@ -69,7 +69,7 @@ export default function Reporting() {
         </div>
       </div>
       <p className="muted">
-        Built from Daily Raw Data only. Usage is chair sessions started (orderNumber). Income is Revenue Sharing POS only.
+        Built from Daily Raw Data only. Usage is chair sessions started. RS Income is Total Amount (gross). Net Income is after refunds.
       </p>
       {loading && <p className="muted">Loading reporting data...</p>}
       {error && <p className="form-error">{error}</p>}
@@ -88,6 +88,7 @@ export default function Reporting() {
 
 function DailyView({ data, selectedDate, onDate }) {
   const anyAlert = data.duplicates.length || data.missingVenues.length || data.sustainedOutages.length || data.flags.length;
+  const net = (Number(data.totals.netIncome) || 0) - (Number(data.totals.refunds) || 0);
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
@@ -108,8 +109,9 @@ function DailyView({ data, selectedDate, onDate }) {
       {data.dataHealthIssues?.count > 0 && <HealthBanner issues={data.dataHealthIssues} />}
       <div className="grid-4">
         <Kpi label="Usage" value={count(data.totals.orders)} />
-        <Kpi label="Refunds" value={fmt(data.totals.refunds)} />
         <Kpi label="RS Income" value={fmt(data.totals.netIncome)} />
+        <Kpi label="Refunds" value={fmt(data.totals.refunds)} />
+        <Kpi label="Net Income" value={fmt(net)} />
       </div>
       <UsageChart data={data.trend} xKey="date" title="Usage (last 30 days)" />
       <IncomeChart data={data.trend} xKey="date" title="RS Income (last 30 days)" />
@@ -160,6 +162,7 @@ function DailyView({ data, selectedDate, onDate }) {
 }
 
 function MonthlyView({ data, selectedMonth, onMonth }) {
+  const net = (Number(data.totals.netIncome) || 0) - (Number(data.totals.refunds) || 0);
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
@@ -176,8 +179,9 @@ function MonthlyView({ data, selectedMonth, onMonth }) {
       {data.dataHealthIssues?.count > 0 && <HealthBanner issues={data.dataHealthIssues} />}
       <div className="grid-4">
         <Kpi label="Usage" value={count(data.totals.orders)} />
-        <Kpi label="Refunds" value={fmt(data.totals.refunds)} />
         <Kpi label="RS Income" value={fmt(data.totals.netIncome)} />
+        <Kpi label="Refunds" value={fmt(data.totals.refunds)} />
+        <Kpi label="Net Income" value={fmt(net)} />
       </div>
       <div className="grid-4">
         <Kpi label="CW Usage" value={count(data.split.corporateWellnessOrders)} />
