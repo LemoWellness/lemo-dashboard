@@ -96,8 +96,8 @@ export default function Monthly() {
   if (error) return <Layout active="mo" onNavigate={navigate}><p className="form-error">{error}</p></Layout>;
   if (!data) return null;
 
-  const totalIncome = data.totalCashCollected ?? 0;
-  const net = totalIncome - (Number(data.totalExpenses) || 0);
+  const totalIncome = data.totalIncome ?? data.totalCashCollected ?? 0;
+  const net = data.netProfitLoss != null ? data.netProfitLoss : (totalIncome - (Number(data.totalExpenses) || 0));
   const HIDDEN_FROM_LOCATION_TABLE = new Set(['lemo wellness', 'lemo inc office1', 'lemo inc office2']);
   const filteredLocations = (data.locationTable || []).filter((l) => {
     const name = String(l.location || '').trim().toLowerCase();
@@ -124,10 +124,11 @@ export default function Monthly() {
       <p className="muted">{data.month} performance {DOT} AR balances as of {data.asOfLabel || data.month}</p>
 
       <div className="grid-4">
-        <Kpi label="Total income" value={fmt(totalIncome)} hint="Cash received this month from income records. Unpaid CW contracts are not included." />
-        <Kpi label="Total expenses" value={fmt(data.totalExpenses)} hint="Company-wide expenses from Financials for this month." />
-        <Kpi label="Net profit / loss" value={fmt(net)} negative={net < 0} hint="Total income minus company-wide expenses." />
-        <Kpi label="Active chairs" value={data.activeChairs?.toLocaleString() ?? DASH} hint="Chairs at locations with activity this month." />
+        <Kpi label="Net Income" value={fmt(totalIncome)} hint="RS net after refunds plus CW payments received this month." />
+        <Kpi label="Total Expenses" value={fmt(data.totalExpenses)} hint="Company-wide expenses from Financials for this month." />
+        <Kpi label="Refunds" value={fmt(data.totalRefunds)} hint="RS refunds from Daily Raw Data this month." />
+        <Kpi label="Net Profit / Loss" value={fmt(net)} negative={net < 0} hint="Net income minus company-wide expenses." />
+        <Kpi label="Active Chairs" value={data.activeChairs?.toLocaleString() ?? DASH} hint="Chairs at live locations this month." />
       </div>
 
       <div className="grid-2">
@@ -174,7 +175,7 @@ export default function Monthly() {
           <div className="table-wrap"><table>
             <thead><tr><th></th><th>{cmp.current?.label}</th><th>{cmp.previous?.label}</th><th>Change</th></tr></thead>
             <tbody>
-              <CompareRow label="Income" current={cmp.current?.income} previous={cmp.previous?.income} />
+              <CompareRow label="Net Income" current={cmp.current?.income} previous={cmp.previous?.income} />
               <CompareRow label="Expenses" current={cmp.current?.expenses} previous={cmp.previous?.expenses} lowerIsBetter />
               <CompareRow label="Net P/L" current={cmp.current?.net} previous={cmp.previous?.net} />
             </tbody>
@@ -204,7 +205,7 @@ export default function Monthly() {
             <YAxis tick={{ fontSize: 11 }} tickFormatter={fmt} />
             <Tooltip formatter={(v) => fmt(v)} />
             <Legend />
-            <Line type="monotone" dataKey="income" name="Income" stroke="#E85D20" strokeWidth={2.5} dot={false} />
+            <Line type="monotone" dataKey="income" name="Net Income" stroke="#E85D20" strokeWidth={2.5} dot={false} />
             <Line type="monotone" dataKey="expenses" name="Expenses" stroke="#0C0A09" strokeWidth={2.5} dot={false} />
             <Line type="monotone" dataKey="net" name="Net" stroke="#D9A441" strokeWidth={2.5} dot={false} />
           </LineChart>
