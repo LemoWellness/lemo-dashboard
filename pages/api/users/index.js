@@ -38,13 +38,14 @@ export default withAuth(async (req, res) => {
     if (!password || String(password).length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
     const userRecord = await adminAuth.createUser({ email, password, displayName: name || email });
-    const finalRole = role === 'Admin' ? 'Admin' : 'Viewer';
+    const finalRole = role === 'Admin' ? 'Admin' : (role === 'Tasks Admin' ? 'Tasks Admin' : 'Viewer');
     await adminDb.collection('users').doc(userRecord.uid).set({
       email: email.toLowerCase(),
       name: name || email,
       role: finalRole,
-      tabs: finalRole === 'Admin' ? 'all' : (Array.isArray(tabs) ? tabs : []),
+      tabs: finalRole === 'Admin' ? 'all' : (Array.isArray(tabs) ? tabs : (finalRole === 'Tasks Admin' ? ['tasks'] : [])),
       active: true,
+      taskDesk: finalRole === 'Viewer' ? 'contractor' : 'hq',
       createdAt: new Date().toISOString(),
     });
     return res.status(200).json({ success: true, uid: userRecord.uid });
