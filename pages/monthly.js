@@ -249,7 +249,8 @@ export default function Monthly() {
             <th>Model</th>
             <th>Chairs</th>
             <th>Expected</th>
-            <th>Received / Revenue</th>
+            <th>Gross Income</th>
+            <th>Refunds</th>
             <th title={NET_HINT}>Net Income <Hint text={NET_HINT} /></th>
           </tr></thead>
           <tbody>
@@ -266,11 +267,12 @@ export default function Monthly() {
                 <td>{l.chairs ?? DASH}</td>
                 <td>{expected}</td>
                 <td>{received}</td>
+                <td>{l.commercial === false ? DASH : fmt(Number(l.refunds) || 0)}</td>
                 <td title={NET_HINT}>{netInc}</td>
               </tr>
               );
             })}
-            {filteredLocations.length === 0 && <tr><td colSpan={6} className="muted">No location activity for this month</td></tr>}
+            {filteredLocations.length === 0 && <tr><td colSpan={7} className="muted">No location activity for this month</td></tr>}
           </tbody>
         </table></div>
       </div>
