@@ -191,10 +191,12 @@ export default withAuth(async (req, res) => {
     const received = p.businessModel === 'Revenue Sharing'
       ? (rsRow ? rsRow.total : 0)
       : (perLocationIncome[name] || perLocationIncome[p.name] || 0);
+    const refunds = p.businessModel === 'Revenue Sharing' ? (rsRow ? rsRow.refund : 0) : 0;
+    const netIncome = received - refunds;
     const billableRevenue = p.businessModel === 'Corporate Wellness' ? (commercial ? cwContractMonthly(p) : 0) : received;
     const expenses = perLocationExpenses[name] || perLocationExpenses[p.name] || 0;
     const netProfit = billableRevenue - expenses;
-    return { location: name, model: p.businessModel || '', chairs, commercial, grossRevenue: perLocationGross[name] ?? perLocationGross[p.name] ?? null, billableRevenue, received, lemoIncome: billableRevenue, expenses, netProfit, netPerChair: commercial && chairs ? netProfit / chairs : null };
+    return { location: name, model: p.businessModel || '', chairs, commercial, grossRevenue: perLocationGross[name] ?? perLocationGross[p.name] ?? null, billableRevenue, received, refunds, netIncome, lemoIncome: billableRevenue, expenses, netProfit, netPerChair: commercial && chairs ? netProfit / chairs : null };
   }).sort((a, b) => b.billableRevenue - a.billableRevenue);
   let cwOwed = 0;
   let cwChairs = 0;
