@@ -33,6 +33,11 @@ function flags(session, task) {
     canDecideCancel: edit && task.status === 'Cancel Requested',
   };
 }
+function displayAddedBy(task) {
+  if (task.addedByLabel) return task.addedByLabel;
+  if (task.source === 'meeting-notes') return 'Gemini';
+  return task.addedBy;
+}
 
 export default withAuth(async (req, res, session) => {
   if (req.method === 'GET') {
@@ -40,7 +45,7 @@ export default withAuth(async (req, res, session) => {
     const tasks = snap.docs
       .map((d) => {
         const t = d.data();
-        return { id: d.id, ...t, ...flags(session, t) };
+        return { id: d.id, ...t, ...flags(session, t), addedBy: displayAddedBy(t) };
       })
       .filter((t) => canSee(session, t));
     return res.status(200).json({ tasks });
