@@ -5,7 +5,31 @@ export default withAuth(async (req, res) => {
   if (req.method === 'GET') {
     const snap = await adminDb.collection('users').get();
     const users = snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
-    return res.status(200).json({ users });
+    const identifiers = users.map((u) => ({ uid: u.uid }));
+    let authByUid = {};
+    if (identifiers.length) {
+      try {
+        const result = await adminAuth.getUsers(identifiers);
+        result.users.forEach((rec) => {
+          authByUid[rec.uid] = rec.metadata?.lastSignInTime || '';
+        });
+      } catch (e) {
+        console.error('users lastSignIn lookup failed', e.message);
+      }
+    }
+    const out = users.map((u) => ({
+      uid: u.uid,
+      email: u.email || '',
+      name: u.name || '',
+      role: u.role || 'Viewer',
+      tabs: u.tabs,
+      active: u.active !== false,
+      lastLogin: authByUid[u.uid] || '',
+      homeScreen: !!u.lastStandaloneAt,
+      lastStandaloneAt: u.lastStandaloneAt || '',
+      standalonePlatform: u.standalonePlatform || '',
+    }));
+    return res.status(200).json({ users: out });
   }
 
   if (req.method === 'POST') {
@@ -13,8 +37,6 @@ export default withAuth(async (req, res) => {
     if (!email) return res.status(400).json({ error: 'Email is required.' });
     if (!password || String(password).length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
-    // Creates the actual Firebase Auth account (replaces the salted-hash row
-    // in the old hidden Users sheet) plus the role/tabs doc our auth layer reads.
     const userRecord = await adminAuth.createUser({ email, password, displayName: name || email });
     const finalRole = role === 'Admin' ? 'Admin' : 'Viewer';
     await adminDb.collection('users').doc(userRecord.uid).set({
