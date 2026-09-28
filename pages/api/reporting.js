@@ -20,15 +20,17 @@ function mostRecentBusinessDayBefore(dateKey, sortedDateKeys) {
 
 function emptyVenue() {
   return {
-    orders: 0, netIncome: 0, refunds: 0, completed: 0, totalAmount: 0,
+    orders: 0, netIncome: 0, refunds: 0, completed: 0, totalAmount: 0, gross: 0,
     orderPriceSum: 0, orderPriceCount: 0, visitorsSum: 0, visitorsCount: 0,
   };
 }
 
 function addRow(target, row) {
   target.orders += Number(row.orderNumber) || 0;
-  target.netIncome += Number(row.totalAmount) || 0;
   target.refunds += Number(row.refund) || 0;
+  const gross = Number(row.totalAmount) || 0;
+  target.gross = (target.gross || 0) + gross;
+  target.netIncome += gross - (Number(row.refund) || 0);
   target.completed += Number(row.completeNum) || 0;
   target.totalAmount += Number(row.totalAmount) || 0;
   if (row.orderPrice !== '' && row.orderPrice != null) {
@@ -45,6 +47,7 @@ function venueRow(name, v) {
   return {
     venue: name,
     orders: v.orders,
+    gross: v.gross || v.totalAmount || 0,
     netIncome: v.netIncome,
     refunds: v.refunds,
     completed: v.completed,
@@ -130,7 +133,7 @@ export default withAuth(async (req, res, session) => {
     const monthDates = dateKeys.filter((d) => d.slice(0, 7) === month);
 
     const byVenue = {};
-    const totals = { orders: 0, netIncome: 0, refunds: 0, completed: 0 };
+    const totals = { orders: 0, netIncome: 0, refunds: 0, completed: 0, gross: 0 };
     let cwOrders = 0;
     let rsOrders = 0;
     monthDates.forEach((dKey) => {
@@ -141,6 +144,7 @@ export default withAuth(async (req, res, session) => {
         byVenue[v].orders += src.orders;
         byVenue[v].netIncome += src.netIncome;
         byVenue[v].refunds += src.refunds;
+        byVenue[v].gross = (byVenue[v].gross || 0) + (src.gross || 0);
         byVenue[v].completed += src.completed;
         byVenue[v].orderPriceSum += src.orderPriceSum;
         byVenue[v].orderPriceCount += src.orderPriceCount;
@@ -149,6 +153,7 @@ export default withAuth(async (req, res, session) => {
         totals.orders += src.orders;
         totals.netIncome += src.netIncome;
         totals.refunds += src.refunds;
+        totals.gross += src.gross || 0;
         totals.completed += src.completed;
         if (isCorporateWellness(v)) cwOrders += src.orders;
         else rsOrders += src.orders;
@@ -204,13 +209,14 @@ export default withAuth(async (req, res, session) => {
   const rsPreviousVenues = previousKey ? dateVenue[previousKey] : {};
   const cwPreviousVenues = previousBusinessDayForCW ? dateVenue[previousBusinessDayForCW] : {};
 
-  const totals = { orders: 0, netIncome: 0, refunds: 0, completed: 0 };
+  const totals = { orders: 0, netIncome: 0, refunds: 0, completed: 0, gross: 0 };
   const venueTable = [];
   Object.keys(latestVenues).forEach((v) => {
     const lv = latestVenues[v];
     totals.orders += lv.orders;
     totals.netIncome += lv.netIncome;
     totals.refunds += lv.refunds;
+    totals.gross += lv.gross || 0;
     totals.completed += lv.completed;
     venueTable.push(venueRow(v, lv));
   });
