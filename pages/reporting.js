@@ -317,10 +317,7 @@ function SessionsTable({ rows, pack, isAdmin, onUploaded }) {
         )}
       </div>
       <p className="muted" style={{ marginTop: 8 }}>
-        10 / 15 / 25 minute mix from the Usage export. This does not change Usage or income totals.
-        {pack && pack.month ? ` Showing ${pack.month}.` : ''}
-        {pack && pack.requestedMonth && pack.month && pack.requestedMonth !== pack.month ? ` No Usage file for ${pack.requestedMonth} yet.` : ''}
-        {pack && pack.availableMonths && pack.availableMonths.length ? ` Files on file: ${pack.availableMonths.join(', ')}.` : ''}
+        10 / 15 / 25 minute mix for this Reporting month only. Upload the UserUsage file for the same month. This does not change Usage or income totals.
       </p>
       {msg && <p className="muted">{msg}</p>}
       <div className="table-wrap">
@@ -343,7 +340,12 @@ function SessionsTable({ rows, pack, isAdmin, onUploaded }) {
               </tr>
             ))}
             {!(rows && rows.length) && (
-              <tr><td colSpan={4} className="muted">No Usage file uploaded yet. Use the UserUsage Venue or Outlet export.</td></tr>
+              <tr><td colSpan={4} className="muted">
+                No Usage file for {pack && pack.requestedMonth ? pack.requestedMonth : 'this month'}.
+                {pack && pack.availableMonths && pack.availableMonths.length
+                  ? ` Uploaded months: ${pack.availableMonths.join(', ')}. Switch Reporting month or upload this month's UserUsage file.`
+                  : ' Upload the UserUsage Venue or Outlet export for this month.'}
+              </td></tr>
             )}
           </tbody>
         </table>
