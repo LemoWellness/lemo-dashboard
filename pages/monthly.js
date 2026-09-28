@@ -134,7 +134,9 @@ export default function Monthly() {
           const isCw = c.model === 'Corporate Wellness';
           const chairs = isCw ? (c.chairs ?? 0) : (c.chairs || c.revenueGeneratingChairs || rsChairsFromTable || 0);
           const installs = c.installs ?? c.activeLocations ?? DASH;
-          const rsTotal = Number(c.cash ?? c.income) || 0;
+          const rsGross = Number(c.cash ?? c.income) || 0;
+          const rsRefunds = Number(c.refunds) || 0;
+          const rsNet = Number(c.netIncome) || (rsGross - rsRefunds);
           return (
             <div className="card" key={c.model} style={{ marginBottom: 0 }}>
               <h3 style={{ marginTop: 0 }}>{c.model} Performance</h3>
@@ -149,13 +151,15 @@ export default function Monthly() {
                 </>
               ) : (
                 <>
-                  <Row label="Total Income" value={fmt(rsTotal)} />
-                  <Row label="LEMO Payout" value={fmt(rsTotal * RS_LEMO)} />
-                  <Row label="Venue Payout" value={fmt(rsTotal * RS_VENUE)} />
-                  <Row label="BD Consultant Payout" value={fmt(rsTotal * RS_BD)} />
+                  <Row label="Total Income" value={fmt(rsGross)} />
+                  <Row label="Refunds" value={fmt(rsRefunds)} />
+                  <Row label="Net Income" value={fmt(rsNet)} />
+                  <Row label="LEMO Payout" value={fmt(rsNet * RS_LEMO)} />
+                  <Row label="Venue Payout" value={fmt(rsNet * RS_VENUE)} />
+                  <Row label="BD Consultant Payout" value={fmt(rsNet * RS_BD)} />
                   <Row label="# of Installs" value={installs} />
                   <Row label="# of Chairs" value={chairs || DASH} />
-                  <Row label="Unsigned contracts" value={isCw ? unsigned.cw : unsigned.rs} last />
+                  <Row label="Unsigned contracts" value={unsigned.rs} last />
                 </>
               )}
             </div>
