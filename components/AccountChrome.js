@@ -1,4 +1,26 @@
+import { useEffect, useState } from 'react';
+import { authedFetch } from '../lib/firebaseClient';
+
 export default function AccountChrome({ selected, isAdmin, onBack, onEdit, onNote, onIncome, onExpense, onSignedContract }) {
+  const [signed, setSigned] = useState(!!selected.signedContract);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { setSigned(!!selected.signedContract); }, [selected.signedContract, selected.name]);
+
+  async function toggleSigned(checked) {
+    setSigned(checked);
+    if (!isAdmin) return;
+    setSaving(true);
+    try {
+      const res = await authedFetch('/api/projects', { method: 'POST', body: JSON.stringify({ name: selected.name, signedContract: checked }) });
+      if (!res.ok) setSigned(!!selected.signedContract);
+      else if (onSignedContract) onSignedContract(checked);
+    } catch (e) {
+      setSigned(!!selected.signedContract);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
@@ -43,12 +65,7 @@ export default function AccountChrome({ selected, isAdmin, onBack, onEdit, onNot
             <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginTop: 12 }}>Chairs</div>
             <div>{selected.numberOfChairs != null && selected.numberOfChairs !== '' ? selected.numberOfChairs : '-'}</div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-              <input
-                type="checkbox"
-                disabled={!isAdmin}
-                checked={!!selected.signedContract}
-                onChange={(e) => onSignedContract && onSignedContract(e.target.checked)}
-              />
+              <input type="checkbox" disabled={!isAdmin || saving} checked={signed} onChange={(e) => toggleSigned(e.target.checked)} />
               Signed contract
             </label>
           </div>
