@@ -29,7 +29,7 @@ export default function Layout({ active, onNavigate, children }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const showBell = active === 'tasks';
-  const isTaskAdmin = session?.role === 'Admin' || session?.role === 'Tasks Admin';
+  const isTaskAdmin = session?.role === 'Admin' || !!session?.taskAdmin;
 
   useEffect(() => {
     if (user === null) router.replace('/login');
