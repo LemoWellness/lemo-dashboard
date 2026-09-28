@@ -4,7 +4,7 @@ import { authedFetch } from '../lib/firebaseClient';
 const money = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : (n ?? '-'));
 const count = (n) => (typeof n === 'number' ? Math.round(n).toLocaleString() : n || '0');
 
-export default function AccountUsage({ venue }) {
+export default function AccountUsage({ venue, businessModel }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,9 +27,13 @@ export default function AccountUsage({ venue }) {
       {!loading && data && data.hasData && (
         <div className="usage-kpi-grid">
           <StatBox label="Usage (sessions)" value={count(data.totals.usage)} />
-          <StatBox label="RS Income" value={money(data.totals.rsIncome)} />
-          <StatBox label="Refunds" value={money(data.totals.refunds)} />
-          <StatBox label="Net Income" value={money(data.totals.netIncome)} />
+          {businessModel !== 'Corporate Wellness' && (
+            <>
+              <StatBox label="RS Income" value={money(data.totals.rsIncome)} />
+              <StatBox label="Refunds" value={money(data.totals.refunds)} />
+              <StatBox label="Net Income" value={money(data.totals.netIncome)} />
+            </>
+          )}
           <StatBox label="Avg # of Visitors" value={Math.round((data.totals.avgVisitors || 0) * 10) / 10} />
         </div>
       )}
