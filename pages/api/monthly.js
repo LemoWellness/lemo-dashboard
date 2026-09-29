@@ -304,6 +304,37 @@ export default withAuth(async (req, res) => {
       balanceOwed: bal.balanceOwed,
     };
   }).filter(Boolean).sort((a, b) => b.balanceOwed - a.balanceOwed);
+  const needsAttention = [];
+  outstandingPayments.forEach((row) => {
+    const months = row.monthsOwed === 1 ? '1 month' : `${row.monthsOwed} months`;
+    needsAttention.push({
+      id: `ar-${row.location}`,
+      title: `${row.location} owes $${Math.round(row.balanceOwed).toLocaleString()} (${months})`,
+      action: 'Call and collect the unpaid service months.',
+    });
+  });
+  const rsGrossTot = Object.values(rsThisMonth).reduce((s, v) => s + (Number(v.total) || 0), 0);
+  if (rsGrossTot >= 100 && totalRefunds / rsGrossTot >= 0.12) {
+    needsAttention.push({
+      id: 'refunds',
+      title: `RS refunds are ${Math.round((totalRefunds / rsGrossTot) * 100)}% of RS gross this month`,
+      action: 'Check which venues are issuing refunds.',
+    });
+  }
+  const reportedDays = new Set();
+  dailySnap.forEach((doc) => {
+    const d = String(doc.data().countDate || '');
+    if (d.startsWith(monthKey)) reportedDays.add(d);
+  });
+  const isCurrent = monthKey === new Date().toISOString().slice(0, 7);
+  const dim = Number(monthEnd(monthKey).slice(8));
+  if (isCurrent && reportedDays.size > 0 && reportedDays.size < Math.max(8, dim - 10)) {
+    needsAttention.push({
+      id: 'upload',
+      title: `Only ${reportedDays.size} days of Daily Raw Data in ${monthLabel(monthKey)}`,
+      action: 'Upload the latest Daily file so month-to-date is complete.',
+    });
+  }
   const trend = [];
   for (let i = 5; i >= 0; i--) {
     const key = shiftMonth(monthKey, -i);
@@ -325,7 +356,7 @@ export default withAuth(async (req, res) => {
       current: { label: monthLabel(monthKey).split(' ')[0], cash: totalIncome, income: totalIncome, expenses: totalExpenses, net: netProfitLoss },
       previous: { label: monthLabel(prevMonthKey).split(' ')[0], cash: prevIncome, income: prevIncome, expenses: prevExpenses, net: prevIncome - prevExpenses },
     },
-    locationTable, expenseBreakdown, outstandingPayments,
+    locationTable, expenseBreakdown, outstandingPayments, needsAttention,
   });
   } catch (err) {
     console.error('monthly api', err);
