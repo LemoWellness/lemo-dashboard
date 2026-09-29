@@ -69,7 +69,7 @@ export default function Reporting() {
         </div>
       </div>
       <p className="muted">
-        Usage, Gross, Refunds, and Net Income come from Daily Raw Data. Session mix comes from the Usage file uploaded in the Sessions table.
+        Usage comes from Daily Raw Data (CW + RS). RS Gross, RS Refunds, and RS Net Income come from Daily Raw Data. Session mix comes from the Usage file uploaded in the Sessions table.
       </p>
       {loading && <p className="muted">Loading reporting data...</p>}
       {error && <p className="form-error">{error}</p>}
@@ -104,9 +104,9 @@ function DailyView({ data, selectedDate, onDate, isAdmin, onUploaded }) {
       {data.dataHealthIssues?.count > 0 && <HealthBanner issues={data.dataHealthIssues} />}
       <div className="grid-4">
         <Kpi label="Usage" value={count(data.totals.orders)} hint="Sessions started (orderNumber) from Daily Raw Data. Includes CW and RS." />
-        <Kpi label="Gross Income" value={fmt(gross)} hint="RS Total Amount from Daily Raw Data before refunds. CW monthly fees are not included." />
-        <Kpi label="Refunds" value={fmt(data.totals.refunds)} hint="Refund dollars from Daily Raw Data." />
-        <Kpi label="Net Income" value={fmt(net)} hint="Gross Income minus refunds. RS only from Daily Raw Data." />
+        <Kpi label="RS Gross Income" value={fmt(gross)} hint="RS Total Amount from Daily Raw Data before refunds. CW monthly fees are not included." />
+        <Kpi label="RS Refunds" value={fmt(data.totals.refunds)} hint="Refund dollars from Daily Raw Data." />
+        <Kpi label="RS Net Income" value={fmt(net)} hint="RS Gross Income minus RS Refunds. CW monthly fees are not included." />
       </div>
       <UsageChart data={data.trend} xKey="date" title="Usage (last 30 days)" />
       <IncomeChart data={data.trend} xKey="date" title="RS Net Income (last 30 days)" />
@@ -169,7 +169,7 @@ function MonthlyView({ data, selectedMonth, onMonth, isAdmin, onUploaded }) {
         <label className="muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
           Select month
           <select id="reporting-month" name="reportingMonth" value={selectedMonth} onChange={(e) => onMonth(e.target.value)}>
-            {data.availableMonths.map((m) => <option key={m.value} value={m}>{m}</option>)}
+            {data.availableMonths.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
         </label>
       </div>
@@ -182,9 +182,9 @@ function MonthlyView({ data, selectedMonth, onMonth, isAdmin, onUploaded }) {
       )}
       <div className="grid-4">
         <Kpi label="Usage" value={count(data.totals.orders)} hint="Sessions started (orderNumber) from Daily Raw Data. Includes CW and RS." />
-        <Kpi label="Gross Income" value={fmt(gross)} hint="RS Total Amount from Daily Raw Data before refunds. CW monthly fees are not included." />
-        <Kpi label="Refunds" value={fmt(data.totals.refunds)} hint="Refund dollars from Daily Raw Data." />
-        <Kpi label="Net Income" value={fmt(net)} hint="Gross Income minus refunds. RS only from Daily Raw Data." />
+        <Kpi label="RS Gross Income" value={fmt(gross)} hint="RS Total Amount from Daily Raw Data before refunds. CW monthly fees are not included." />
+        <Kpi label="RS Refunds" value={fmt(data.totals.refunds)} hint="Refund dollars from Daily Raw Data." />
+        <Kpi label="RS Net Income" value={fmt(net)} hint="RS Gross Income minus RS Refunds. CW monthly fees are not included." />
       </div>
       <div className="grid-4">
         <Kpi label="CW Usage" value={count(data.split.corporateWellnessOrders)} hint="Sessions started at Corporate Wellness sites this month." />
