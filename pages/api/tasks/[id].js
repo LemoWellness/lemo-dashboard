@@ -44,7 +44,16 @@ export default withAuth(async (req, res, session) => {
   const task = doc.data();
 
   if (req.method === 'PATCH') {
-    const { status, assignedTo, assignedTo2, task: taskText, deadline, priority, notes, addUpdate, cancelRequest, cancelDecision } = req.body || {};
+    const { status, assignedTo, assignedTo2, task: taskText, deadline, priority, notes, addUpdate, cancelRequest, cancelDecision, privateNote } = req.body || {};
+    if (privateNote !== undefined) {
+      if (!isAssignee(session, task)) {
+        return res.status(403).json({ error: 'Only the assignee can save personal notes.' });
+      }
+      const key = emailOf(session);
+      const current = task.privateNotes && typeof task.privateNotes === 'object' ? task.privateNotes : {};
+      await ref.update({ privateNotes: { ...current, [key]: String(privateNote) } });
+      return res.status(200).json({ success: true });
+    }
     const editingFields = assignedTo !== undefined || assignedTo2 !== undefined || taskText !== undefined || deadline !== undefined || priority !== undefined || notes !== undefined;
 
     if (cancelRequest) {
