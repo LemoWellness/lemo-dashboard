@@ -204,18 +204,9 @@ export default function TaskModal({ task, users, onClose, onChanged }) {
             </div>
           </form>
         )}
-        {task.canPrivateNote && (
-          <form onSubmit={savePrivate} style={{ borderTop: '1px solid var(--iron)', paddingTop: 12, marginBottom: 16 }}>
-            <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: 4 }}>Personal notes</div>
-            <p className="muted" style={{ fontSize: '0.75rem', marginTop: 0 }}>Only you can see this. It does not post to Updates.</p>
-            <textarea value={privateDraft} onChange={(e) => setPrivateDraft(e.target.value)} rows={3} style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, fontFamily: 'inherit' }} />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-              <button type="submit" className="btn" disabled={saving}>{saving ? 'Saving...' : 'Save personal note'}</button>
-            </div>
-          </form>
-        )}
         <div style={{ borderTop: '1px solid var(--iron)', paddingTop: 12 }}>
-          <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: 8 }}>Updates</div>
+          <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: 4 }}>Updates</div>
+          <p className="muted" style={{ fontSize: '0.75rem', marginTop: 0 }}>Shared with HQ and other assignees.</p>
           {taskUpdates(task).length === 0 && <p className="muted">No updates yet.</p>}
           {taskUpdates(task).map((u) => (
             <div key={u.id} style={{ marginBottom: 10 }}>
@@ -232,6 +223,16 @@ export default function TaskModal({ task, users, onClose, onChanged }) {
             </form>
           )}
         </div>
+        {task.canPrivateNote && (
+          <form onSubmit={savePrivate} style={{ borderTop: '1px solid var(--iron)', paddingTop: 12, marginTop: 16 }}>
+            <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: 4 }}>Personal notes</div>
+            <p className="muted" style={{ fontSize: '0.75rem', marginTop: 0 }}>Only you can see this. It does not post to Updates.</p>
+            <textarea value={privateDraft} onChange={(e) => setPrivateDraft(e.target.value)} rows={3} style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, fontFamily: 'inherit' }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+              <button type="submit" className="btn" disabled={saving}>{saving ? 'Saving...' : 'Save personal note'}</button>
+            </div>
+          </form>
+        )}
         {!editing && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
             {task.canRequestCancel && !showCancel && <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => setShowCancel(true)}>Request cancel</button>}
