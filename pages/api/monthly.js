@@ -134,7 +134,9 @@ function cwBalance(name, data, monthKey, allIncome) {
     const receivedMonth = String(i.date || '').slice(0, 7);
     if (receivedMonth.length !== 7 || receivedMonth > monthKey) return;
     if (!incomeBelongsToSite(i.location, name, data)) return;
-    cash += Number(i.amount) || 0;
+    const amt = Number(i.amount) || 0;
+    if (amt <= 0) return;
+    cash += amt;
     incomeAppliedMonths(i).forEach((m) => { if (m <= lastBilled) paid.add(m); });
   });
   const unpaid = billable.filter((m) => !paid.has(m));
