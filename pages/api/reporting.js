@@ -4,6 +4,20 @@ import { withAuth } from '../../lib/auth';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+function shiftMonthKey(monthKey, delta) {
+  const [y, m] = String(monthKey || '').split('-').map(Number);
+  if (!y || !m) return monthKey;
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function dailyRangeFor(req) {
+  const now = new Date().toISOString().slice(0, 7);
+  const requested = String(req.query.month || req.query.date || now).slice(0, 7);
+  const startMonth = shiftMonthKey(requested, -11);
+  return { start: `${startMonth}-01`, end: `${requested}-31` };
+}
+
 function isWeekendKey(dateKey) {
   const [y, m, d] = dateKey.split('-').map(Number);
   const day = new Date(y, m - 1, d).getDay();
@@ -239,7 +253,10 @@ export default withAuth(async (req, res, session) => {
   const view = String(req.query.view || 'daily') === 'monthly' ? 'monthly' : 'daily';
 
   const [dailySnap, projectsSnap, usageSnap] = await Promise.all([
-    adminDb.collection('dailyRawData').get(),
+    adminDb.collection('dailyRawData')
+      .where('countDate', '>=', dailyRangeFor(req).start)
+      .where('countDate', '<=', dailyRangeFor(req).end)
+      .get(),
     adminDb.collection('projects').get(),
     adminDb.collection('usageRawData').get(),
   ]);
