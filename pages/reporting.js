@@ -193,7 +193,8 @@ function MonthlyView({ data, selectedMonth, onMonth, isAdmin, onUploaded }) {
       </div>
       <UsageChart data={data.trend} xKey="month" title="Usage trend" />
       <IncomeChart data={data.trend} xKey="month" title="RS Net Income trend" />
-      <VenueTable rows={data.venueTable} title="Venue totals - selected month (ranked by Usage)" />
+      <VenueTable rows={data.venueTable} title="Venue performance - selected month (ranked by Usage)" />
+      <RsPayoutsTable rows={data.venueTable} />
       <SessionsTable rows={(data.sessionPack && data.sessionPack.rows) || data.sessionTable} pack={data.sessionPack} isAdmin={isAdmin} onUploaded={onUploaded} />
     </>
   );
@@ -236,10 +237,18 @@ function IncomeChart({ data, xKey, title }) {
   );
 }
 
+const RS_LEMO = 0.7;
+const RS_VENUE = 0.2;
+const RS_BD = 0.1;
+
+function isRsVenue(row) {
+  return String(row.model || '').trim() === 'Revenue Sharing';
+}
+
 function VenueTable({ rows, title }) {
   return (
     <div className="card">
-      <h3 style={{ marginTop: 0 }}>{title || 'Venue activity (ranked by Usage)'}</h3>
+      <h3 style={{ marginTop: 0 }}>{title || 'Venue performance (ranked by Usage)'}</h3>
       <div className="table-wrap">
         <table>
           <thead>
@@ -248,9 +257,6 @@ function VenueTable({ rows, title }) {
               <th title="Chairs on the Installations account.">Chairs</th>
               <th title="Chair sessions started (orderNumber) from Daily Raw Data.">Usage</th>
               <th title="Usage divided by chairs on the account. Blank if chair count is missing.">Avg / chair</th>
-              <th title="Total Amount from Daily Raw Data, before refunds.">Gross Income</th>
-              <th title="Refunds from Daily Raw Data.">Refunds</th>
-              <th title="Gross minus refunds from Daily Raw Data.">Income</th>
               <th title="Average visitors from Daily Raw Data.">Avg # of Visitors</th>
             </tr>
           </thead>
@@ -261,13 +267,80 @@ function VenueTable({ rows, title }) {
                 <td>{v.chairs != null ? count(v.chairs) : '-'}</td>
                 <td>{count(v.orders)}</td>
                 <td>{v.avgPerChair != null ? Math.round(v.avgPerChair * 10) / 10 : '-'}</td>
-                <td>{fmt(v.gross != null ? v.gross : (Number(v.netIncome)||0) + (Number(v.refunds)||0))}</td>
-                <td>{fmt(v.refunds)}</td>
-                <td>{fmt(v.netIncome)}</td>
                 <td>{Math.round(v.avgVisitors * 10) / 10}</td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={8} className="muted">No venue activity for this period</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={5} className="muted">No venue activity for this period</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function RsPayoutsTable({ rows }) {
+  const rs = (rows || []).filter(isRsVenue);
+  const money = (row) => {
+    const gross = Number(row.gross != null ? row.gross : row.totalAmount) || ((Number(row.netIncome) || 0) + (Number(row.refunds) || 0));
+    const refunds = Number(row.refunds) || 0;
+    const net = Number(row.netIncome) || (gross - refunds);
+    return { gross, refunds, net, lemo: net * RS_LEMO, venue: net * RS_VENUE, bd: net * RS_BD };
+  };
+  const tot = rs.reduce((s, row) => {
+    const m = money(row);
+    return {
+      gross: s.gross + m.gross,
+      refunds: s.refunds + m.refunds,
+      net: s.net + m.net,
+      lemo: s.lemo + m.lemo,
+      venue: s.venue + m.venue,
+      bd: s.bd + m.bd,
+    };
+  }, { gross: 0, refunds: 0, net: 0, lemo: 0, venue: 0, bd: 0 });
+  return (
+    <div className="card">
+      <h3 style={{ marginTop: 0 }}>RS venue payouts</h3>
+      <p className="muted" style={{ marginTop: -6 }}>70 / 20 / 10 of RS net after refunds. CW sites are not included.</p>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Venue</th>
+              <th title="RS Total Amount before refunds.">Gross</th>
+              <th title="Refunds from Daily Raw Data.">Refunds</th>
+              <th title="Gross minus refunds.">Net</th>
+              <th title="70% of net.">LEMO</th>
+              <th title="20% of net.">Venue payout</th>
+              <th title="10% of net.">BD payout</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rs.map((v, i) => {
+              const m = money(v);
+              return (
+                <tr key={i}>
+                  <td>{v.venue}</td>
+                  <td>{fmt(m.gross)}</td>
+                  <td>{fmt(m.refunds)}</td>
+                  <td>{fmt(m.net)}</td>
+                  <td>{fmt(m.lemo)}</td>
+                  <td>{fmt(m.venue)}</td>
+                  <td>{fmt(m.bd)}</td>
+                </tr>
+              );
+            })}
+            {rs.length > 0 && (
+              <tr>
+                <td><strong>TOTAL</strong></td>
+                <td><strong>{fmt(tot.gross)}</strong></td>
+                <td><strong>{fmt(tot.refunds)}</strong></td>
+                <td><strong>{fmt(tot.net)}</strong></td>
+                <td><strong>{fmt(tot.lemo)}</strong></td>
+                <td><strong>{fmt(tot.venue)}</strong></td>
+                <td><strong>{fmt(tot.bd)}</strong></td>
+              </tr>
+            )}
+            {rs.length === 0 && <tr><td colSpan={7} className="muted">No Revenue Sharing venues for this month</td></tr>}
           </tbody>
         </table>
       </div>
