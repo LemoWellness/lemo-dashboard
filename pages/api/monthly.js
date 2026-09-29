@@ -153,7 +153,11 @@ export default withAuth(async (req, res) => {
   const monthKey = req.query.month || new Date().toISOString().slice(0, 7);
   const [projectsSnap, expensesSnap, incomeSnap, financialsSnap, dailySnap] = await Promise.all([
     adminDb.collection('projects').get(), adminDb.collection('expenses').get(), adminDb.collection('income').get(),
-    adminDb.collection('financialReports').get(), adminDb.collection('dailyRawData').get(),
+    adminDb.collection('financialReports').get(),
+      adminDb.collection('dailyRawData')
+        .where('countDate', '>=', monthStart(shiftMonth(monthKey, -5)))
+        .where('countDate', '<=', monthEnd(monthKey))
+        .get(),
   ]);
   const projectsByName = {}; const projectsByLower = {};
   projectsSnap.forEach((doc) => {
