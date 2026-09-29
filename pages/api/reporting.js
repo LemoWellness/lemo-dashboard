@@ -104,6 +104,12 @@ function usageMonths(usageSnap) {
   return [...months].sort();
 }
 
+function parseGear(v) {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return isNaN(n) ? null : n;
+}
+
 function rowsForUsageMonth(usageSnap, month) {
   const byVenue = {};
   if (!usageSnap || usageSnap.empty || !month) return [];
@@ -112,22 +118,23 @@ function rowsForUsageMonth(usageSnap, month) {
     if (rowUsageMonth(row) !== month) return;
     const name = String(row.venueName || '').trim();
     if (!name) return;
-    if (!byVenue[name]) byVenue[name] = { venue: name, orders: 0, first: 0, second: 0, third: 0, weight: 0 };
+    if (!byVenue[name]) byVenue[name] = { venue: name, month, orders: 0, first: 0, second: 0, third: 0, weight: 0 };
     const w = Number(row.orderNumber) || 0;
-    const weight = w > 0 ? w : 1;
     byVenue[name].orders += w;
-    const g1 = Number(row.firstGearRate);
-    const g2 = Number(row.secondGearRate);
-    const g3 = Number(row.thirdGearRate);
-    if (!isNaN(g1) || !isNaN(g2) || !isNaN(g3)) {
-      byVenue[name].first += (isNaN(g1) ? 0 : g1) * weight;
-      byVenue[name].second += (isNaN(g2) ? 0 : g2) * weight;
-      byVenue[name].third += (isNaN(g3) ? 0 : g3) * weight;
-      byVenue[name].weight += weight;
-    }
+    const g1 = parseGear(row.firstGearRate);
+    const g2 = parseGear(row.secondGearRate);
+    const g3 = parseGear(row.thirdGearRate);
+    if (g1 == null && g2 == null && g3 == null) return;
+    if (g1 === 0 && g2 === 0 && g3 === 0) return;
+    const weight = w > 0 ? w : 1;
+    byVenue[name].first += (g1 || 0) * weight;
+    byVenue[name].second += (g2 || 0) * weight;
+    byVenue[name].third += (g3 || 0) * weight;
+    byVenue[name].weight += weight;
   });
   return Object.values(byVenue).map((v) => ({
     venue: v.venue,
+    month: v.month || month,
     orders: v.orders,
     firstGearRate: v.weight ? v.first / v.weight : null,
     secondGearRate: v.weight ? v.second / v.weight : null,
@@ -146,17 +153,17 @@ function allSessionRows(usageSnap) {
     const key = month + '|' + name;
     if (!byKey[key]) byKey[key] = { month, venue: name, orders: 0, first: 0, second: 0, third: 0, weight: 0 };
     const w = Number(row.orderNumber) || 0;
-    const weight = w > 0 ? w : 1;
     byKey[key].orders += w;
-    const g1 = Number(row.firstGearRate);
-    const g2 = Number(row.secondGearRate);
-    const g3 = Number(row.thirdGearRate);
-    if (!isNaN(g1) || !isNaN(g2) || !isNaN(g3)) {
-      byKey[key].first += (isNaN(g1) ? 0 : g1) * weight;
-      byKey[key].second += (isNaN(g2) ? 0 : g2) * weight;
-      byKey[key].third += (isNaN(g3) ? 0 : g3) * weight;
-      byKey[key].weight += weight;
-    }
+    const g1 = parseGear(row.firstGearRate);
+    const g2 = parseGear(row.secondGearRate);
+    const g3 = parseGear(row.thirdGearRate);
+    if (g1 == null && g2 == null && g3 == null) return;
+    if (g1 === 0 && g2 === 0 && g3 === 0) return;
+    const weight = w > 0 ? w : 1;
+    byKey[key].first += (g1 || 0) * weight;
+    byKey[key].second += (g2 || 0) * weight;
+    byKey[key].third += (g3 || 0) * weight;
+    byKey[key].weight += weight;
   });
   return Object.values(byKey).map((v) => ({
     month: v.month,
