@@ -57,10 +57,12 @@ function addRow(target, row) {
   }
 }
 
-function venueRow(name, v, chairsByVenue) {
-  const chairs = chairsByVenue[String(name || '').trim().toLowerCase()] || null;
+function venueRow(name, v, chairsByVenue, businessModelByVenue) {
+  const key = String(name || '').trim().toLowerCase();
+  const chairs = chairsByVenue[key] || null;
   return {
     venue: name,
+    model: (businessModelByVenue && businessModelByVenue[key]) || '',
     orders: v.orders,
     chairs,
     avgPerChair: chairs ? v.orders / chairs : null,
@@ -371,7 +373,7 @@ export default withAuth(async (req, res, session) => {
     });
 
     const venueTable = Object.keys(byVenue)
-      .map((name) => venueRow(name, byVenue[name], chairsByVenue))
+      .map((name) => venueRow(name, byVenue[name], chairsByVenue, businessModelByVenue))
       .sort((a, b) => b.orders - a.orders);
 
     const trend = months.slice(-12).map((m) => {
@@ -441,7 +443,7 @@ export default withAuth(async (req, res, session) => {
     totals.refunds += lv.refunds;
     totals.gross += lv.gross || 0;
     totals.completed += lv.completed;
-    venueTable.push(venueRow(v, lv, chairsByVenue));
+    venueTable.push(venueRow(v, lv, chairsByVenue, businessModelByVenue));
   });
   venueTable.sort((a, b) => b.orders - a.orders);
 
