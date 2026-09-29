@@ -47,8 +47,25 @@ function cleanSecond(first, second) {
 
 export default withAuth(async (req, res, session) => {
   if (req.method === 'GET') {
-    const snap = await adminDb.collection('tasks').orderBy('timestamp', 'desc').get();
-    const tasks = snap.docs
+    const col = adminDb.collection('tasks');
+    let docs;
+    if (isHq(session)) {
+      const snap = await col.orderBy('timestamp', 'desc').get();
+      docs = snap.docs;
+    } else {
+      const emails = [...new Set([emailOf(session), session.email].filter(Boolean))];
+      const snaps = await Promise.all(emails.flatMap((e) => [
+        col.where('addedBy', '==', e).get(),
+        col.where('assignedTo', '==', e).get(),
+        col.where('assignedTo2', '==', e).get(),
+      ]));
+      const byId = new Map();
+      snaps.forEach((snap) => {
+        snap.docs.forEach((d) => byId.set(d.id, d));
+      });
+      docs = [...byId.values()].sort((a, b) => String(b.data().timestamp || '').localeCompare(String(a.data().timestamp || '')));
+    }
+    const tasks = docs
       .map((d) => {
         const t = d.data();
         return { id: d.id, ...t, ...flags(session, t), addedBy: displayAddedBy(t) };
