@@ -48,6 +48,7 @@ export default function Tasks() {
   const [showSettings, setShowSettings] = useState(false);
   const [deskBusy, setDeskBusy] = useState('');
   const isAdmin = session?.role === 'Admin';
+  const isHq = isAdmin || session?.taskDesk === 'hq' || !!session?.taskAdmin;
   const focusId = typeof router.query.task === 'string' ? router.query.task : '';
   const live = openTask ? (tasks.find((t) => t.id === openTask.id) || openTask) : null;
 
@@ -173,8 +174,7 @@ export default function Tasks() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <h1 style={{ margin: 0 }}>Tasks</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {isAdmin && <button className="btn" type="button" style={{ background: 'transparent', color: 'var(--ember)', border: '1px solid var(--ember)' }} onClick={() => setShowSettings(true)}>Settings</button>}
-          {isAdmin && <MeetingNotesImport onCreated={load} />}
+          {isHq && <button className="btn" type="button" style={{ background: 'transparent', color: 'var(--ember)', border: '1px solid var(--ember)' }} onClick={() => setShowSettings(true)}>Settings</button>}
           <button className="btn" onClick={() => setShowAdd(true)}>+ Add Task</button>
         </div>
       </div>
@@ -296,7 +296,7 @@ export default function Tasks() {
         </div>
       )}
       {live && <TaskModal task={live} users={users} onClose={() => setOpenTask(null)} onChanged={load} />}
-      {showSettings && isAdmin && (
+      {showSettings && isHq && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110 }} onClick={() => setShowSettings(false)}>
           <div className="card" style={{ background: 'var(--warm-white)', width: '92%', maxWidth: 520, maxHeight: '88vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -304,6 +304,10 @@ export default function Tasks() {
               <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => setShowSettings(false)}>Close</button>
             </div>
             <p className="muted" style={{ fontSize: '0.8rem' }}>HQ sees every task. Contractors only see tasks they created or that are assigned to them. Tasks Admin can edit or delete any task and approve cancel requests. It is not the same as HQ.</p>
+            <div style={{ margin: '12px 0 16px' }}>
+              <MeetingNotesImport onCreated={load} />
+            </div>
+            {isAdmin && (
             <table>
               <thead><tr><th>Name</th><th>Email</th><th>Desk</th><th>Tasks Admin</th></tr></thead>
               <tbody>
@@ -323,6 +327,7 @@ export default function Tasks() {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
         </div>
       )}
