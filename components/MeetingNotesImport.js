@@ -105,7 +105,7 @@ export default function MeetingNotesImport({ onCreated }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 120, padding: 12 }} onClick={close}>
           <div className="card" style={{ width: 'min(640px, 100%)', maxHeight: '90vh', overflow: 'auto', margin: 0 }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>Import meeting notes</h3>
-            <p className="muted">Upload a Gemini notes PDF or paste the Next steps section. First names are enough. Due date is 1 week from today.</p>
+            <p className="muted">Upload a Gemini notes PDF or paste the Next steps section. Due dates are set to one week from today. You can change them on the task after it is created.</p>
             <label className="stack-field">PDF or text file
               <input type="file" accept=".pdf,.txt,.text" onChange={onFile} />
             </label>
