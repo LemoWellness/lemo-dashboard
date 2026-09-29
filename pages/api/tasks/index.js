@@ -68,7 +68,18 @@ export default withAuth(async (req, res, session) => {
     const tasks = docs
       .map((d) => {
         const t = d.data();
-        return { id: d.id, ...t, ...flags(session, t), addedBy: displayAddedBy(t) };
+        const mine = emailOf(session);
+        const notes = t.privateNotes && typeof t.privateNotes === 'object' ? t.privateNotes : {};
+        const isMine = mine === String(t.assignedTo || '').toLowerCase() || mine === String(t.assignedTo2 || '').toLowerCase();
+        const { privateNotes, ...rest } = t;
+        return {
+          id: d.id,
+          ...rest,
+          ...flags(session, t),
+          addedBy: displayAddedBy(t),
+          canPrivateNote: isMine,
+          privateNote: isMine ? String(notes[mine] || notes[session.email] || '') : '',
+        };
       })
       .filter((t) => canSee(session, t));
     return res.status(200).json({ tasks });
