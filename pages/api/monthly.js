@@ -335,6 +335,26 @@ export default withAuth(async (req, res) => {
       action: 'Upload the latest Daily file so month-to-date is complete.',
     });
   }
+  const dayOfMonth = isCurrent ? new Date().getUTCDate() : 31;
+  if (dayOfMonth >= 10) {
+    const prevRs = rsDailyByVenue(shiftMonth(monthKey, -1));
+    let quiet = 0;
+    Object.entries(projectsByName).forEach(([id, data]) => {
+      if (quiet >= 6) return;
+      const name = data.name || id;
+      if (data.businessModel !== 'Revenue Sharing' || !isCommercialSite(name, data) || !liveInMonth(data, monthKey)) return;
+      const prev = prevRs[name] || prevRs[data.name] || { total: 0 };
+      const curr = rsThisMonth[name] || rsThisMonth[data.name] || { total: 0 };
+      if ((Number(prev.total) || 0) >= 50 && (Number(curr.total) || 0) <= 0) {
+        quiet += 1;
+        needsAttention.push({
+          id: `quiet-${name}`,
+          title: `${name} had RS sales last month and none this month`,
+          action: 'Check the chairs and whether Daily Raw Data includes this site.',
+        });
+      }
+    });
+  }
   const trend = [];
   for (let i = 5; i >= 0; i--) {
     const key = shiftMonth(monthKey, -i);
