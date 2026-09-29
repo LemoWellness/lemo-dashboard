@@ -217,17 +217,37 @@ function buildSessionMeta(usageSnap, month) {
   return { total, matched, samples };
 }
 
-function monthStory(totals, prev, venueTable) {
+function daysInMonthKey(monthKey) {
+  const [y, m] = String(monthKey || '').split('-').map(Number);
+  if (!y || !m) return 0;
+  return new Date(y, m, 0).getDate();
+}
+
+function monthSliceTotals(dateVenue, dateKeys, month, throughDay) {
+  const out = { orders: 0, netIncome: 0 };
+  dateKeys.filter((d) => d.slice(0, 7) === month && Number(d.slice(8)) <= throughDay).forEach((dKey) => {
+    const venues = dateVenue[dKey] || {};
+    Object.keys(venues).forEach((v) => {
+      out.orders += venues[v].orders || 0;
+      out.netIncome += venues[v].netIncome || 0;
+    });
+  });
+  return out;
+}
+
+function monthStory(totals, prev, venueTable, mtd) {
   const parts = [];
+  const vs = mtd ? `vs last month through day ${mtd.throughDay}` : 'vs last month';
+  if (mtd) parts.push(`Month-to-date through day ${mtd.throughDay} of ${mtd.daysInMonth}.`);
   if (prev && prev.orders) {
     const pct = Math.round(((totals.orders - prev.orders) / prev.orders) * 100);
-    parts.push(`Usage is ${pct >= 0 ? 'up' : 'down'} ${Math.abs(pct)}% vs last month (${Math.round(totals.orders)} vs ${Math.round(prev.orders)}).`);
+    parts.push(`Usage is ${pct >= 0 ? 'up' : 'down'} ${Math.abs(pct)}% ${vs} (${Math.round(totals.orders)} vs ${Math.round(prev.orders)}).`);
   } else {
     parts.push(`${Math.round(totals.orders || 0)} sessions started this month.`);
   }
   if (prev && prev.netIncome != null && totals.netIncome != null && prev.netIncome) {
     const pct = Math.round(((totals.netIncome - prev.netIncome) / Math.abs(prev.netIncome)) * 100);
-    parts.push(`Net Income is ${pct >= 0 ? 'up' : 'down'} ${Math.abs(pct)}%.`);
+    parts.push(`Net Income is ${pct >= 0 ? 'up' : 'down'} ${Math.abs(pct)}% ${vs}.`);
   }
   if (venueTable[0] && venueTable[0].orders > 0) {
     parts.push(`${venueTable[0].venue} led usage.`);
@@ -374,6 +394,14 @@ export default withAuth(async (req, res, session) => {
     });
 
     const sessionPack = buildSessionTable(usageSnap, month);
+    const dim = daysInMonthKey(month);
+    const lastReported = monthDates[monthDates.length - 1] || '';
+    const throughDay = Number(lastReported.slice(8)) || monthDates.length;
+    const inProgress = monthDates.length < dim;
+    const prevMonth = shiftMonthKey(month, -1);
+    const prev = inProgress
+      ? monthSliceTotals(dateVenue, dateKeys, prevMonth, throughDay)
+      : (trend.length > 1 ? { orders: trend[trend.length - 2].orders, netIncome: trend[trend.length - 2].revenueSharingIncome } : null);
     return res.status(200).json({
       hasData: true,
       view: 'monthly',
@@ -385,10 +413,7 @@ export default withAuth(async (req, res, session) => {
       completedRate: totals.orders > 0 ? totals.completed / totals.orders : 0,
       venueTable,
       trend,
-      story: monthStory(totals, trend.length > 1 ? {
-        orders: trend[trend.length - 2].orders,
-        netIncome: trend[trend.length - 2].revenueSharingIncome,
-      } : null, venueTable),
+      story: monthStory(totals, prev, venueTable, inProgress ? { throughDay, daysInMonth: dim } : null),
       sessionPack,
       sessionTable: sessionPack.rows,
       sessionMeta: buildSessionMeta(usageSnap, month),
