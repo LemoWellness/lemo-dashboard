@@ -107,6 +107,7 @@ export default function Monthly() {
   const comparison = data.comparison || [];
   const breakdown = data.expenseBreakdown || [];
   const outstanding = data.outstandingPayments || [];
+  const alerts = data.needsAttention || [];
   const cmp = data.monthComparison || { current: {}, previous: {} };
   const rsChairsFromTable = (data.locationTable || [])
     .filter((l) => l.model === 'Revenue Sharing' && l.commercial !== false)
@@ -129,6 +130,18 @@ export default function Monthly() {
         <Kpi label="Refunds" value={fmt(data.totalRefunds)} hint="RS refunds from Daily Raw Data this month." />
         <Kpi label="Net Profit / Loss" value={fmt(net)} negative={net < 0} hint="Net income minus company-wide expenses." />
         <Kpi label="Active Chairs" value={data.activeChairs?.toLocaleString() ?? DASH} hint="Chairs at live locations this month." />
+      </div>
+
+      <div className="card" style={{ borderLeft: '3px solid var(--ember)' }}>
+        <h3 style={{ marginTop: 0 }}>Needs attention</h3>
+        <p className="muted" style={{ marginTop: -6 }}>Simple rules from A/R, refunds, and Daily uploads. Not a forecast.</p>
+        {alerts.length === 0 && <p className="muted">Nothing flagged for this month.</p>}
+        {alerts.map((item) => (
+          <div key={item.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--warm-white)' }}>
+            <div style={{ fontWeight: 500 }}>{item.title}</div>
+            <div className="muted" style={{ fontSize: 13 }}>{item.action}</div>
+          </div>
+        ))}
       </div>
 
       <div className="grid-2">
