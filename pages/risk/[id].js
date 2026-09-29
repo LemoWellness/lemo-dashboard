@@ -15,6 +15,7 @@ const ARR = '\u2190';
 const MINUS = '\u2212';
 const TIMES = '\u00d7';
 const ELL = '\u2026';
+const ASSUMED_WARNING_THRESHOLD = 0.5;
 const fmt = (v) => (typeof v === 'number' && Number.isFinite(v) ? `$${Math.round(v).toLocaleString()}` : EM);
 const fmtMoney2 = (v) => (typeof v === 'number' && Number.isFinite(v) ? `$${v.toFixed(2)}` : EM);
 const fmtN = (v, d = 1) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(d) : EM);
@@ -78,7 +79,7 @@ function riskAttention(form, c) {
   const pb = pay ? c.scenarios?.base?.paybackMonths : c.cw?.paybackMonths;
   if (typeof pb === 'number' && pb > 0) parts.unshift('Projected payback is ' + pb.toFixed(1) + ' months.');
   const comp = c.completeness;
-  if (comp && comp.total > 0 && (comp.Assumed / comp.total) >= 0.5 && typeof pb === 'number' && pb > 0) {
+  if (comp && comp.total > 0 && (comp.Assumed / comp.total) >= ASSUMED_WARNING_THRESHOLD && typeof pb === 'number' && pb > 0) {
     parts.push(Math.round(100 * comp.Assumed / comp.total) + '% of total cost is still Assumed.');
   }
   return parts.join(' ');
