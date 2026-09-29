@@ -160,6 +160,13 @@ export default function Tasks() {
     setDeskUsers(staff.users || []);
     setDeskBusy('');
   }
+  async function setTaskAdmin(uid, taskAdmin) {
+    setDeskBusy(uid);
+    await authedFetch(`/api/users/${uid}`, { method: 'PATCH', body: JSON.stringify({ taskAdmin }) });
+    const staff = await authedFetch('/api/users').then((r) => r.json());
+    setDeskUsers(staff.users || []);
+    setDeskBusy('');
+  }
 
   return (
     <Layout active="tasks" onNavigate={navigate}>
@@ -296,17 +303,21 @@ export default function Tasks() {
               <h3 style={{ marginTop: 0 }}>Task settings</h3>
               <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => setShowSettings(false)}>Close</button>
             </div>
-            <p className="muted" style={{ fontSize: '0.8rem' }}>HQ sees every task. Contractors only see tasks they created or that are assigned to them.</p>
+            <p className="muted" style={{ fontSize: '0.8rem' }}>HQ sees every task. Contractors only see tasks they created or that are assigned to them. Tasks Admin can edit or delete any task and approve cancel requests. It is not the same as HQ.</p>
             <table>
-              <thead><tr><th>Name</th><th>Email</th><th>Desk</th></tr></thead>
+              <thead><tr><th>Name</th><th>Email</th><th>Desk</th><th>Tasks Admin</th></tr></thead>
               <tbody>
                 {deskUsers.map((u) => (
                   <tr key={u.uid}>
                     <td>{u.name}</td><td>{u.email}</td>
                     <td>
-                      <select disabled={deskBusy === u.uid} value={u.taskDesk === 'hq' ? 'hq' : 'contractor'} onChange={(e) => setDesk(u.uid, e.target.value)}>
+                      <select disabled={deskBusy === u.uid || u.role === 'Admin'} value={u.taskDesk === 'hq' ? 'hq' : 'contractor'} onChange={(e) => setDesk(u.uid, e.target.value)}>
                         <option value="hq">HQ</option><option value="contractor">Contractor</option>
                       </select>
+                    </td>
+                    <td>
+                      <input type="checkbox" disabled={deskBusy === u.uid || u.role === 'Admin'} checked={!!u.taskAdmin} onChange={(e) => setTaskAdmin(u.uid, e.target.checked)} />
+                      {u.role === 'Admin' ? <span className="muted"> Admin</span> : null}
                     </td>
                   </tr>
                 ))}
