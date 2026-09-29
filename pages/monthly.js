@@ -124,7 +124,7 @@ export default function Monthly() {
       </div>
       <p className="muted">{data.month} performance {DOT} AR balances as of {data.asOfLabel || data.month}</p>
       {!(Number(data.totalExpenses) > 0) && !(data.expenseBreakdown || []).length && (
-        <p style={{ color: 'var(--ember-muted)', fontWeight: 500, marginTop: 0 }}>The Bench expense report has not been uploaded for this month. It is usually added at the end of the month.</p>
+        <p className="muted" style={{ color: '#dc2626', marginTop: 0 }}>The Bench expense report has not been uploaded for this month. It is usually added at the end of the month.</p>
       )}
 
       <div className="grid-4">
