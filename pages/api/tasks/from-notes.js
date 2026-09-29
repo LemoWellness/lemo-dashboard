@@ -2,8 +2,8 @@ import { adminDb } from '../../../lib/firebaseAdmin';
 import { withAuth } from '../../../lib/auth';
 import { notifyTaskAssigned } from '../../../lib/notifications';
 
-function isTaskAdmin(session) {
-  return session.role === 'Admin' || !!session.taskAdmin || session.role === 'Tasks Admin';
+function canImportNotes(session) {
+  return session.role === 'Admin' || !!session.taskAdmin || session.role === 'Tasks Admin' || session.taskDesk === 'hq';
 }
 
 function weekFromNow() {
@@ -86,7 +86,7 @@ async function extractText(body) {
 
 export default withAuth(async (req, res, session) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
-  if (!isTaskAdmin(session)) return res.status(403).json({ error: 'Only an Admin or Tasks Admin can import meeting notes.' });
+  if (!canImportNotes(session)) return res.status(403).json({ error: 'Only HQ or Tasks Admin can import meeting notes.' });
 
   if (req.body && req.body.create && Array.isArray(req.body.items) && req.body.items.length) {
     const deadline = weekFromNow();
