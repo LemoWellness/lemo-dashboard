@@ -97,7 +97,7 @@ export default function Financials() {
       ) : (
         <>
           {selected.expenseMissing && (
-            <p className="muted" style={{ marginTop: 0 }}>Expense report for this period has not been uploaded yet. It is usually added at month end.</p>
+            <p style={{ color: 'var(--ember-muted)', fontWeight: 500, marginTop: 0 }}>The Bench expense report has not been uploaded for this period. It is usually added at the end of the month.</p>
           )}
           <div className="grid-3">
             <Kpi label="Net Income" value={fmt(selected.revenue)} />
