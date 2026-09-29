@@ -11,6 +11,15 @@ function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+function dayKey(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function updatedToday(t) {
+  return (Array.isArray(t.updates) ? t.updates : []).some((u) => u && dayKey(u.at) === todayStr());
+}
 function isOverdue(t) {
   if (!t.deadline || ['Done', 'On Hold', 'Pending', 'Cancelled', 'Cancel Requested'].includes(t.status)) return false;
   return t.deadline < todayStr();
@@ -121,13 +130,14 @@ export default function Tasks() {
     });
     return list;
   }, [tasks, subtab, filterAssigned, filterStatus, sortBy]);
+  const needsUpdate = subtab === 'active' ? filtered.filter((t) => !updatedToday(t)) : filtered;
+  const updatedNow = subtab === 'active' ? filtered.filter((t) => updatedToday(t)) : [];
   const counts = {
     active: tasks.filter((t) => !parked(t.status)).length,
     hold: tasks.filter((t) => hold(t.status)).length,
     cancelled: tasks.filter((t) => t.status === 'Cancelled').length,
     completed: tasks.filter((t) => t.status === 'Done').length,
   };
-  const allChecked = filtered.length > 0 && filtered.every((t) => selected.includes(t.id));
   function toggleOne(id, on) {
     setSelected((list) => on ? Array.from(new Set(list.concat(id))) : list.filter((x) => x !== id));
   }
@@ -167,6 +177,41 @@ export default function Tasks() {
     const staff = await authedFetch('/api/users').then((r) => r.json());
     setDeskUsers(staff.users || []);
     setDeskBusy('');
+  }
+
+  function taskTable(list) {
+    const allOn = list.length > 0 && list.every((row) => selected.includes(row.id));
+    return (
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: 36 }}><input type="checkbox" checked={allOn} onChange={(e) => setSelected(e.target.checked ? list.map((row) => row.id) : selected.filter((id) => !list.some((row) => row.id === id)))} /></th>
+              <th>Task</th><th>For</th><th>Added By</th><th>Deadline</th><th>Priority</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((row) => {
+              const overdue = isOverdue(row);
+              const done = row.status === 'Done';
+              const focused = focusId && row.id === focusId;
+              return (
+                <tr key={row.id} onClick={() => setOpenTask(row)} style={{ cursor: 'pointer', ...(focused ? { outline: '2px solid var(--ember)', background: '#f8f1ea' } : done ? { opacity: 0.55 } : overdue ? { background: '#fdeceb' } : {}) }}>
+                  <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selected.includes(row.id)} onChange={(e) => toggleOne(row.id, e.target.checked)} /></td>
+                  <td style={done ? { textDecoration: 'line-through' } : undefined}>{row.task}</td>
+                  <td>{people(row)}</td>
+                  <td>{nameOf(row.addedBy)}</td>
+                  <td>{formatDeadline(row.deadline)}</td>
+                  <td><span className={`task-badge ${row.priority}`}>{row.priority}</span></td>
+                  <td>{row.status}</td>
+                </tr>
+              );
+            })}
+            {list.length === 0 && <tr><td colSpan={7} className="muted">No tasks in this list.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    );
   }
 
   return (
@@ -228,37 +273,27 @@ export default function Tasks() {
               <button type="button" className="btn btn-ghost" onClick={() => setSelected([])}>Clear</button>
             </div>
           )}
-          <div className="card">
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th style={{ width: 36 }}><input type="checkbox" checked={allChecked} onChange={(e) => setSelected(e.target.checked ? filtered.map((t) => t.id) : [])} /></th>
-                    <th>Task</th><th>For</th><th>Added By</th><th>Deadline</th><th>Priority</th><th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((t) => {
-                    const overdue = isOverdue(t);
-                    const done = t.status === 'Done';
-                    const focused = focusId && t.id === focusId;
-                    return (
-                      <tr key={t.id} onClick={() => setOpenTask(t)} style={{ cursor: 'pointer', ...(focused ? { outline: '2px solid var(--ember)', background: '#f8f1ea' } : done ? { opacity: 0.55 } : overdue ? { background: '#fdeceb' } : {}) }}>
-                        <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selected.includes(t.id)} onChange={(e) => toggleOne(t.id, e.target.checked)} /></td>
-                        <td style={done ? { textDecoration: 'line-through' } : undefined}>{t.task}</td>
-                        <td>{people(t)}</td>
-                        <td>{nameOf(t.addedBy)}</td>
-                        <td>{formatDeadline(t.deadline)}</td>
-                        <td><span className={`task-badge ${t.priority}`}>{t.priority}</span></td>
-                        <td>{t.status}</td>
-                      </tr>
-                    );
-                  })}
-                  {filtered.length === 0 && <tr><td colSpan={7} className="muted">No tasks in this list.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {subtab === 'active' ? (
+            <>
+              {needsUpdate.length > 0 && (
+                <div className="card">
+                  <h3 style={{ marginTop: 0 }}>Needs an Update</h3>
+                  {taskTable(needsUpdate)}
+                </div>
+              )}
+              {updatedNow.length > 0 && (
+                <div className="card">
+                  <h3 style={{ marginTop: 0 }}>Updated Today</h3>
+                  {taskTable(updatedNow)}
+                </div>
+              )}
+              {needsUpdate.length === 0 && updatedNow.length === 0 && (
+                <div className="card"><p className="muted" style={{ margin: 0 }}>No tasks in this list.</p></div>
+              )}
+            </>
+          ) : (
+            <div className="card">{taskTable(filtered)}</div>
+          )}
         </>
       )}
       {showAdd && (
