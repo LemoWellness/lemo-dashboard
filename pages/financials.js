@@ -88,7 +88,7 @@ export default function Financials() {
 
       {isAdmin && (
         <p className="muted" style={{ fontSize: '0.8rem' }}>
-          Upload Profit &amp; Loss / Top Expenses reports from <a href="/admin/import">Import Data</a>.
+          Upload Profit & Loss / Top Expenses reports from <a href="/admin/import">Import Data</a>.
         </p>
       )}
 
@@ -97,7 +97,7 @@ export default function Financials() {
       ) : (
         <>
           {selected.expenseMissing && (
-            <p style={{ color: 'var(--ember-muted)', fontWeight: 500, marginTop: 0 }}>The Bench expense report has not been uploaded for this period. It is usually added at the end of the month.</p>
+            <p className="muted" style={{ color: '#dc2626', marginTop: 0 }}>The Bench expense report has not been uploaded for this period. It is usually added at the end of the month.</p>
           )}
           <div className="grid-3">
             <Kpi label="Net Income" value={fmt(selected.revenue)} />
