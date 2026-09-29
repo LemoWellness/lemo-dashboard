@@ -96,13 +96,13 @@ function monthKeysFromTo(startKey, endKey) {
   }
   return keys;
 }
-function firstBillMonthKey(goLiveDate) {
+function firstServiceMonthKey(goLiveDate) {
   const raw = String(goLiveDate || '').slice(0, 10);
   const parts = raw.split('-').map(Number);
   if (!parts[0] || !parts[1]) return '';
   const day = parts[2] || 1;
   const goMonth = `${parts[0]}-${String(parts[1]).padStart(2, '0')}`;
-  return shiftMonth(goMonth, day <= 1 ? 1 : 2);
+  return shiftMonth(goMonth, day <= 1 ? 0 : 1);
 }
 function incomeBelongsToSite(incomeLocation, name, project) {
   const loc = String(incomeLocation || '').trim().toLowerCase();
@@ -124,9 +124,10 @@ function incomeAppliedMonths(row) {
 }
 function cwBalance(name, data, monthKey, allIncome) {
   const fee = cwContractMonthly(data);
-  const start = firstBillMonthKey(data.goLiveDate);
-  if (fee <= 0 || !start || start > monthKey) return null;
-  const billable = monthKeysFromTo(start, monthKey);
+  const start = firstServiceMonthKey(data.goLiveDate);
+  const lastBilled = shiftMonth(monthKey, -1);
+  if (fee <= 0 || !start || start > lastBilled) return null;
+  const billable = monthKeysFromTo(start, lastBilled);
   const paid = new Set();
   let cash = 0;
   allIncome.forEach((i) => {
@@ -134,7 +135,7 @@ function cwBalance(name, data, monthKey, allIncome) {
     if (receivedMonth.length !== 7 || receivedMonth > monthKey) return;
     if (!incomeBelongsToSite(i.location, name, data)) return;
     cash += Number(i.amount) || 0;
-    incomeAppliedMonths(i).forEach((m) => { if (m <= monthKey) paid.add(m); });
+    incomeAppliedMonths(i).forEach((m) => { if (m <= lastBilled) paid.add(m); });
   });
   const unpaid = billable.filter((m) => !paid.has(m));
   return {
