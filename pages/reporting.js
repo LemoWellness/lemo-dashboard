@@ -103,10 +103,10 @@ function DailyView({ data, selectedDate, onDate, isAdmin, onUploaded }) {
       </div>
       {data.dataHealthIssues?.count > 0 && <HealthBanner issues={data.dataHealthIssues} />}
       <div className="grid-4">
-        <Kpi label="Usage" value={count(data.totals.orders)} />
-        <Kpi label="Gross Income" value={fmt(gross)} />
-        <Kpi label="Refunds" value={fmt(data.totals.refunds)} />
-        <Kpi label="Net Income" value={fmt(net)} />
+        <Kpi label="Usage" value={count(data.totals.orders)} hint="Sessions started (orderNumber) from Daily Raw Data. Includes CW and RS." />
+        <Kpi label="Gross Income" value={fmt(gross)} hint="RS Total Amount from Daily Raw Data before refunds. CW monthly fees are not included." />
+        <Kpi label="Refunds" value={fmt(data.totals.refunds)} hint="Refund dollars from Daily Raw Data." />
+        <Kpi label="Net Income" value={fmt(net)} hint="Gross Income minus refunds. RS only from Daily Raw Data." />
       </div>
       <UsageChart data={data.trend} xKey="date" title="Usage (last 30 days)" />
       <IncomeChart data={data.trend} xKey="date" title="RS Net Income (last 30 days)" />
@@ -169,7 +169,7 @@ function MonthlyView({ data, selectedMonth, onMonth, isAdmin, onUploaded }) {
         <label className="muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
           Select month
           <select id="reporting-month" name="reportingMonth" value={selectedMonth} onChange={(e) => onMonth(e.target.value)}>
-            {data.availableMonths.map((m) => <option key={m} value={m}>{m}</option>)}
+            {data.availableMonths.map((m) => <option key={m.value} value={m}>{m}</option>)}
           </select>
         </label>
       </div>
@@ -181,15 +181,15 @@ function MonthlyView({ data, selectedMonth, onMonth, isAdmin, onUploaded }) {
         </div>
       )}
       <div className="grid-4">
-        <Kpi label="Usage" value={count(data.totals.orders)} />
-        <Kpi label="Gross Income" value={fmt(gross)} />
-        <Kpi label="Refunds" value={fmt(data.totals.refunds)} />
-        <Kpi label="Net Income" value={fmt(net)} />
+        <Kpi label="Usage" value={count(data.totals.orders)} hint="Sessions started (orderNumber) from Daily Raw Data. Includes CW and RS." />
+        <Kpi label="Gross Income" value={fmt(gross)} hint="RS Total Amount from Daily Raw Data before refunds. CW monthly fees are not included." />
+        <Kpi label="Refunds" value={fmt(data.totals.refunds)} hint="Refund dollars from Daily Raw Data." />
+        <Kpi label="Net Income" value={fmt(net)} hint="Gross Income minus refunds. RS only from Daily Raw Data." />
       </div>
       <div className="grid-4">
-        <Kpi label="CW Usage" value={count(data.split.corporateWellnessOrders)} />
-        <Kpi label="RS Usage" value={count(data.split.revenueSharingOrders)} />
-        <Kpi label="Days in month" value={count(data.dayCount)} />
+        <Kpi label="CW Usage" value={count(data.split.corporateWellnessOrders)} hint="Sessions started at Corporate Wellness sites this month." />
+        <Kpi label="RS Usage" value={count(data.split.revenueSharingOrders)} hint="Sessions started at Revenue Sharing sites this month." />
+        <Kpi label="Days in month" value={count(data.dayCount)} hint="How many calendar days in this month have Daily Raw Data uploaded." />
       </div>
       <UsageChart data={data.trend} xKey="month" title="Usage trend" />
       <IncomeChart data={data.trend} xKey="month" title="RS Net Income trend" />
@@ -356,10 +356,22 @@ function SessionsTable({ rows, pack, isAdmin, onUploaded }) {
   );
 }
 
-function Kpi({ label, value }) {
+function Hint({ text }) {
   return (
-    <div className="card" style={{ marginBottom: 0 }}>
-      <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>{label}</div>
+    <span title={text} style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      width: 14, height: 14, marginLeft: 6, borderRadius: '50%',
+      border: '1px solid var(--iron)', fontSize: 10, color: 'var(--ash)', cursor: 'help', verticalAlign: 'middle',
+    }}>?</span>
+  );
+}
+
+function Kpi({ label, value, hint }) {
+  return (
+    <div className="card" style={{ marginBottom: 0 }} title={hint || ''}>
+      <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+        {label}{hint ? <Hint text={hint} /> : null}
+      </div>
       <div style={{ fontFamily: "'Lora', serif", fontSize: '1.5rem' }}>{value}</div>
     </div>
   );
