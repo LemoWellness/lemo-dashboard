@@ -198,6 +198,7 @@ export default function Monthly() {
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>6-Month Financial Trend</h3>
+        <p className="muted" style={{ marginTop: 0 }}>Revenue is RS net + CW payments received. The current month is month-to-date.</p>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={data.trend || []}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--iron)" strokeOpacity={0.4} />
@@ -205,9 +206,9 @@ export default function Monthly() {
             <YAxis tick={{ fontSize: 11 }} tickFormatter={fmt} />
             <Tooltip formatter={(v) => fmt(v)} />
             <Legend />
-            <Line type="monotone" dataKey="income" name="Net Income" stroke="#E85D20" strokeWidth={2.5} dot={false} />
-            <Line type="monotone" dataKey="expenses" name="Expenses" stroke="#0C0A09" strokeWidth={2.5} dot={false} />
-            <Line type="monotone" dataKey="net" name="Net" stroke="#D9A441" strokeWidth={2.5} dot={false} />
+            <Line type="linear" dataKey="income" name="Revenue" stroke="#E85D20" strokeWidth={2.5} dot />
+            <Line type="linear" dataKey="expenses" name="Expenses" stroke="#0C0A09" strokeWidth={2.5} dot />
+            <Line type="linear" dataKey="net" name="Profit" stroke="#D9A441" strokeWidth={2.5} dot />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -235,7 +236,7 @@ export default function Monthly() {
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>Location performance {DASH} {data.month} only</h3>
           <select value={modelFilter} onChange={(e) => setModelFilter(e.target.value)}>
             <option value="All">All models</option>
