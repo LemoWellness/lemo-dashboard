@@ -57,6 +57,33 @@ function Field({ label, children }) {
   );
 }
 
+function costConfidenceText(comp) {
+  if (!comp || !comp.total) return '';
+  const pct = (n) => Math.round(100 * (Number(n) || 0) / comp.total);
+  return pct(comp.Confirmed) + '% Confirmed · ' + pct(comp.Quoted) + '% Quoted · ' + pct(comp.Assumed) + '% Assumed';
+}
+
+function riskAttention(form, c) {
+  const parts = [];
+  const pay = form.businessModel !== 'Corporate Wellness';
+  if (pay && (!c.mixOk || c.required?.reason)) {
+    parts.push(c.required?.reason || 'Session prices or mix are missing. Mix must add to 100%.');
+  }
+  const newChair = form.chairInventory === 'New' && !(Number(form.chairCostPerUnit) > 0);
+  const oldChair = form.chairInventory === 'Existing' && !(Number(form.assignedChairValuePerUnit) > 0);
+  if (newChair || oldChair) parts.push('Chair cost is missing — enter it for an accurate estimate.');
+  if (!pay && !(Number(form.cwTotalMonthlyFee) > 0) && !(Number(form.cwFeePerChair) > 0)) {
+    parts.push('Corporate Wellness monthly fee is missing.');
+  }
+  const pb = pay ? c.scenarios?.base?.paybackMonths : c.cw?.paybackMonths;
+  if (typeof pb === 'number' && pb > 0) parts.unshift('Projected payback is ' + pb.toFixed(1) + ' months.');
+  const comp = c.completeness;
+  if (comp && comp.total > 0 && (comp.Assumed / comp.total) >= 0.5 && typeof pb === 'number' && pb > 0) {
+    parts.push(Math.round(100 * comp.Assumed / comp.total) + '% of total cost is still Assumed.');
+  }
+  return parts.join(' ');
+}
+
 function Kpi({ label, value }) {
   return (
     <div className="card" style={{ marginBottom: 0 }}>
@@ -302,16 +329,18 @@ export default function RiskDetail() {
           <Kpi label="Required fee / chair for target" value={fmt(c.cw.requiredFeePerChair)} />
         </div>
       )}
+            {c.completeness?.total > 0 && (
+        <div className="grid-4">
+          <Kpi label="Cost confidence" value={costConfidenceText(c.completeness)} />
+        </div>
+      )}
       {c.termRisk && <p className="form-error">{c.termRiskNote}</p>}
       {pilotMissing && <p className="form-error">Pilot requires a pilot length in months. No default is assumed.</p>}
-      {c.required?.reason && <p className="muted">{c.required.reason}</p>}
-
-      {c.completeness?.total > 0 && (
-        <p className="muted">
-          Cost lines: Confirmed {Math.round(100 * c.completeness.Confirmed / c.completeness.total)}% {MD}{' '}
-          Quoted {Math.round(100 * c.completeness.Quoted / c.completeness.total)}% {MD}{' '}
-          Assumed {Math.round(100 * c.completeness.Assumed / c.completeness.total)}%
-        </p>
+      {riskAttention(form, c) && (
+        <div className="card" style={{ borderLeft: '3px solid var(--ember)' }}>
+        <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Needs attention</div>
+          <p style={{ margin: 0 }}>{riskAttention(form, c)}</p>
+        </div>
       )}
       {summarizeRisks(form.risks).header && (
         <p className="muted">Risks: {summarizeRisks(form.risks).header}</p>
