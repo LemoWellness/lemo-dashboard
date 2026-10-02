@@ -7,6 +7,7 @@ import NotificationBell from './NotificationBell';
 import PushEnableBanner from './PushEnableBanner';
 import MeetingNotesImport from './MeetingNotesImport';
 import ChangePassword from './ChangePassword';
+import PdfButton from './PdfButton';
 
 const NAV = [
   { code: 'tasks', label: 'Tasks' },
@@ -17,6 +18,7 @@ const NAV = [
   { code: 'risk', label: 'Deployment Risk' },
 ];
 const ADMIN_NAV = [{ code: 'admin-users', label: 'Manage Users' }, { code: 'admin-import', label: 'Import Data' }];
+const PDF_PAGES = ['mo', 'financials', 'reporting'];
 
 function canSeeReporting(session) {
   if (!session) return false;
@@ -31,6 +33,7 @@ export default function Layout({ active, onNavigate, children }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const showBell = active === 'tasks';
   const isTaskAdmin = session?.role === 'Admin' || !!session?.taskAdmin;
+  const showPdf = PDF_PAGES.includes(active);
 
   useEffect(() => {
     if (user === null) router.replace('/login');
@@ -108,7 +111,12 @@ export default function Layout({ active, onNavigate, children }) {
           </div>
         )}
         <PushEnableBanner />
-        {hasAccess ? children : (
+        {hasAccess ? (
+          <>
+            {showPdf ? <PdfButton /> : null}
+            <div id="page-sheet">{children}</div>
+          </>
+        ) : (
           <div className="card" style={{ maxWidth: 480 }}>
             <h2 style={{ marginTop: 0 }}>You don't have access to this section</h2>
             <p className="muted">Contact your administrator if this seems wrong.</p>
