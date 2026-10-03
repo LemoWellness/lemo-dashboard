@@ -10,10 +10,17 @@ const DOT = String.fromCharCode(183);
 const ELLIPSIS = String.fromCharCode(8230);
 const fmt = (n) => (typeof n === 'number' ? `$${Math.round(n).toLocaleString()}` : DASH);
 const PIE_COLORS = ['#E85D20', '#0C0A09', '#706B66', '#2A1A10'];
-const RS_LEMO = 0.7;
 const RS_VENUE = 0.2;
 const RS_BD = 0.1;
 const NET_HINT = 'Net income after refunds';
+
+// Round venue and BD normally; LEMO is the remainder so the three lines equal net.
+function rsSplit(net) {
+  const total = Math.round(Number(net) || 0);
+  const venue = Math.round(total * RS_VENUE);
+  const bd = Math.round(total * RS_BD);
+  return { total, lemo: total - venue - bd, venue, bd };
+}
 
 function buildMonthOptions() {
   const opts = [];
@@ -38,9 +45,9 @@ function Hint({ text }) {
   );
 }
 
-function Row({ label, value, last }) {
+function Row({ label, value, last, title }) {
   return (
-    <div className="muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: last ? 0 : 6 }}>
+    <div className="muted" title={title} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: last ? 0 : 6 }}>
       <span>{label}</span><span>{value}</span>
     </div>
   );
@@ -155,6 +162,7 @@ export default function Monthly() {
           const rsGross = Number(c.cash ?? c.income) || 0;
           const rsRefunds = Number(c.refunds) || 0;
           const rsNet = Number(c.netIncome) || (rsGross - rsRefunds);
+          const split = rsSplit(rsNet);
           return (
             <div className="card" key={c.model} style={{ marginBottom: 0 }}>
               <h3 style={{ marginTop: 0 }}>{c.model} Performance</h3>
@@ -171,10 +179,10 @@ export default function Monthly() {
                 <>
                   <Row label="Total Income" value={fmt(rsGross)} />
                   <Row label="Refunds" value={fmt(rsRefunds)} />
-                  <Row label="Net Income" value={fmt(rsNet)} />
-                  <Row label="LEMO Payout" value={fmt(rsNet * RS_LEMO)} />
-                  <Row label="Venue Payout" value={fmt(rsNet * RS_VENUE)} />
-                  <Row label="BD Consultant Payout" value={fmt(rsNet * RS_BD)} />
+                  <Row label="Net Income" value={fmt(split.total)} />
+                  <Row label="LEMO Payout" value={fmt(split.lemo)} title="70% after rounding. LEMO takes the remainder so the three payouts equal net." />
+                  <Row label="Venue Payout" value={fmt(split.venue)} />
+                  <Row label="BD Consultant Payout" value={fmt(split.bd)} />
                   <Row label="# of Installs" value={installs} />
                   <Row label="# of Chairs" value={chairs || DASH} />
                   <Row label="Unsigned contracts" value={unsigned.rs} last />

@@ -237,9 +237,15 @@ function IncomeChart({ data, xKey, title }) {
   );
 }
 
-const RS_LEMO = 0.7;
 const RS_VENUE = 0.2;
 const RS_BD = 0.1;
+
+function rsSplit(net) {
+  const total = Math.round(Number(net) || 0);
+  const venue = Math.round(total * RS_VENUE);
+  const bd = Math.round(total * RS_BD);
+  return { total, lemo: total - venue - bd, venue, bd };
+}
 
 function isRsVenue(row) {
   return String(row.model || '').trim() === 'Revenue Sharing';
@@ -284,7 +290,8 @@ function RsPayoutsTable({ rows }) {
     const gross = Number(row.gross != null ? row.gross : row.totalAmount) || ((Number(row.netIncome) || 0) + (Number(row.refunds) || 0));
     const refunds = Number(row.refunds) || 0;
     const net = Number(row.netIncome) || (gross - refunds);
-    return { gross, refunds, net, lemo: net * RS_LEMO, venue: net * RS_VENUE, bd: net * RS_BD };
+    const split = rsSplit(net);
+    return { gross, refunds, net: split.total, lemo: split.lemo, venue: split.venue, bd: split.bd };
   };
   const tot = rs.reduce((s, row) => {
     const m = money(row);
@@ -309,7 +316,7 @@ function RsPayoutsTable({ rows }) {
               <th title="RS Total Amount before refunds.">Gross</th>
               <th title="Refunds from Daily Raw Data.">Refunds</th>
               <th title="Gross minus refunds.">Net</th>
-              <th title="70% of net.">LEMO</th>
+              <th title="70% of net. LEMO is the remainder so LEMO + venue + BD equals net.">LEMO</th>
               <th title="20% of net.">Venue payout</th>
               <th title="10% of net.">BD payout</th>
             </tr>

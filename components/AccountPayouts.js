@@ -1,9 +1,15 @@
 import { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
-const LEMO = 0.7;
 const VENUE = 0.2;
 const BD = 0.1;
+
+function rsSplit(net) {
+  const total = Math.round(Number(net) || 0);
+  const venue = Math.round(total * VENUE);
+  const bd = Math.round(total * BD);
+  return { total, lemo: total - venue - bd, venue, bd };
+}
 
 const money = (n) => `$${Math.round(Number(n) || 0).toLocaleString()}`;
 
@@ -56,9 +62,7 @@ export default function AccountPayouts({ income, expenses, dailyMonths }) {
     const exRows = (expenses || []).filter((e) => range === 'all' || String(e.date || '').slice(0, 7) === month);
     return {
       totalIncome,
-      lemo: totalIncome * LEMO,
-      venue: totalIncome * VENUE,
-      bd: totalIncome * BD,
+      ...rsSplit(totalIncome),
       venuePaid: exRows.filter((e) => isVenuePayout(e.category)).reduce((s, e) => s + (Number(e.amount) || 0), 0),
       bdPaid: exRows.filter((e) => isBdPayout(e.category)).reduce((s, e) => s + (Number(e.amount) || 0), 0),
     };
