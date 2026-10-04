@@ -9,8 +9,9 @@ export default async function handler(req, res) {
   if (!secret || header !== `Bearer ${secret}`) {
     return res.status(401).json({ error: 'Unauthorized.' });
   }
+  const slot = req.query.slot === 'evening' ? 'evening' : 'morning';
   try {
-    const result = await runDueNotificationSweep();
+    const result = await runDueNotificationSweep({ slot });
     return res.status(200).json({ ok: true, ...result });
   } catch (err) {
     console.error(err);
