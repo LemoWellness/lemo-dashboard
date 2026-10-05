@@ -58,6 +58,7 @@ export default function Tasks() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [subtab, setSubtab] = useState('active');
+  const [dash, setDash] = useState('');
   const [filterAssigned, setFilterAssigned] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [sortBy, setSortBy] = useState('created_desc');
@@ -135,6 +136,22 @@ export default function Tasks() {
       if (subtab === 'cancelled') return t.status === 'Cancelled';
       return t.status === 'Done';
     });
+    if (dash) {
+      const mine = String(session?.email || '').toLowerCase();
+      const soon = new Date(); soon.setDate(soon.getDate() + 3);
+      const soonKey = soon.toISOString().slice(0, 10);
+      const isMine = (t) => [t.assignedTo, t.assignedTo2].some((v) => String(v || '').toLowerCase() === mine);
+      const dueSoon = (t) => t.deadline && t.deadline >= todayStr() && t.deadline <= soonKey && !parked(t.status);
+      list = list.filter((t) => {
+        if (dash === 'mine') return isMine(t) && !parked(t.status);
+        if (dash === 'overdue') return isMine(t) && isOverdue(t);
+        if (dash === 'soon') return isMine(t) && dueSoon(t);
+        if (dash === 'team-active') return !parked(t.status);
+        if (dash === 'team-overdue') return isOverdue(t);
+        if (dash === 'team-soon') return dueSoon(t);
+        return true;
+      });
+    }
     list = [...list].sort((a, b) => {
       if (sortBy === 'created_asc') return new Date(a.timestamp) - new Date(b.timestamp);
       if (sortBy === 'deadline_asc') return (a.deadline || '9999-12-31').localeCompare(b.deadline || '9999-12-31');
@@ -142,7 +159,7 @@ export default function Tasks() {
       return new Date(b.timestamp) - new Date(a.timestamp);
     });
     return list;
-  }, [tasks, subtab, filterAssigned, filterStatus, sortBy]);
+  }, [tasks, subtab, filterAssigned, filterStatus, sortBy, dash, session]);
   const needsUpdate = subtab === 'active' ? filtered.filter((t) => !updatedToday(t)) : filtered;
   const updatedNow = subtab === 'active' ? filtered.filter((t) => updatedToday(t)) : [];
   const counts = {
@@ -247,6 +264,43 @@ export default function Tasks() {
       {error && <p className="form-error">{error}</p>}
       {!loading && (
         <>
+
+          {(() => {
+            const mine = String(session?.email || '').toLowerCase();
+            const soon = new Date(); soon.setDate(soon.getDate() + 3);
+            const soonKey = soon.toISOString().slice(0, 10);
+            const isMine = (t) => [t.assignedTo, t.assignedTo2].some((v) => String(v || '').toLowerCase() === mine);
+            const open = (t) => !parked(t.status);
+            const dueSoon = (t) => t.deadline && t.deadline >= todayStr() && t.deadline <= soonKey && open(t);
+            const myOpen = tasks.filter((t) => isMine(t) && open(t));
+            const cardStyle = (id, warn) => ({ flex: '1 1 180px', textAlign: 'left', border: '1px solid var(--iron)', borderRadius: 8, padding: '12px 14px', background: warn ? '#fdeceb' : '#fff', cursor: 'pointer' });
+            const row = (id, label, count, warn) => (
+              <button key={id} type="button" onClick={() => { setDash(dash === id ? '' : id); setSubtab('active'); }} style={cardStyle(id, warn)}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="muted">{label}</span><span>›</span></div>
+                <div style={{ fontSize: '1.4rem' }}>{count}</div>
+              </button>
+            );
+            return (
+              <div style={{ marginBottom: 16 }}>
+                <div className="muted" style={{ marginBottom: 6 }}>Task Dashboard</div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {row('mine', 'My Tasks', myOpen.length, false)}
+                  {row('soon', 'Due Soon', myOpen.filter(dueSoon).length, false)}
+                  {row('overdue', 'Overdue', myOpen.filter(isOverdue).length, true)}
+                </div>
+                {isHq && (
+                  <>
+                    <div className="muted" style={{ margin: '12px 0 6px' }}>Team Tasks</div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      {row('team-active', 'Active', tasks.filter((t) => open(t)).length, false)}
+                      {row('team-overdue', 'Overdue', tasks.filter(isOverdue).length, true)}
+                      {row('team-soon', 'Due Soon', tasks.filter(dueSoon).length, false)}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
           <div className="seg-tabs">
             <button className={`seg-tab ${subtab === 'active' ? 'active' : ''}`} onClick={() => setSubtab('active')}>Active ({counts.active})</button>
             <button className={`seg-tab ${subtab === 'hold' ? 'active' : ''}`} onClick={() => setSubtab('hold')}>Pending / Hold ({counts.hold})</button>
