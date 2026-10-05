@@ -65,6 +65,14 @@ export default withAuth(async (req, res, session) => {
       });
       docs = [...byId.values()].sort((a, b) => String(b.data().timestamp || '').localeCompare(String(a.data().timestamp || '')));
     }
+    const me = emailOf(session);
+    const messageSnap = await adminDb.collection('taskMessages').where('participants', 'array-contains', me).get();
+    const messageCounts = {};
+    messageSnap.docs.forEach((doc) => {
+      const row = doc.data() || {};
+      if (!row.taskId) return;
+      messageCounts[row.taskId] = (messageCounts[row.taskId] || 0) + 1;
+    });
     const tasks = docs
       .map((d) => {
         const t = d.data();
@@ -79,6 +87,7 @@ export default withAuth(async (req, res, session) => {
           addedBy: displayAddedBy(t),
           canPrivateNote: isMine,
           privateNote: isMine ? String(notes[mine] || notes[session.email] || '') : '',
+          privateMessageCount: messageCounts[d.id] || 0,
         };
       })
       .filter((t) => canSee(session, t));

@@ -218,7 +218,7 @@ export default function Tasks() {
               return (
                 <tr key={row.id} onClick={() => setOpenTask(row)} style={{ cursor: 'pointer', ...(focused ? { outline: '2px solid var(--ember)', background: '#f8f1ea' } : done ? { opacity: 0.55 } : overdue ? { background: '#fdeceb' } : {}) }}>
                   <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selected.includes(row.id)} onChange={(e) => toggleOne(row.id, e.target.checked)} /></td>
-                  <td style={done ? { textDecoration: 'line-through' } : undefined}>{row.task}</td>
+                  <td style={done ? { textDecoration: 'line-through' } : undefined}>{row.privateMessageCount > 0 && <span title="Private message" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 99, background: 'var(--ember)', marginRight: 8 }} />}{row.task}</td>
                   <td>{people(row)}</td>
                   <td>{nameOf(row.addedBy)}</td>
                   <td>{formatDeadline(row.deadline)}</td>

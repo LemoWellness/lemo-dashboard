@@ -214,7 +214,7 @@ export default function TaskModal({ task, users, session, onClose, onChanged }) 
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
               <button type="button" style={tabStyle('info')} onClick={() => setTab('info')}>Task Info</button>
               <button type="button" style={tabStyle('updates')} onClick={() => setTab('updates')}>Updates</button>
-              <button type="button" style={tabStyle('message')} onClick={() => setTab('message')}>Private Message</button>
+              <button type="button" style={tabStyle('message')} onClick={() => setTab('message')}>Private Message{task.privateMessageCount > 0 && <span style={{ marginLeft: 6, background: 'var(--ember)', color: '#fff', borderRadius: 99, padding: '1px 6px', fontSize: '0.72rem' }}>{task.privateMessageCount}</span>}</button>
               {task.canPrivateNote && <button type="button" style={tabStyle('note')} onClick={() => setTab('note')}>Personal Note</button>}
             </div>
             {tab === 'info' && (
