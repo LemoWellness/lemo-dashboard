@@ -274,17 +274,17 @@ export default function Tasks() {
             const open = (t) => !parked(t.status);
             const dueSoon = (t) => t.deadline && t.deadline >= todayStr() && t.deadline <= soonKey && open(t);
             const myOpen = tasks.filter((t) => isMine(t) && open(t));
-            const cardStyle = (warn) => ({ width: 220, textAlign: 'left', border: '1px solid var(--iron)', borderRadius: 10, padding: '10px 12px', background: warn ? '#fdeceb' : '#fff', cursor: 'pointer' });
+            const cardStyle = (id, warn) => ({ flex: '1 1 180px', textAlign: 'left', border: '1px solid var(--iron)', borderRadius: 8, padding: '12px 14px', background: warn ? '#fdeceb' : '#fff', cursor: 'pointer' });
             const row = (id, label, count, warn) => (
-              <button key={id} type="button" onClick={() => { setDash(dash === id ? '' : id); setSubtab('active'); }} style={cardStyle(warn)}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ash)', fontSize: '0.92rem' }}><span>{label}</span><span>›</span></div>
-                <div style={{ fontSize: '1.35rem', marginTop: 2 }}>{count}</div>
+              <button key={id} type="button" onClick={() => { setDash(dash === id ? '' : id); setSubtab('active'); }} style={cardStyle(id, warn)}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="muted">{label}</span><span>›</span></div>
+                <div style={{ fontSize: '1.4rem' }}>{count}</div>
               </button>
             );
             return (
-              <div style={{ marginBottom: 16, maxWidth: 240 }}>
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>Task Dashboard</div>
-                <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ marginBottom: 16 }}>
+                <div className="muted" style={{ marginBottom: 6 }}>Task Dashboard</div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   {row('mine', 'My Tasks', myOpen.length, false)}
                   {row('soon', 'Due Soon', myOpen.filter(dueSoon).length, false)}
                   {row('overdue', 'Overdue', myOpen.filter(isOverdue).length, true)}
@@ -292,8 +292,8 @@ export default function Tasks() {
                 </div>
                 {isHq && (
                   <>
-                    <div style={{ fontWeight: 600, margin: '14px 0 8px' }}>Team Tasks</div>
-                    <div style={{ display: 'grid', gap: 8 }}>
+                    <div className="muted" style={{ margin: '12px 0 6px' }}>Team Tasks</div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                       {row('team-active', 'Active', tasks.filter((t) => open(t)).length, false)}
                       {row('team-overdue', 'Overdue', tasks.filter(isOverdue).length, true)}
                       {row('team-soon', 'Due Soon', tasks.filter(dueSoon).length, false)}
