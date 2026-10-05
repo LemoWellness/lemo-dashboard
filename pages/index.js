@@ -169,7 +169,8 @@ export default function Home() {
   async function submitAccount(e) {
     e.preventDefault(); setAccountError('');
     if (!accountForm.name.trim()) { setAccountError('Installation name is required.'); return; }
-    const res = await authedFetch('/api/projects', { method: 'POST', body: JSON.stringify(accountForm) });
+    const payload = editingAccount ? { ...accountForm, previousName: selectedName } : accountForm;
+    const res = await authedFetch('/api/projects', { method: 'POST', body: JSON.stringify(payload) });
     if (!res.ok) { setAccountError((await res.json()).error); return; }
     setShowAddAccount(false); loadProjects(); if (editingAccount) setSelectedName(accountForm.name);
   }
@@ -314,7 +315,7 @@ export default function Home() {
             {accountError && <p className="form-error">{accountError}</p>}
             <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--ash)', margin: '12px 0 8px' }}>Account Information</div>
             <div className="form-grid-2">
-              <label>Name<input value={accountForm.name} onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })} disabled={editingAccount} required /></label>
+              <label>Name<input value={accountForm.name} onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })} required />{editingAccount && <span className="muted" style={{ display: 'block', fontSize: '0.72rem', marginTop: 4 }}>Use the Venue Name from Daily Raw Data, exactly.</span>}</label>
               <label>Business Model<select value={accountForm.businessModel} onChange={(e) => setAccountForm({ ...accountForm, businessModel: e.target.value })}><option>Revenue Sharing</option><option>Corporate Wellness</option></select></label>
               <label>Number of Chairs<input type="number" value={accountForm.numberOfChairs} onChange={(e) => setAccountForm({ ...accountForm, numberOfChairs: e.target.value })} /></label>
               <label>Go-Live Date<input type="date" value={accountForm.goLiveDate} onChange={(e) => setAccountForm({ ...accountForm, goLiveDate: e.target.value })} /></label>

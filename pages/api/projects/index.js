@@ -58,6 +58,26 @@ const PROJECT_FIELDS = [
   'contact2Name', 'contact2Phone', 'contact2Email', 'editNotes',
 ];
 
+
+async function renameLocation(fromName, toName) {
+  const collections = ['expenses', 'income', 'communicationLog'];
+  for (const name of collections) {
+    const snap = await adminDb.collection(name).where('location', '==', fromName).get();
+    let batch = adminDb.batch();
+    let n = 0;
+    for (const doc of snap.docs) {
+      batch.update(doc.ref, { location: toName });
+      n += 1;
+      if (n === 400) {
+        await batch.commit();
+        batch = adminDb.batch();
+        n = 0;
+      }
+    }
+    if (n) await batch.commit();
+  }
+}
+
 export default withAuth(async (req, res, session) => {
   if (req.method === 'GET') {
     const monthKey = new Date().toISOString().slice(0, 7);
@@ -81,6 +101,7 @@ export default withAuth(async (req, res, session) => {
     if (!body.name) return res.status(400).json({ error: 'Location name is required.' });
 
     const docId = String(body.name).trim();
+    const previousName = String(body.previousName || '').trim();
     const updates = {
       name: docId,
       updatedAt: new Date().toISOString(),
@@ -90,7 +111,18 @@ export default withAuth(async (req, res, session) => {
       if (body[key] !== undefined) updates[key] = body[key] === '' ? '' : body[key];
     });
     if (body.signedContract !== undefined) updates.signedContract = !!body.signedContract;
-    await adminDb.collection('projects').doc(docId).set(updates, { merge: true });
+    const projects = adminDb.collection('projects');
+    if (previousName && previousName !== docId) {
+      const existing = await projects.doc(docId).get();
+      if (existing.exists) return res.status(400).json({ error: 'An account with that name already exists.' });
+      const oldDoc = await projects.doc(previousName).get();
+      if (!oldDoc.exists) return res.status(404).json({ error: 'Account not found.' });
+      await projects.doc(docId).set({ ...oldDoc.data(), ...updates }, { merge: false });
+      await renameLocation(previousName, docId);
+      await projects.doc(previousName).delete();
+    } else {
+      await projects.doc(docId).set(updates, { merge: true });
+    }
     return res.status(200).json({ success: true });
   }
 
