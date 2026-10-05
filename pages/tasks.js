@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import MeetingNotesImport from '../components/MeetingNotesImport';
@@ -17,8 +17,25 @@ function dayKey(iso) {
   if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+function isCreationUpdate(t, u) {
+  if (!u) return false;
+  if (u.kind === 'created' || u.kind === 'create') return true;
+  if (!t.timestamp || !u.at) return false;
+  const created = new Date(t.timestamp).getTime();
+  const at = new Date(u.at).getTime();
+  if (Number.isNaN(created) || Number.isNaN(at)) return false;
+  return Math.abs(at - created) < 15000;
+}
+function todayUpdates(t) {
+  return (Array.isArray(t.updates) ? t.updates : []).filter((u) => u && dayKey(u.at) === todayStr() && !isCreationUpdate(t, u));
+}
 function updatedToday(t) {
-  return (Array.isArray(t.updates) ? t.updates : []).some((u) => u && dayKey(u.at) === todayStr());
+  return todayUpdates(t).length > 0;
+}
+function formatWhen(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 function isOverdue(t) {
   if (!t.deadline || ['Done', 'On Hold', 'Pending', 'Cancelled', 'Cancel Requested'].includes(t.status)) return false;
@@ -51,6 +68,7 @@ export default function Tasks() {
   const [form, setForm] = useState(EMPTY);
   const [showAdd, setShowAdd] = useState(false);
   const [openTask, setOpenTask] = useState(null);
+  const [openUpdateId, setOpenUpdateId] = useState('');
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState([]);
   const [bulkStatus, setBulkStatus] = useState('');
@@ -179,8 +197,10 @@ export default function Tasks() {
     setDeskBusy('');
   }
 
-  function taskTable(list) {
+  function taskTable(list, mode) {
+    const showUpdates = mode === 'updated';
     const allOn = list.length > 0 && list.every((row) => selected.includes(row.id));
+    const cols = showUpdates ? 8 : 7;
     return (
       <div className="table-wrap">
         <table>
@@ -188,6 +208,7 @@ export default function Tasks() {
             <tr>
               <th style={{ width: 36 }}><input type="checkbox" checked={allOn} onChange={(e) => setSelected(e.target.checked ? list.map((row) => row.id) : selected.filter((id) => !list.some((row) => row.id === id)))} /></th>
               <th>Task</th><th>For</th><th>Added By</th><th>Deadline</th><th>Priority</th><th>Status</th>
+              {showUpdates && <th>Today's update</th>}
             </tr>
           </thead>
           <tbody>
@@ -195,19 +216,39 @@ export default function Tasks() {
               const overdue = isOverdue(row);
               const done = row.status === 'Done';
               const focused = focusId && row.id === focusId;
+              const updates = showUpdates ? todayUpdates(row) : [];
+              const latest = updates[updates.length - 1];
+              const preview = latest ? latest.text : '';
+              const open = showUpdates && openUpdateId === row.id;
               return (
-                <tr key={row.id} onClick={() => setOpenTask(row)} style={{ cursor: 'pointer', ...(focused ? { outline: '2px solid var(--ember)', background: '#f8f1ea' } : done ? { opacity: 0.55 } : overdue ? { background: '#fdeceb' } : {}) }}>
-                  <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selected.includes(row.id)} onChange={(e) => toggleOne(row.id, e.target.checked)} /></td>
-                  <td style={done ? { textDecoration: 'line-through' } : undefined}>{row.task}</td>
-                  <td>{people(row)}</td>
-                  <td>{nameOf(row.addedBy)}</td>
-                  <td>{formatDeadline(row.deadline)}</td>
-                  <td><span className={`task-badge ${row.priority}`}>{row.priority}</span></td>
-                  <td>{row.status}</td>
-                </tr>
+                <Fragment key={row.id}>
+                  <tr onClick={() => (showUpdates ? setOpenUpdateId(open ? '' : row.id) : setOpenTask(row))} style={{ cursor: 'pointer', ...(focused || open ? { outline: '2px solid var(--ember)', background: '#f8f1ea' } : done ? { opacity: 0.55 } : overdue ? { background: '#fdeceb' } : {}) }}>
+                    <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selected.includes(row.id)} onChange={(e) => toggleOne(row.id, e.target.checked)} /></td>
+                    <td style={done ? { textDecoration: 'line-through' } : undefined}>{row.task}</td>
+                    <td>{people(row)}</td>
+                    <td>{nameOf(row.addedBy)}</td>
+                    <td>{formatDeadline(row.deadline)}</td>
+                    <td><span className={`task-badge ${row.priority}`}>{row.priority}</span></td>
+                    <td>{row.status}</td>
+                    {showUpdates && <td style={{ maxWidth: 280 }}>{preview.length > 80 ? preview.slice(0, 80) + '...' : preview}</td>}
+                  </tr>
+                  {open && (
+                    <tr>
+                      <td colSpan={cols} style={{ background: '#f8f1ea' }}>
+                        {updates.map((u) => (
+                          <div key={u.id || u.at} style={{ marginBottom: 8 }}>
+                            <div style={{ fontSize: '0.85rem' }}>{u.text}</div>
+                            <div className="muted" style={{ fontSize: '0.72rem' }}>{nameOf(u.by) || u.byName} | {formatWhen(u.at)}</div>
+                          </div>
+                        ))}
+                        <button type="button" className="btn btn-ghost" onClick={() => setOpenTask(row)}>Open task</button>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })}
-            {list.length === 0 && <tr><td colSpan={7} className="muted">No tasks in this list.</td></tr>}
+            {list.length === 0 && <tr><td colSpan={cols} className="muted">No tasks in this list.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -284,7 +325,8 @@ export default function Tasks() {
               {updatedNow.length > 0 && (
                 <div className="card">
                   <h3 style={{ marginTop: 0 }}>Updated Today</h3>
-                  {taskTable(updatedNow)}
+                  <p className="muted" style={{ marginTop: -6 }}>Click a task to see today's updates. New tasks stay in the list above until someone updates them.</p>
+                  {taskTable(updatedNow, 'updated')}
                 </div>
               )}
               {needsUpdate.length === 0 && updatedNow.length === 0 && (

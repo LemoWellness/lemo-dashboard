@@ -98,7 +98,7 @@ export default withAuth(async (req, res, session) => {
       by: session.email,
       byName: session.name || session.email,
       text: firstNote,
-      kind: 'note',
+      kind: 'created',
     }] : [];
 
     const docRef = await adminDb.collection('tasks').add({
