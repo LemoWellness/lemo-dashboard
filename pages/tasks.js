@@ -146,7 +146,6 @@ export default function Tasks() {
         if (dash === 'mine') return isMine(t) && !parked(t.status);
         if (dash === 'overdue') return isMine(t) && isOverdue(t);
         if (dash === 'soon') return isMine(t) && dueSoon(t);
-        if (dash === 'messages') return Number(t.privateMessageCount) > 0;
         if (dash === 'team-active') return !parked(t.status);
         if (dash === 'team-overdue') return isOverdue(t);
         if (dash === 'team-soon') return dueSoon(t);
@@ -288,7 +287,6 @@ export default function Tasks() {
                   {row('mine', 'My Tasks', myOpen.length, false)}
                   {row('soon', 'Due Soon', myOpen.filter(dueSoon).length, false)}
                   {row('overdue', 'Overdue', myOpen.filter(isOverdue).length, true)}
-                  {row('messages', 'Private Messages', tasks.filter((t) => Number(t.privateMessageCount) > 0).length, false)}
                 </div>
                 {isHq && (
                   <>
