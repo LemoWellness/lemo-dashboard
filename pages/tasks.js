@@ -192,15 +192,22 @@ export default function Tasks() {
     setDeskBusy('');
   }
 
+  function finishedOn(row) {
+    if (row.completedAt) return String(row.completedAt).slice(0, 10);
+    const updates = Array.isArray(row.updates) ? row.updates : [];
+    const hit = [...updates].reverse().find((u) => /Status changed to Done/i.test(String(u.text || '')));
+    return hit && hit.at ? String(hit.at).slice(0, 10) : '';
+  }
   function taskTable(list) {
     const allOn = list.length > 0 && list.every((row) => selected.includes(row.id));
+    const completedTab = subtab === 'completed';
     return (
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
               <th style={{ width: 36 }}><input type="checkbox" checked={allOn} onChange={(e) => setSelected(e.target.checked ? list.map((row) => row.id) : selected.filter((id) => !list.some((row) => row.id === id)))} /></th>
-              <th>Task</th><th>For</th><th>Added By</th><th>Deadline</th><th>Priority</th><th>Status</th>
+              <th>Task</th><th>For</th><th>Added By</th><th>Deadline</th><th>Priority</th><th>{completedTab ? 'Completed' : 'Status'}</th>
             </tr>
           </thead>
           <tbody>
@@ -216,7 +223,7 @@ export default function Tasks() {
                   <td>{nameOf(row.addedBy)}</td>
                   <td>{formatDeadline(row.deadline)}</td>
                   <td><span className={`task-badge ${row.priority}`}>{row.priority}</span></td>
-                  <td>{row.status}</td>
+                  <td>{completedTab ? (formatDeadline(finishedOn(row)) || '-') : row.status}</td>
                 </tr>
               );
             })}
