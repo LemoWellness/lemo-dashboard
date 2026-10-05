@@ -154,6 +154,32 @@ export default function Monthly() {
         ))}
       </div>
 
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Monthly Income Status</h3>
+        {(() => {
+          const cw = comparison.find((c) => c.model === 'Corporate Wellness') || {};
+          const rs = comparison.find((c) => c.model === 'Revenue Sharing') || {};
+          const expected = Number(cw.income) || 0;
+          const received = Number(cw.cash) || 0;
+          const unpaid = Math.max(0, expected - received);
+          const earned = Number(rs.netIncome) || 0;
+          const closed = month < new Date().toISOString().slice(0, 7);
+          const name = data.month;
+          const sentence = closed
+            ? `${name} expected ${fmt(expected)} from Corporate Wellness, ${fmt(received)} was received for ${name}, and Revenue Sharing earned ${fmt(earned)} for the month.${unpaid > 0 ? ` ${fmt(unpaid)} of ${name} CW revenue remains unpaid.` : ''}`
+            : `${name} expects ${fmt(expected)} from Corporate Wellness, ${fmt(received)} has been received for ${name}, and Revenue Sharing has earned ${fmt(earned)} through the latest upload.`;
+          return (
+            <>
+              <Row label="Expected CW" value={fmt(expected)} />
+              <Row label="CW received" value={fmt(received)} />
+              <Row label="CW unpaid this month" value={fmt(unpaid)} />
+              <Row label="RS earned" value={fmt(earned)} last />
+              <p className="muted" style={{ marginBottom: 0 }}>{sentence}</p>
+            </>
+          );
+        })()}
+      </div>
+
       <div className="grid-2">
         {comparison.map((c) => {
           const isCw = c.model === 'Corporate Wellness';
