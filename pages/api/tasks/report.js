@@ -13,10 +13,10 @@ async function writeSummary(report) {
     label: report.label,
     person: report.person || 'All',
     counts: report.counts,
-    completed: report.sections.completed.map((t) => ({ task: t.task, person: t.person, note: clean(t.note) })),
-    inProgress: report.sections.inProgress.map((t) => ({ task: t.task, person: t.person, note: clean(t.note) })),
-    waiting: report.sections.waiting,
-    overdue: report.sections.overdue.map((t) => ({ task: t.task, person: t.person, deadline: t.deadline, waiting: t.waiting })),
+    completed: report.sections.completed.map((t) => ({ task: t.task, note: clean(t.note) })),
+    inProgress: report.sections.inProgress.map((t) => ({ task: t.task, note: clean(t.note) })),
+    waiting: report.sections.waiting.map((g) => ({ reason: g.reason, count: g.tasks.length })),
+    overdue: report.sections.overdue.map((t) => ({ task: t.task, waiting: t.waiting })),
     cancelled: report.sections.cancelled.map((t) => ({ task: t.task, note: clean(t.note) })),
     ahead: report.sections.ahead.map((t) => ({ task: t.task, deadline: t.deadline })),
   };
@@ -28,17 +28,16 @@ async function writeSummary(report) {
       temperature: 0.2,
       response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: 'Write an operations recap for a boss. Return JSON only. Do not invent facts. Combine related tasks into themes. Strip meeting-import boilerplate. overview is 2-3 sentences. outcomes, progress, attention, and ahead have at most 5 items. waiting is one count line plus at most 2 important callouts. cancelled is omitted if empty.' },
+        { role: 'system', content: 'Write a one-screen operations recap. Return JSON only with string fields: overview, outcomes, progress, waiting, attention, cancelled, ahead. Each field is 1-2 sentences of prose. overview may be 2-3 sentences. Do not list task names. Combine related work into themes. Do not invent facts. Leave cancelled empty if none.' },
         { role: 'user', content: JSON.stringify(payload) },
       ],
     }),
   });
-  if (!res.ok) return { ...report, ai: false, aiError: 'Summary could not be written.' };
+  if (!res.ok) return { ...report, ai: false };
   const data = await res.json();
   const text = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
   try {
-    const parsed = JSON.parse(text);
-    return { ...report, ai: true, narrative: parsed };
+    return { ...report, ai: true, narrative: JSON.parse(text) };
   } catch (err) {
     return { ...report, ai: false };
   }
@@ -59,6 +58,5 @@ export default withAuth(async (req, res) => {
   const tasks = taskSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
   const users = userSnap.docs.map((d) => d.data());
   const report = buildWeeklyReport(tasks, { start, end, person, users, mode });
-  const written = await writeSummary(report);
-  return res.status(200).json(written);
+  return res.status(200).json(await writeSummary(report));
 }, { tab: 'tasks' });
