@@ -158,6 +158,8 @@ export default function Monthly() {
             if (unpaid > 0) parts.push(`${fmt(unpaid)} of this month's CW fee remains unpaid.`);
             if (owed) parts.push(owed + '.');
             if (up) parts.push(`${up.name} was up ${fmt(up.change)} from the month before.`);
+            const installs = data.newInstalls || [];
+            if (installs.length) parts.push('New installations: ' + installs.map((row) => `${row.name} went live ${row.goLiveDate}`).join(', ') + '.');
             return parts.join(' ');
           })()}</p>
         </div>

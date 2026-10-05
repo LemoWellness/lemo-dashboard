@@ -389,6 +389,8 @@ export default withAuth(async (req, res) => {
       const prev = (rsDailyByVenue(prevMonthKey)[name] || {}).net || 0;
       return { name, change: Math.round((Number(curr.net) || 0) - prev) };
     }).filter((row) => Math.abs(row.change) >= 20).sort((a, b) => b.change - a.change).slice(0, 2),
+    newInstalls: Object.entries(projectsByName).map(([id, data]) => ({ name: data.name || id, goLiveDate: String(data.goLiveDate || '').slice(0, 10), model: data.businessModel || '' }))
+      .filter((row) => row.goLiveDate.startsWith(monthKey) && isCommercialSite(row.name, { businessModel: row.model, name: row.name })),
   });
   } catch (err) {
     console.error('monthly api', err);
