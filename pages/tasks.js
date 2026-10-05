@@ -60,7 +60,7 @@ export default function Tasks() {
   const [subtab, setSubtab] = useState('active');
   const [filterAssigned, setFilterAssigned] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const [sortBy, setSortBy] = useState('created_desc');
+  const [sortBy, setSortBy] = useState('deadline_asc');
   const [form, setForm] = useState(EMPTY);
   const [showAdd, setShowAdd] = useState(false);
   const [openTask, setOpenTask] = useState(null);
@@ -109,7 +109,12 @@ export default function Tasks() {
       setLoading(false);
     }).catch((e) => { setError(e.message); setLoading(false); });
   }
-  useEffect(() => { if (session) load(); }, [session]);
+  useEffect(() => {
+    if (!session?.email) return;
+    setFilterAssigned(session.email);
+    setSortBy('deadline_asc');
+    load();
+  }, [session]);
   useEffect(() => {
     if (!focusId || !tasks.length) return;
     const hit = tasks.find((t) => t.id === focusId);
