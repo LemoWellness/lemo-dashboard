@@ -251,7 +251,7 @@ export default function Home() {
     const doc = new jsPDF({ orientation: 'portrait', format: 'letter' });
     doc.setFontSize(16); doc.text('LEMO Expense Report', 40, 40);
     doc.setFontSize(12); doc.text(selectedName, 40, 58);
-    autoTable(doc, { startY: 84, head: [['Date', 'Category', 'Item', 'Source', 'Description', 'Cost', 'Qty', 'Notes']], body: expenses.map((e) => [e.date || '', e.category || '', e.item || '', e.source || '', e.description || '', e.costPerUnit != null ? `$${Number(e.costPerUnit).toFixed(2)}` : '', e.quantity ?? '', e.notes || '']), headStyles: { fillColor: [12, 10, 9] }, styles: { fontSize: 8 } });
+    autoTable(doc, { startY: 84, margin: { left: 28, right: 28 }, tableWidth: 'auto', head: [['Date', 'Category', 'Item', 'Source', 'Description', 'Cost', 'Qty', 'Notes']], body: expenses.map((e) => [e.date || '', e.category || '', e.item || '', e.source || '', e.description || '', e.costPerUnit != null ? `$${Number(e.costPerUnit).toFixed(2)}` : '', e.quantity ?? '', e.notes || '']), headStyles: { fillColor: [12, 10, 9] }, styles: { fontSize: 7, overflow: 'linebreak', cellWidth: 'wrap' } });
     doc.save(`LEMO-Expenses-${selectedName}.pdf`);
   }
 
