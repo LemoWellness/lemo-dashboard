@@ -385,6 +385,10 @@ export default withAuth(async (req, res) => {
       previous: { label: monthLabel(prevMonthKey).split(' ')[0], cash: prevIncome, income: prevIncome, expenses: prevExpenses, net: prevIncome - prevExpenses },
     },
     locationTable, expenseBreakdown, outstandingPayments, needsAttention,
+    monthMovers: Object.entries(rsThisMonth).map(([name, curr]) => {
+      const prev = (rsDailyByVenue(prevMonthKey)[name] || {}).net || 0;
+      return { name, change: Math.round((Number(curr.net) || 0) - prev) };
+    }).filter((row) => Math.abs(row.change) >= 20).sort((a, b) => b.change - a.change).slice(0, 2),
   });
   } catch (err) {
     console.error('monthly api', err);

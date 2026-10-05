@@ -142,49 +142,42 @@ export default function Monthly() {
         <Kpi label="Active Chairs" value={data.activeChairs?.toLocaleString() ?? DASH} hint="Chairs at live locations this month." />
       </div>
 
-      <div className="card" style={{ borderLeft: '3px solid var(--ember)' }}>
-        <h3 style={{ marginTop: 0 }}>Needs attention</h3>
-        <p className="muted" style={{ marginTop: -6 }}>Simple rules from A/R, refunds, and Daily uploads. Not a forecast.</p>
-        {alerts.length === 0 && <p className="muted">Nothing flagged for this month.</p>}
-        {alerts.map((item) => (
-          <div key={item.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--warm-white)' }}>
-            <div style={{ fontWeight: 500 }}>{item.title}</div>
-            <div className="muted" style={{ fontSize: 13 }}>{item.action}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Monthly Income Status</h3>
-        {(() => {
-          const cw = comparison.find((c) => c.model === 'Corporate Wellness') || {};
-          const rs = comparison.find((c) => c.model === 'Revenue Sharing') || {};
-          const expected = Number(cw.income) || 0;
-          const received = Number(cw.cash) || 0;
-          const unpaid = Math.max(0, expected - received);
-          const earned = Number(rs.netIncome) || 0;
-          const closed = month < new Date().toISOString().slice(0, 7);
-          const name = data.month;
-          const cwLine = received > 0
-            ? `${fmt(received)} of the ${fmt(expected)} expected CW has been received`
-            : `No CW payments have been received against the ${fmt(expected)} expected`;
-          const sentence = closed
-            ? `${name}: ${cwLine} for the month. Revenue Sharing earned ${fmt(earned)}.${unpaid > 0 ? ` ${fmt(unpaid)} of ${name} CW revenue remains unpaid.` : ''}`
-            : `${name}: ${cwLine} this month. RS has earned ${fmt(earned)} through the latest upload.`;
-          return (
-            <>
-              <Row label="Expected CW" value={fmt(expected)} />
-              <Row label="CW received" value={fmt(received)} />
-              <Row label="CW unpaid this month" value={fmt(unpaid)} />
-              <Row label="RS earned" value={fmt(earned)} last />
-              <p className="muted" style={{ marginBottom: 0 }}>{sentence}</p>
-            </>
-          );
-        })()}
-      </div>
+      {month < new Date().toISOString().slice(0, 7) ? (
+        <div className="card" style={{ borderLeft: '3px solid var(--ember)' }}>
+          <h3 style={{ marginTop: 0 }}>This month's update</h3>
+          <p style={{ marginBottom: 0 }}>{(() => {
+            const cw = comparison.find((c) => c.model === 'Corporate Wellness') || {};
+            const rs = comparison.find((c) => c.model === 'Revenue Sharing') || {};
+            const expected = Number(cw.income) || 0;
+            const received = Number(cw.cash) || 0;
+            const unpaid = Math.max(0, expected - received);
+            const earned = Number(rs.netIncome) || 0;
+            const owed = (outstanding || []).map((row) => `${row.location} owes ${fmt(row.balanceOwed)}`).join(', ');
+            const up = (data.monthMovers || []).find((row) => row.change > 0);
+            const parts = [`${data.month}: ${fmt(received)} of ${fmt(expected)} expected Corporate Wellness was received. Revenue Sharing earned ${fmt(earned)}.`];
+            if (unpaid > 0) parts.push(`${fmt(unpaid)} of this month's CW fee remains unpaid.`);
+            if (owed) parts.push(owed + '.');
+            if (up) parts.push(`${up.name} was up ${fmt(up.change)} from the month before.`);
+            return parts.join(' ');
+          })()}</p>
+        </div>
+      ) : (
+        <div className="card" style={{ borderLeft: '3px solid var(--ember)' }}>
+          <h3 style={{ marginTop: 0 }}>Needs attention</h3>
+          <p className="muted" style={{ marginTop: -6 }}>Simple rules from A/R, refunds, and Daily uploads. Not a forecast.</p>
+          {alerts.length === 0 && <p className="muted">Nothing flagged for this month.</p>}
+          {alerts.map((item) => (
+            <div key={item.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--warm-white)' }}>
+              <div style={{ fontWeight: 500 }}>{item.title}</div>
+              <div className="muted" style={{ fontSize: 13 }}>{item.action}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid-2">
         {comparison.map((c) => {
+          const closed = month < new Date().toISOString().slice(0, 7);
           const isCw = c.model === 'Corporate Wellness';
           const chairs = isCw ? (c.chairs ?? 0) : (c.chairs || c.revenueGeneratingChairs || rsChairsFromTable || 0);
           const installs = c.installs ?? c.activeLocations ?? DASH;
@@ -195,11 +188,11 @@ export default function Monthly() {
           return (
             <div className="card" key={c.model} style={{ marginBottom: 0 }}>
               <h3 style={{ marginTop: 0 }}>{c.model} Performance</h3>
-              {isCw ? (
+              {closed ? (isCw ? (
                 <>
                   <Row label="# of Installs" value={installs} />
                   <Row label="# of Chairs" value={chairs || DASH} />
-                  <Row label="Usage MTD" value={Number(c.usage) || 0} />
+                  <Row label="Usage" value={Number(c.usage) || 0} />
                   <Row label="Avg Usage / Chair" value={chairs ? Math.round(Number(c.usage) / chairs) : DASH} />
                   <Row label="Unsigned contracts" value={unsigned.cw} />
                   <Row label="Total Backpay" value={fmt(c.owed)} title="Unpaid CW fees through this month, not just this month's fee." last />
@@ -208,13 +201,34 @@ export default function Monthly() {
                 <>
                   <Row label="# of Installs" value={installs} />
                   <Row label="# of Chairs" value={chairs || DASH} />
-                  <Row label="Usage MTD" value={Number(c.usage) || 0} />
+                  <Row label="Usage" value={Number(c.usage) || 0} />
                   <Row label="Avg Usage / Chair" value={chairs ? Math.round(Number(c.usage) / chairs) : DASH} />
                   <Row label="LEMO Payout" value={fmt(split.lemo)} title="70% after rounding. LEMO takes the remainder so the three payouts equal net." />
                   <Row label="Venue Payout" value={fmt(split.venue)} />
                   <Row label="BD Consultant Payout" value={fmt(split.bd)} last />
                 </>
-              )}
+              )) : (isCw ? (
+                <>
+                  <Row label="Expected" value={fmt(c.income)} />
+                  <Row label="Received" value={fmt(c.cash)} />
+                  <Row label="Backpay" value={fmt(c.owed)} />
+                  <Row label="# of Installs" value={installs} />
+                  <Row label="# of Chairs" value={chairs || DASH} />
+                  <Row label="Unsigned contracts" value={unsigned.cw} last />
+                </>
+              ) : (
+                <>
+                  <Row label="Total Income" value={fmt(rsGross)} />
+                  <Row label="Refunds" value={fmt(rsRefunds)} />
+                  <Row label="Net Income" value={fmt(split.total)} />
+                  <Row label="LEMO Payout" value={fmt(split.lemo)} title="70% after rounding. LEMO takes the remainder so the three payouts equal net." />
+                  <Row label="Venue Payout" value={fmt(split.venue)} />
+                  <Row label="BD Consultant Payout" value={fmt(split.bd)} />
+                  <Row label="# of Installs" value={installs} />
+                  <Row label="# of Chairs" value={chairs || DASH} />
+                  <Row label="Unsigned contracts" value={unsigned.rs} last />
+                </>
+              ))}
             </div>
           );
         })}
