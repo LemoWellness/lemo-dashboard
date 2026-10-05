@@ -17,6 +17,8 @@ function typeLabel(type) {
   if (type === 'cancelRequested') return 'Cancel Request';
   if (type === 'cancelApproved') return 'Task Cancelled';
   if (type === 'cancelDenied') return 'Cancel Denied';
+  if (type === 'privateMessage') return 'Private message';
+  if (type === 'privateNudge') return 'Private message reminder';
   return type || 'Notification';
 }
 

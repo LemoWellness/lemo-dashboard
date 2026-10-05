@@ -343,7 +343,7 @@ export default function Tasks() {
           </form>
         </div>
       )}
-      {live && <TaskModal task={live} users={users} onClose={() => setOpenTask(null)} onChanged={load} />}
+      {live && <TaskModal task={live} users={users} session={session} onClose={() => setOpenTask(null)} onChanged={load} />}
       {showSettings && isHq && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110 }} onClick={() => setShowSettings(false)}>
           <div className="card" style={{ background: 'var(--warm-white)', width: '92%', maxWidth: 520, maxHeight: '88vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
