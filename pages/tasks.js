@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import MeetingNotesImport from '../components/MeetingNotesImport';
 import TaskModal from '../components/TaskModal';
+import WeeklyReport from '../components/WeeklyReport';
 import { useAuth } from '../context/AuthContext';
 import { authedFetch } from '../lib/firebaseClient';
 
@@ -244,6 +245,7 @@ export default function Tasks() {
             <button className={`seg-tab ${subtab === 'hold' ? 'active' : ''}`} onClick={() => setSubtab('hold')}>Pending / Hold ({counts.hold})</button>
             <button className={`seg-tab ${subtab === 'cancelled' ? 'active' : ''}`} onClick={() => setSubtab('cancelled')}>Cancelled ({counts.cancelled})</button>
             <button className={`seg-tab ${subtab === 'completed' ? 'active' : ''}`} onClick={() => setSubtab('completed')}>Completed ({counts.completed})</button>
+            <button className={`seg-tab ${subtab === 'report' ? 'active' : ''}`} onClick={() => setSubtab('report')} style={subtab === 'report' ? undefined : { color: 'var(--ember)' }}>Weekly Report</button>
           </div>
           <div className="card" style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem' }} className="muted">Assigned To
@@ -285,7 +287,9 @@ export default function Tasks() {
               <button type="button" className="btn btn-ghost" onClick={() => setSelected([])}>Clear</button>
             </div>
           )}
-          {subtab === 'active' ? (
+          {subtab === 'report' ? (
+            <WeeklyReport users={users} onOpenTask={(id) => { const hit = tasks.find((t) => t.id === id); if (hit) setOpenTask(hit); }} />
+          ) : subtab === 'active' ? (
             <>
               {needsUpdate.length > 0 && (
                 <div className="card">

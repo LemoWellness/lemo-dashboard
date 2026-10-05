@@ -52,6 +52,7 @@ export default function TaskModal({ task, users, session, onClose, onChanged }) 
   const [saving, setSaving] = useState(false);
   const [pendingStatus, setPendingStatus] = useState('');
   const [statusNote, setStatusNote] = useState('');
+  const [holdReason, setHoldReason] = useState('Waiting on client');
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [updateText, setUpdateText] = useState('');
@@ -98,7 +99,9 @@ export default function TaskModal({ task, users, session, onClose, onChanged }) 
     if (await patch(editForm)) setEditing(false);
   }
   async function changeStatus(status, note) {
-    const body = note ? { status, addUpdate: note } : { status };
+    const body = { status };
+    if (note) body.addUpdate = note;
+    if (status === 'On Hold' || status === 'Pending') body.holdReason = holdReason;
     if (await patch(body)) { setPendingStatus(''); setStatusNote(''); }
   }
   function requestStatus(next) {
@@ -108,7 +111,8 @@ export default function TaskModal({ task, users, session, onClose, onChanged }) 
   }
   async function submitStatusNote(e) {
     e.preventDefault();
-    if (!statusNote.trim()) { setError('Add a note before setting this status.'); return; }
+    const needsNote = pendingStatus === 'On Hold' || pendingStatus === 'Pending' || (pendingStatus === 'Done' && ['Medium', 'High'].includes(task.priority));
+    if (needsNote && !statusNote.trim()) { setError('Add a note before setting this status.'); return; }
     await changeStatus(pendingStatus, statusNote.trim());
   }
   async function submitCancel(e) {
@@ -236,10 +240,19 @@ export default function TaskModal({ task, users, session, onClose, onChanged }) 
                 ) : <p style={{ marginBottom: 16 }}><span className="muted">Status</span> {task.status}</p>}
                 {pendingStatus && (
                   <form onSubmit={submitStatusNote} style={{ marginBottom: 16 }}>
-                    <label style={{ display: 'block' }}>Note required<textarea value={statusNote} onChange={(e) => setStatusNote(e.target.value)} rows={2} style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4, fontFamily: 'inherit' }} /></label>
+                    {(pendingStatus === 'On Hold' || pendingStatus === 'Pending') && (
+                      <label style={{ display: 'block', marginBottom: 8 }}>Why is this waiting?
+                        <select value={holdReason} onChange={(e) => setHoldReason(e.target.value)} style={{ width: '100%', marginTop: 4 }}>
+                          <option>Waiting on client</option><option>Waiting on vendor</option><option>Waiting on management</option><option>Waiting on team</option><option>Scheduling</option><option>Budget/approval</option><option>Other</option>
+                        </select>
+                      </label>
+                    )}
+                    <label style={{ display: 'block' }}>{pendingStatus === 'Done' && ['Medium', 'High'].includes(task.priority) ? 'What was the outcome?' : 'Note'}
+                      <textarea value={statusNote} onChange={(e) => setStatusNote(e.target.value)} rows={2} style={{ width: '100%', boxSizing: 'border-box', padding: 8, border: '1px solid var(--iron)', borderRadius: 4, marginTop: 4, fontFamily: 'inherit' }} />
+                    </label>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
                       <button type="button" className="btn" style={{ background: 'transparent', color: 'var(--ash)', border: '1px solid var(--iron)' }} onClick={() => { setPendingStatus(''); setStatusNote(''); }}>Back</button>
-                      <button type="submit" className="btn" disabled={saving || !statusNote.trim()}>{saving ? 'Saving...' : `Set ${pendingStatus}`}</button>
+                      <button type="submit" className="btn" disabled={saving || ((pendingStatus === 'On Hold' || pendingStatus === 'Pending' || (pendingStatus === 'Done' && ['Medium', 'High'].includes(task.priority))) && !statusNote.trim())}>{saving ? 'Saving...' : `Set ${pendingStatus}`}</button>
                     </div>
                   </form>
                 )}

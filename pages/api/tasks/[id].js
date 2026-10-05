@@ -1,6 +1,7 @@
 import { adminDb } from '../../../lib/firebaseAdmin';
 import { withAuth } from '../../../lib/auth';
-import { notifyTaskAssigned, notifyCancelRequested, notifyCancelApproved, notifyCancelDenied } from '../../../lib/notifications';
+import { notifyTaskAssigned, notifyCancelRequested, notifyCancelApproved, notifyCancelDenied, notifyTaskCompleted } from '../../../lib/notifications';
+import { HOLD_REASONS } from '../../../lib/weeklyReport';
 
 function emailOf(session) {
   return String(session.email || '').toLowerCase();
@@ -109,6 +110,7 @@ export default withAuth(async (req, res, session) => {
       if (decision === 'approve') {
         await ref.update({
           status: 'Cancelled',
+          cancelledAt: now,
           updates: [...history(task), {
             id: `u-${Date.now()}`,
             at: now,
@@ -165,8 +167,12 @@ export default withAuth(async (req, res, session) => {
         return res.status(400).json({ error: 'Review the cancel request before changing status.' });
       }
       const note = String(addUpdate || '').trim();
-      if ((next === 'On Hold' || next === 'Pending') && !note) {
-        return res.status(400).json({ error: 'Add a note before setting this status.' });
+      const holdReason = String(req.body.holdReason || '').trim();
+      if ((next === 'On Hold' || next === 'Pending') && (!note || !HOLD_REASONS.includes(holdReason))) {
+        return res.status(400).json({ error: 'Choose a reason and add a short note.' });
+      }
+      if (next === 'Done' && ['Medium', 'High'].includes(task.priority) && !note) {
+        return res.status(400).json({ error: 'What was the outcome?' });
       }
       const now = new Date().toISOString();
       const entries = [{
@@ -189,7 +195,18 @@ export default withAuth(async (req, res, session) => {
       }
       const patch = { status: next, updates: [...history(task), ...entries] };
       if (note) patch.notes = note;
+      if (next === 'On Hold' || next === 'Pending') patch.holdReason = holdReason;
+      if (next === 'Done') {
+        patch.completedAt = now;
+        patch.completedBy = session.email;
+        if (note) patch.completionOutcome = note;
+      }
       await ref.update(patch);
+      if (next === 'Done' && emailOf(session) !== String(task.addedBy || '').toLowerCase()) {
+        try {
+          await notifyTaskCompleted({ taskId: doc.id, creatorEmail: task.addedBy, completerName: session.name || session.email, taskName: task.task, outcome: note });
+        } catch (err) { console.error('Completion notification failed', err); }
+      }
       return res.status(200).json({ success: true });
     }
 
