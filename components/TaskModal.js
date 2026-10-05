@@ -12,11 +12,27 @@ function formatWhen(iso) {
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
+function isCreationUpdate(t, u) {
+  if (!u) return false;
+  if (u.kind === 'created' || u.kind === 'create') return true;
+  if (!t.timestamp || !u.at) return false;
+  const created = new Date(t.timestamp).getTime();
+  const at = new Date(u.at).getTime();
+  if (Number.isNaN(created) || Number.isNaN(at)) return false;
+  return Math.abs(at - created) < 15000;
+}
+function creationNotes(t) {
+  const updates = Array.isArray(t.updates) ? t.updates : [];
+  const created = updates.filter((u) => isCreationUpdate(t, u) && String(u.text || '').trim());
+  if (created.length) return created;
+  if (!updates.length && String(t.notes || '').trim()) {
+    return [{ id: 'created-notes', at: t.timestamp, by: t.addedBy, byName: t.addedBy, text: String(t.notes).trim(), kind: 'created' }];
+  }
+  return [];
+}
 function taskUpdates(t) {
-  if (Array.isArray(t.updates) && t.updates.length) return t.updates;
-  const legacy = String(t.notes || '').trim();
-  if (!legacy) return [];
-  return [{ id: 'legacy-notes', at: t.timestamp, by: t.addedBy, byName: t.addedBy, text: legacy, kind: 'note' }];
+  const updates = Array.isArray(t.updates) ? t.updates : [];
+  return updates.filter((u) => u && !isCreationUpdate(t, u));
 }
 function emailOf(value) {
   return String(value || '').toLowerCase().trim();
@@ -205,6 +221,12 @@ export default function TaskModal({ task, users, session, onClose, onChanged }) 
                   <div><div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Deadline</div><div>{formatDeadline(task.deadline)}</div></div>
                   <div><div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Priority</div><div>{task.priority}</div></div>
                 </div>
+                {creationNotes(task).length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div className="muted" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>Notes</div>
+                    {creationNotes(task).map((u) => <p key={u.id} style={{ margin: '4px 0 0' }}>{u.text}</p>)}
+                  </div>
+                )}
                 {task.canUpdateStatus ? (
                   <label style={{ display: 'block', marginBottom: 16 }}>Status
                     <select value={pendingStatus || task.status} onChange={(e) => requestStatus(e.target.value)} style={{ width: '100%', marginTop: 4 }}>
