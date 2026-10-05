@@ -247,7 +247,7 @@ export default function Tasks() {
             <button className={`seg-tab ${subtab === 'completed' ? 'active' : ''}`} onClick={() => setSubtab('completed')}>Completed ({counts.completed})</button>
             <button className={`seg-tab ${subtab === 'report' ? 'active' : ''}`} onClick={() => setSubtab('report')} style={subtab === 'report' ? undefined : { color: 'var(--ember)' }}>Weekly Report</button>
           </div>
-          <div className="card" style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          {subtab !== 'report' && <div className="card" style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.75rem' }} className="muted">Assigned To
               <select value={filterAssigned} onChange={(e) => setFilterAssigned(e.target.value)} style={{ minWidth: 150 }}>
                 <option value="">All</option>
@@ -272,8 +272,8 @@ export default function Tasks() {
                 <option value="deadline_desc">Deadline (Latest)</option>
               </select>
             </label>
-          </div>
-          {selected.length > 0 && (
+          </div>}
+          {subtab !== 'report' && selected.length > 0 && (
             <div className="card" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
               <span className="muted">{selected.length} selected</span>
               <select value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)}>
