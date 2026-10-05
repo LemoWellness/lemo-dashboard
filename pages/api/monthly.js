@@ -391,6 +391,30 @@ export default withAuth(async (req, res) => {
     }).filter((row) => Math.abs(row.change) >= 20).sort((a, b) => b.change - a.change).slice(0, 2),
     newInstalls: Object.entries(projectsByName).map(([id, data]) => ({ name: data.name || id, goLiveDate: String(data.goLiveDate || '').slice(0, 10), model: data.businessModel || '' }))
       .filter((row) => row.goLiveDate.startsWith(monthKey) && isCommercialSite(row.name, { businessModel: row.model, name: row.name })),
+    usageUpdate: (() => {
+      function byVenue(forMonth) {
+        const totals = {};
+        dailySnap.forEach((doc) => {
+          const row = doc.data();
+          if (!(row.countDate || '').startsWith(forMonth)) return;
+          const venue = String(row.venueName || '').trim();
+          if (!venue) return;
+          totals[venue] = (totals[venue] || 0) + (Number(row.orderNumber) || 0);
+        });
+        return totals;
+      }
+      const curr = byVenue(monthKey);
+      const prev = byVenue(prevMonthKey);
+      const current = Object.values(curr).reduce((s, n) => s + n, 0);
+      const previous = Object.values(prev).reduce((s, n) => s + n, 0);
+      const leader = Object.entries(curr).sort((a, b) => b[1] - a[1])[0];
+      const mover = Object.keys({ ...curr, ...prev }).map((name) => {
+        const before = prev[name] || 0;
+        const now = curr[name] || 0;
+        return { name, changePct: before ? Math.round(((now - before) / before) * 100) : null, now };
+      }).filter((row) => row.changePct != null).sort((a, b) => b.changePct - a.changePct)[0];
+      return { current, previous, changePct: previous ? Math.round(((current - previous) / previous) * 100) : null, leader: leader ? { name: leader[0], usage: leader[1] } : null, mover: mover || null };
+    })(),
   });
   } catch (err) {
     console.error('monthly api', err);

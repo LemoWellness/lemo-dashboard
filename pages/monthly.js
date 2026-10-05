@@ -145,23 +145,26 @@ export default function Monthly() {
       {month < new Date().toISOString().slice(0, 7) ? (
         <div className="card" style={{ borderLeft: '3px solid var(--ember)' }}>
           <h3 style={{ marginTop: 0 }}>This month's update</h3>
-          <p style={{ marginBottom: 0 }}>{(() => {
+          {(() => {
             const cw = comparison.find((c) => c.model === 'Corporate Wellness') || {};
             const rs = comparison.find((c) => c.model === 'Revenue Sharing') || {};
-            const expected = Number(cw.income) || 0;
-            const received = Number(cw.cash) || 0;
-            const unpaid = Math.max(0, expected - received);
-            const earned = Number(rs.netIncome) || 0;
-            const owed = (outstanding || []).map((row) => `${row.location} owes ${fmt(row.balanceOwed)}`).join(', ');
-            const up = (data.monthMovers || []).find((row) => row.change > 0);
-            const parts = [`${data.month}: ${fmt(received)} of ${fmt(expected)} expected Corporate Wellness was received. Revenue Sharing earned ${fmt(earned)}.`];
-            if (unpaid > 0) parts.push(`${fmt(unpaid)} of this month's CW fee remains unpaid.`);
-            if (owed) parts.push(owed + '.');
-            if (up) parts.push(`${up.name} was up ${fmt(up.change)} from the month before.`);
+            const usage = data.usageUpdate || {};
             const installs = data.newInstalls || [];
-            if (installs.length) parts.push('New installations: ' + installs.map((row) => `${row.name} went live ${row.goLiveDate}`).join(', ') + '.');
-            return parts.join(' ');
-          })()}</p>
+            const direction = usage.changePct == null ? 'Usage has no prior month to compare.' : `Usage went ${usage.changePct >= 0 ? 'up' : 'down'} ${Math.abs(usage.changePct)}%.`;
+            const mover = usage.mover ? `${usage.mover.name} did well this month, up ${usage.mover.changePct}% from last.` : '';
+            const leader = usage.leader ? `Still in the lead: ${usage.leader.name} with ${usage.leader.usage} usage.` : '';
+            const opened = installs.length ? `New installations: ${installs.map((row) => `${row.name} went live ${row.goLiveDate}`).join(', ')}.` : '';
+            return (
+              <>
+                <p style={{ marginTop: 0 }}>{data.month}</p>
+                <Row label="CW Expected Income" value={fmt(cw.income)} />
+                <Row label="CW Income Received" value={fmt(cw.cash)} />
+                <Row label="CW Backpay total" value={fmt(cw.owed)} />
+                <Row label="RS earned" value={fmt(rs.netIncome)} last />
+                <p className="muted" style={{ marginBottom: 0 }}>{[direction, mover, leader, opened].filter(Boolean).join(' ')}</p>
+              </>
+            );
+          })()}
         </div>
       ) : (
         <div className="card" style={{ borderLeft: '3px solid var(--ember)' }}>
