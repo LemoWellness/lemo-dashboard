@@ -165,9 +165,12 @@ export default function Monthly() {
           const earned = Number(rs.netIncome) || 0;
           const closed = month < new Date().toISOString().slice(0, 7);
           const name = data.month;
+          const cwLine = received > 0
+            ? `${fmt(received)} of the ${fmt(expected)} expected CW has been received`
+            : `No CW payments have been received against the ${fmt(expected)} expected`;
           const sentence = closed
-            ? `${name} expected ${fmt(expected)} from Corporate Wellness, ${fmt(received)} was received for ${name}, and Revenue Sharing earned ${fmt(earned)} for the month.${unpaid > 0 ? ` ${fmt(unpaid)} of ${name} CW revenue remains unpaid.` : ''}`
-            : `${name} expects ${fmt(expected)} from Corporate Wellness, ${fmt(received)} has been received for ${name}, and Revenue Sharing has earned ${fmt(earned)} through the latest upload.`;
+            ? `${name}: ${cwLine} for the month. Revenue Sharing earned ${fmt(earned)}.${unpaid > 0 ? ` ${fmt(unpaid)} of ${name} CW revenue remains unpaid.` : ''}`
+            : `${name}: ${cwLine} this month. RS has earned ${fmt(earned)} through the latest upload.`;
           return (
             <>
               <Row label="Expected CW" value={fmt(expected)} />
@@ -194,24 +197,22 @@ export default function Monthly() {
               <h3 style={{ marginTop: 0 }}>{c.model} Performance</h3>
               {isCw ? (
                 <>
-                  <Row label="Expected" value={fmt(c.income)} />
-                  <Row label="Received" value={fmt(c.cash)} />
-                  <Row label="Backpay" value={fmt(c.owed)} />
                   <Row label="# of Installs" value={installs} />
                   <Row label="# of Chairs" value={chairs || DASH} />
-                  <Row label="Unsigned contracts" value={isCw ? unsigned.cw : unsigned.rs} last />
+                  <Row label="Usage MTD" value={Number(c.usage) || 0} />
+                  <Row label="Avg Usage / Chair" value={chairs ? Math.round(Number(c.usage) / chairs) : DASH} />
+                  <Row label="Unsigned contracts" value={unsigned.cw} />
+                  <Row label="Total Backpay" value={fmt(c.owed)} title="Unpaid CW fees through this month, not just this month's fee." last />
                 </>
               ) : (
                 <>
-                  <Row label="Total Income" value={fmt(rsGross)} />
-                  <Row label="Refunds" value={fmt(rsRefunds)} />
-                  <Row label="Net Income" value={fmt(split.total)} />
-                  <Row label="LEMO Payout" value={fmt(split.lemo)} title="70% after rounding. LEMO takes the remainder so the three payouts equal net." />
-                  <Row label="Venue Payout" value={fmt(split.venue)} />
-                  <Row label="BD Consultant Payout" value={fmt(split.bd)} />
                   <Row label="# of Installs" value={installs} />
                   <Row label="# of Chairs" value={chairs || DASH} />
-                  <Row label="Unsigned contracts" value={unsigned.rs} last />
+                  <Row label="Usage MTD" value={Number(c.usage) || 0} />
+                  <Row label="Avg Usage / Chair" value={chairs ? Math.round(Number(c.usage) / chairs) : DASH} />
+                  <Row label="LEMO Payout" value={fmt(split.lemo)} title="70% after rounding. LEMO takes the remainder so the three payouts equal net." />
+                  <Row label="Venue Payout" value={fmt(split.venue)} />
+                  <Row label="BD Consultant Payout" value={fmt(split.bd)} last />
                 </>
               )}
             </div>

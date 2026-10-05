@@ -275,8 +275,16 @@ export default withAuth(async (req, res) => {
       ? monthIncome.filter((i) => modelOf(i.location) === model).reduce((s, i) => s + (Number(i.amount) || 0), 0)
       : rsGross;
     const expenses = monthExpenses.filter((e) => modelOf(e.location) === model).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    let usage = 0;
+    dailySnap.forEach((doc) => {
+      const row = doc.data();
+      if (!(row.countDate || '').startsWith(monthKey)) return;
+      const venue = String(row.venueName || '').trim();
+      if (modelOf(venue) !== model) return;
+      usage += Number(row.orderNumber) || 0;
+    });
     return {
-      model, income, cash,
+      model, income, cash, usage,
       refunds: model === 'Revenue Sharing' ? rsRefundsTot : 0,
       netIncome: model === 'Revenue Sharing' ? rsGross - rsRefundsTot : cash,
       owed: model === 'Corporate Wellness' ? cwOwed : 0, expenses,
