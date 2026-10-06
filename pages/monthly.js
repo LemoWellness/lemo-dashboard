@@ -159,7 +159,7 @@ export default function Monthly() {
                 <p style={{ marginTop: 0 }}>{data.month}</p>
                 <Row label="CW Expected Income" value={fmt(cw.income)} />
                 <Row label="CW Income Received" value={fmt(cw.cash)} />
-                <Row label="CW Backpay total" value={fmt(cw.owed)} />
+                <Row label="CW Backpay total" value={<a href="/financials">{fmt(cw.owed)}</a>} />
                 <Row label="RS earned" value={fmt(rs.netIncome)} last />
                 <p className="muted" style={{ marginBottom: 0 }}>{[direction, mover, leader, opened].filter(Boolean).join(' ')}</p>
               </>
@@ -216,7 +216,7 @@ export default function Monthly() {
                 <>
                   <Row label="Expected" value={fmt(c.income)} />
                   <Row label="Received" value={fmt(c.cash)} />
-                  <Row label="Backpay" value={fmt(c.owed)} />
+                  <Row label="Backpay" value={<a href="/financials">{fmt(c.owed)}</a>} />
                   <Row label="# of Installs" value={installs} />
                   <Row label="# of Chairs" value={chairs || DASH} />
                   <Row label="Unsigned contracts" value={unsigned.cw} last />
@@ -281,14 +281,6 @@ export default function Monthly() {
             <Line type="linear" dataKey="net" name="Profit" stroke="#D9A441" strokeWidth={2.5} dot />
           </LineChart>
         </ResponsiveContainer>
-      </div>
-
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Accounts Receivable</h3>
-        <p className="muted" style={{ fontSize: '0.8rem', marginTop: -6 }}>
-          Only accounts with an unpaid balance as of {data.asOfLabel || data.month}.
-        </p>
-        <p style={{ marginBottom: 0 }}>Accounts receivable is {fmt(outstanding.reduce((s, row) => s + (Number(row.balanceOwed) || 0), 0))} as of {data.asOfLabel || data.month}. <a href="/financials">See who owes in Financials</a>.</p>
       </div>
 
     </Layout>
