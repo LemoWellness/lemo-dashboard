@@ -207,7 +207,25 @@ export default function Tasks() {
     const allOn = list.length > 0 && list.every((row) => selected.includes(row.id));
     const completedTab = subtab === 'completed';
     return (
-      <div className="table-wrap">
+      <>
+      <div className="task-mobile-list">
+        {list.map((row) => {
+          const overdue = isOverdue(row);
+          const done = row.status === 'Done';
+          return (
+            <div key={row.id} onClick={() => setOpenTask(row)} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 4px', borderBottom: '1px solid var(--iron)', background: overdue ? '#fdeceb' : 'transparent', cursor: 'pointer' }}>
+              <span style={{ width: 10, paddingTop: 6 }}>{row.privateMessageCount > 0 && <span title="Private message" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 99, background: 'var(--ember)' }} />}</span>
+              <input type="checkbox" checked={selected.includes(row.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => toggleOne(row.id, e.target.checked)} />
+              <div>
+                <div style={done ? { textDecoration: 'line-through' } : undefined}>{row.task}</div>
+                <div className="muted" style={{ fontSize: '0.78rem' }}>{people(row)} · {completedTab ? (formatDeadline(finishedOn(row)) || '-') : formatDeadline(row.deadline)} · {row.status}</div>
+              </div>
+            </div>
+          );
+        })}
+        {list.length === 0 && <p className="muted">No tasks in this list.</p>}
+      </div>
+      <div className="table-wrap task-desktop-table">
         <table>
           <thead>
             <tr>
@@ -237,6 +255,7 @@ export default function Tasks() {
           </tbody>
         </table>
       </div>
+      </>
     );
   }
 
