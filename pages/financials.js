@@ -71,6 +71,8 @@ export default function Financials() {
       body: JSON.stringify({ periodStart: selected.periodStart, category: noteRow.category, note: noteDraft }),
     });
     if (!res.ok) { setNoteError((await res.json()).error || 'Could not save note.'); return; }
+    setNoteRow(null);
+    load();
   }
   async function deleteNote(row) {
     if (!selected || !window.confirm('Delete this note?')) return;
@@ -79,7 +81,6 @@ export default function Financials() {
       body: JSON.stringify({ periodStart: selected.periodStart, category: row.category }),
     });
     if (!res.ok) return;
-    setNoteRow(null);
     setNoteRow(null);
     load();
   }
