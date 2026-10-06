@@ -93,8 +93,13 @@ export default function Home() {
     authedFetch(`/api/communication-log?location=${encodeURIComponent(name)}`).then((r) => r.json()).then((d) => setNotes(d.notes || []));
     authedFetch(`/api/account-usage?location=${encodeURIComponent(name)}`).then((r) => r.json()).then((d) => setDailyMoney(d)).catch(() => setDailyMoney(null));
   }
-  useEffect(() => { if (selectedName) loadDetail(selectedName); }, [selectedName]);
-  useEffect(() => { const name = router.query.location; if (typeof name === 'string' && name) setSelectedName(name); }, [router.query.location]);
+  useEffect(() => { if (session && selectedName) loadDetail(selectedName); }, [session, selectedName]);
+  useEffect(() => {
+    const name = router.query.location;
+    if (!projects.length || typeof name !== 'string' || !name) return;
+    const hit = projects.find((p) => p.name.toLowerCase() === name.toLowerCase());
+    if (hit) setSelectedName(hit.name);
+  }, [router.query.location, projects]);
 
   const businessModels = useMemo(() => [...new Set(projects.map((p) => p.businessModel).filter(Boolean))], [projects]);
   const statesForModel = useMemo(() => {
