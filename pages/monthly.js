@@ -135,7 +135,7 @@ export default function Monthly() {
       )}
 
       <div className="grid-4">
-        <Kpi label="Net Income" value={fmt(totalIncome)} hint="RS net after refunds plus CW payments received this month." />
+        <Kpi label="Net Income" value={fmt(totalIncome)} hint="Revenue Sharing net plus Corporate Wellness payments received. This is not the Reporting total, which is Revenue Sharing only." />
         <Kpi label="Total Expenses" value={fmt(data.totalExpenses)} hint="Company-wide expenses from Financials for this month." />
         <Kpi label="Refunds" value={fmt(data.totalRefunds)} hint="RS refunds from Daily Raw Data this month." />
         <Kpi label="Net Profit / Loss" value={fmt(net)} negative={net < 0} hint="Net income minus company-wide expenses." />
@@ -288,65 +288,9 @@ export default function Monthly() {
         <p className="muted" style={{ fontSize: '0.8rem', marginTop: -6 }}>
           Only accounts with an unpaid balance as of {data.asOfLabel || data.month}.
         </p>
-        {outstanding.length > 0 ? (
-          <div className="table-wrap"><table>
-            <thead><tr><th>Location</th><th>Chairs</th><th>Months owed</th><th>Amount owed</th></tr></thead>
-            <tbody>
-              {outstanding.map((c, i) => (
-                <tr key={i}>
-                  <td>{c.location}</td>
-                  <td>{c.chairs ?? DASH}</td>
-                  <td>{c.monthsOwed ?? c.monthsBillable}</td>
-                  <td style={{ color: 'var(--ember-muted)' }}>{fmt(c.balanceOwed)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table></div>
-        ) : <p className="muted">No accounts owe a balance as of {data.asOfLabel || data.month}.</p>}
+        <p style={{ marginBottom: 0 }}>Accounts receivable is {fmt(outstanding.reduce((s, row) => s + (Number(row.balanceOwed) || 0), 0))} as of {data.asOfLabel || data.month}. <a href="/financials">See who owes in Financials</a>.</p>
       </div>
 
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
-          <h3 style={{ margin: 0 }}>Location performance {DASH} {data.month} only</h3>
-          <select value={modelFilter} onChange={(e) => setModelFilter(e.target.value)}>
-            <option value="All">All models</option>
-            <option value="Corporate Wellness">Corporate Wellness</option>
-            <option value="Revenue Sharing">Revenue Sharing</option>
-          </select>
-        </div>
-        <div className="table-wrap wide"><table>
-          <thead><tr>
-            <th>Location</th>
-            <th>Model</th>
-            <th>Chairs</th>
-            <th>Expected</th>
-            <th>Gross Income</th>
-            <th>Refunds</th>
-            <th title={NET_HINT}>Net Income <Hint text={NET_HINT} /></th>
-          </tr></thead>
-          <tbody>
-            {filteredLocations.map((l, i) => {
-              const isCw = l.model === 'Corporate Wellness';
-              const expected = isCw && l.commercial !== false ? fmt(l.billableRevenue ?? l.lemoIncome) : DASH;
-              const received = l.commercial === false ? DASH : fmt(l.received ?? 0);
-              const netValue = l.netIncome != null ? l.netIncome : (Number(l.received) || 0) - (Number(l.refunds) || 0);
-              const netInc = l.commercial === false ? DASH : fmt(netValue);
-              return (
-              <tr key={i}>
-                <td>{l.location}</td>
-                <td>{isCw ? 'CW' : l.model === 'Revenue Sharing' ? 'RS' : (l.model || DASH)}</td>
-                <td>{l.chairs ?? DASH}</td>
-                <td>{expected}</td>
-                <td>{received}</td>
-                <td>{l.commercial === false ? DASH : fmt(Number(l.refunds) || 0)}</td>
-                <td title={NET_HINT}>{netInc}</td>
-              </tr>
-              );
-            })}
-            {filteredLocations.length === 0 && <tr><td colSpan={7} className="muted">No location activity for this month</td></tr>}
-          </tbody>
-        </table></div>
-      </div>
     </Layout>
   );
 }

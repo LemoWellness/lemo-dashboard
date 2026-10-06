@@ -94,6 +94,7 @@ export default function Home() {
     authedFetch(`/api/account-usage?location=${encodeURIComponent(name)}`).then((r) => r.json()).then((d) => setDailyMoney(d)).catch(() => setDailyMoney(null));
   }
   useEffect(() => { if (selectedName) loadDetail(selectedName); }, [selectedName]);
+  useEffect(() => { const name = router.query.location; if (typeof name === 'string' && name) setSelectedName(name); }, [router.query.location]);
 
   const businessModels = useMemo(() => [...new Set(projects.map((p) => p.businessModel).filter(Boolean))], [projects]);
   const statesForModel = useMemo(() => {
@@ -279,6 +280,22 @@ export default function Home() {
       ) : (
         <div>
           <AccountChrome selected={selected} isAdmin={isAdmin} onBack={() => setSelectedName(null)} onEdit={openEditAccount} onNote={openNoteModal} onIncome={openIncomeModal} onExpense={openExpenseModal} />
+          {dailyMoney?.hasData && (
+            <div className="card">
+              <h3 style={{ marginTop: 0 }}>Usage</h3>
+              <p className="muted" style={{ marginTop: 0 }}>Same Daily Raw Data as Reporting, for this account only.</p>
+              <div className="table-wrap"><table>
+                <thead><tr><th>Month</th><th>Usage</th><th>Avg / chair</th><th>Net</th></tr></thead>
+                <tbody>
+                  {Object.keys(dailyMoney.months || {}).sort().reverse().slice(0, 6).map((key) => {
+                    const row = dailyMoney.months[key];
+                    const chairs = Number(selected.numberOfChairs) || 0;
+                    return <tr key={key}><td>{key}</td><td>{row.usage || 0}</td><td>{chairs ? Math.round((row.usage || 0) / chairs) : '-'}</td><td>{fmt(row.net)}</td></tr>;
+                  })}
+                </tbody>
+              </table></div>
+            </div>
+          )}
           {metrics && (<><div className="grid-4">{selected.businessModel === 'Revenue Sharing' ? (<><Kpi label="Gross Revenue" value={fmt(metrics.currentMonthlyGross)} hint="This month Total Amount from Daily Raw Data, before refunds." /><Kpi label="Refunds" value={fmt(metrics.currentMonthlyRefunds)} hint="This month refunds from Daily Raw Data." /><Kpi label="Net Income" value={fmt(metrics.currentMonthlyRevenue)} hint="This month net after refunds from Daily Raw Data." /></>) : (<><Kpi label="Monthly Fee" value={fmt(metrics.currentMonthlyRevenue)} /><Kpi label="Total Income" value={fmt(metrics.totalLemoIncome)} /></>)}<Kpi label="Total expenses" value={fmt(metrics.totalExpenses)} /><Kpi label="Net profit / loss" value={fmt(metrics.netProfitLoss)} negative={metrics.netProfitLoss < 0} hint={selected.businessModel === 'Revenue Sharing' ? "LEMO's 70% of all-time net minus this account's expenses." : ''} /></div>
           <div className="grid-3">
             <div className="card" title={selected.businessModel === 'Revenue Sharing' ? "ROI uses LEMO's 70% share of net session income versus this account's expenses. Not gross. Not venue/BD share." : ''}><h3 style={{ marginTop: 0 }}>ROI progress{selected.businessModel === 'Revenue Sharing' ? <Hint text="ROI uses LEMO's 70% share of net session income versus this account's expenses. Not gross. Not venue/BD share." /> : null}</h3>

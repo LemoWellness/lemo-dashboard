@@ -269,7 +269,7 @@ function VenueTable({ rows, title }) {
           <tbody>
             {rows.map((v, i) => (
               <tr key={i}>
-                <td>{v.venue}</td>
+                <td><a href={`/?location=${encodeURIComponent(v.venue)}`}>{v.venue}</a></td>
                 <td>{v.chairs != null ? count(v.chairs) : '-'}</td>
                 <td>{count(v.orders)}</td>
                 <td>{v.avgPerChair != null ? Math.round(v.avgPerChair * 10) / 10 : '-'}</td>

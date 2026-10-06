@@ -18,6 +18,7 @@ export default function Financials() {
   const [noteRow, setNoteRow] = useState(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [noteError, setNoteError] = useState('');
+  const [owed, setOwed] = useState([]);
 
   function navigate(code) {
     if (code === 'admin-users') return router.push('/admin/users');
@@ -41,6 +42,11 @@ export default function Financials() {
     });
   }
   useEffect(() => { if (session) load(); }, [session]);
+  useEffect(() => {
+    if (!session) return;
+    const month = new Date().toISOString().slice(0, 7);
+    authedFetch(`/api/monthly?month=${month}`).then((r) => r.json()).then((d) => setOwed(d.outstandingPayments || [])).catch(() => setOwed([]));
+  }, [session]);
 
   async function deleteReport(id) {
     const row = reports.find((r) => r.id === id);
@@ -99,6 +105,15 @@ export default function Financials() {
           {selected.expenseMissing && (
             <p className="muted" style={{ color: '#dc2626', marginTop: 0 }}>The Bench expense report has not been uploaded for this period. It is usually added at the end of the month.</p>
           )}
+          <div className="card">
+            <h3 style={{ marginTop: 0 }}>Accounts receivable</h3>
+            {owed.length === 0 ? <p className="muted">No accounts owe a balance.</p> : (
+              <div className="table-wrap"><table>
+                <thead><tr><th>Location</th><th>Chairs</th><th>Months owed</th><th>Amount owed</th></tr></thead>
+                <tbody>{owed.map((row) => <tr key={row.location}><td><a href={`/?location=${encodeURIComponent(row.location)}`}>{row.location}</a></td><td>{row.chairs || '-'}</td><td>{row.monthsOwed}</td><td>{fmt(row.balanceOwed)}</td></tr>)}</tbody>
+              </table></div>
+            )}
+          </div>
           <div className="grid-3">
             <Kpi label="Net Income" value={fmt(selected.revenue)} />
             <Kpi label="Expense" value={fmt(selected.expense)} />
