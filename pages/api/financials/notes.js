@@ -6,14 +6,18 @@ function noteId(periodStart, category) {
 }
 
 export default withAuth(async (req, res, session) => {
-  if (req.method !== 'PUT') return res.status(405).json({ error: 'Method not allowed.' });
+  if (req.method !== 'PUT' && req.method !== 'DELETE') return res.status(405).json({ error: 'Method not allowed.' });
   if (session.role !== 'Admin') return res.status(403).json({ error: 'Only an administrator can do that.' });
   const body = req.body || {};
   const periodStart = String(body.periodStart || '').slice(0, 10);
   const category = String(body.category || '').trim();
   if (!periodStart || !category) return res.status(400).json({ error: 'Period and category are required.' });
-  const note = String(body.note || '').trim();
   const id = noteId(periodStart, category);
+  if (req.method === 'DELETE') {
+    await adminDb.collection('financialCategoryNotes').doc(id).delete();
+    return res.status(200).json({ success: true });
+  }
+  const note = String(body.note || '').trim();
   await adminDb.collection('financialCategoryNotes').doc(id).set({
     periodStart,
     category,

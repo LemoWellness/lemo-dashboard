@@ -71,6 +71,15 @@ export default function Financials() {
       body: JSON.stringify({ periodStart: selected.periodStart, category: noteRow.category, note: noteDraft }),
     });
     if (!res.ok) { setNoteError((await res.json()).error || 'Could not save note.'); return; }
+  }
+  async function deleteNote(row) {
+    if (!selected || !window.confirm('Delete this note?')) return;
+    const res = await authedFetch('/api/financials/notes', {
+      method: 'DELETE',
+      body: JSON.stringify({ periodStart: selected.periodStart, category: row.category }),
+    });
+    if (!res.ok) return;
+    setNoteRow(null);
     setNoteRow(null);
     load();
   }
@@ -105,15 +114,6 @@ export default function Financials() {
           {selected.expenseMissing && (
             <p className="muted" style={{ color: '#dc2626', marginTop: 0 }}>The Bench expense report has not been uploaded for this period. It is usually added at the end of the month.</p>
           )}
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>Accounts receivable</h3>
-            {owed.length === 0 ? <p className="muted">No accounts owe a balance.</p> : (
-              <div className="table-wrap"><table>
-                <thead><tr><th>Location</th><th>Chairs</th><th>Months owed</th><th>Amount owed</th></tr></thead>
-                <tbody>{owed.map((row) => <tr key={row.location}><td><a href={`/?location=${encodeURIComponent(row.location)}`}>{row.location}</a></td><td>{row.chairs || '-'}</td><td>{row.monthsOwed}</td><td>{fmt(row.balanceOwed)}</td></tr>)}</tbody>
-              </table></div>
-            )}
-          </div>
           <div className="grid-3">
             <Kpi label="Net Income" value={fmt(selected.revenue)} />
             <Kpi label="Expense" value={fmt(selected.expense)} />
@@ -138,6 +138,15 @@ export default function Financials() {
           </div>
 
           <div className="card">
+            <h3 style={{ marginTop: 0 }}>Accounts receivable</h3>
+            {owed.length === 0 ? <p className="muted">No accounts owe a balance.</p> : (
+              <div className="table-wrap"><table>
+                <thead><tr><th>Location</th><th>Chairs</th><th>Months owed</th><th>Amount owed</th></tr></thead>
+                <tbody>{owed.map((row) => <tr key={row.location}><td><a href={`/?location=${encodeURIComponent(row.location)}`}>{row.location}</a></td><td>{row.chairs || '-'}</td><td>{row.monthsOwed}</td><td>{fmt(row.balanceOwed)}</td></tr>)}</tbody>
+              </table></div>
+            )}
+          </div>
+          <div className="card">
             <h3 style={{ marginTop: 0 }}>By category</h3>
             <div className="table-wrap">
               <table>
@@ -150,8 +159,9 @@ export default function Financials() {
                       <td>{e.percentOfTotal != null ? `${e.percentOfTotal}%` : dash}</td>
                       <td>
                         <button type="button" className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => openNote(e)}>
-                          {e.note ? 'Note' : 'Add note'}
+                          {e.note ? 'Edit' : 'Add note'}
                         </button>
+                        {isAdmin && e.note && <button type="button" className="task-delete-btn" style={{ marginLeft: 6 }} onClick={() => deleteNote(e)}>Delete</button>}
                       </td>
                     </tr>
                   ))}
