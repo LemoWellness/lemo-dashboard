@@ -286,22 +286,6 @@ export default function Home() {
       ) : (
         <div>
           <AccountChrome selected={selected} isAdmin={isAdmin} onBack={() => setSelectedName(null)} onEdit={openEditAccount} onNote={openNoteModal} onIncome={openIncomeModal} onExpense={openExpenseModal} />
-          {dailyMoney?.hasData && (
-            <div className="card">
-              <h3 style={{ marginTop: 0 }}>Usage</h3>
-              <p className="muted" style={{ marginTop: 0 }}>Same Daily Raw Data as Reporting, for this account only.</p>
-              <div className="table-wrap"><table>
-                <thead><tr><th>Month</th><th>Usage</th><th>Avg / chair</th><th>Net</th></tr></thead>
-                <tbody>
-                  {Object.keys(dailyMoney.months || {}).sort().reverse().slice(0, 6).map((key) => {
-                    const row = dailyMoney.months[key];
-                    const chairs = Number(selected.numberOfChairs) || 0;
-                    return <tr key={key}><td>{key}</td><td>{row.usage || 0}</td><td>{chairs ? Math.round((row.usage || 0) / chairs) : '-'}</td><td>{fmt(row.net)}</td></tr>;
-                  })}
-                </tbody>
-              </table></div>
-            </div>
-          )}
           {metrics && (<><div className="grid-4">{selected.businessModel === 'Revenue Sharing' ? (<><Kpi label="Gross Revenue" value={fmt(metrics.dailyGross)} hint="All-time Total Amount from Daily Raw Data, before refunds." /><Kpi label="Refunds" value={fmt(metrics.dailyRefunds)} hint="All-time refunds from Daily Raw Data." /><Kpi label="Net Income" value={fmt(metrics.dailyNet)} hint="All-time net after refunds from Daily Raw Data." /></>) : (<><Kpi label="Monthly Fee" value={fmt(metrics.currentMonthlyRevenue)} /><Kpi label="Total Income" value={fmt(metrics.totalLemoIncome)} /></>)}<Kpi label="Total expenses" value={fmt(metrics.totalExpenses)} /><Kpi label="Net profit / loss" value={fmt(metrics.netProfitLoss)} negative={metrics.netProfitLoss < 0} hint={selected.businessModel === 'Revenue Sharing' ? "LEMO's 70% of all-time net minus this account's expenses." : ''} /></div>
           <div className="grid-3">
             <div className="card" title={selected.businessModel === 'Revenue Sharing' ? "ROI uses LEMO's 70% share of net session income versus this account's expenses. Not gross. Not venue/BD share." : ''}><h3 style={{ marginTop: 0 }}>ROI progress{selected.businessModel === 'Revenue Sharing' ? <Hint text="ROI uses LEMO's 70% share of net session income versus this account's expenses. Not gross. Not venue/BD share." /> : null}</h3>
@@ -319,7 +303,23 @@ export default function Home() {
             {selected.businessModel !== 'Revenue Sharing' && (<div className="card"><h3 style={{ marginTop: 0 }}>Monthly income</h3>{metrics.monthlyIncome.length > 0 ? (<ResponsiveContainer width="100%" height={220}><BarChart data={metrics.monthlyIncome}><XAxis dataKey="label" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip formatter={(v) => fmt(v)} /><Bar dataKey="total" fill="#E85D20" /></BarChart></ResponsiveContainer>) : <p className="muted">No income yet.</p>}</div>)}
           </div></>)}
           {selected.businessModel === 'Revenue Sharing' && <AccountPayouts income={income} expenses={expenses} dailyMonths={dailyMoney?.months} />}
-          <AccountUsage venue={selected.name} businessModel={selected.businessModel} />
+          {dailyMoney?.hasData && (
+            <div className="card">
+              <h3 style={{ marginTop: 0 }}>Usage</h3>
+              <p className="muted" style={{ marginTop: 0 }}>Same Daily Raw Data as Reporting, for this account only.</p>
+              <div className="table-wrap"><table>
+                <thead><tr><th>Month</th><th>Usage</th><th>Avg / chair</th><th>Net</th></tr></thead>
+                <tbody>
+                  {Object.keys(dailyMoney.months || {}).sort().reverse().slice(0, 6).map((key) => {
+                    const row = dailyMoney.months[key];
+                    const chairs = Number(selected.numberOfChairs) || 0;
+                    return <tr key={key}><td>{key}</td><td>{row.usage || 0}</td><td>{chairs ? Math.round((row.usage || 0) / chairs) : '-'}</td><td>{fmt(row.net)}</td></tr>;
+                  })}
+                </tbody>
+              </table></div>
+            </div>
+          )}
+          {false && <AccountUsage venue={selected.name} businessModel={selected.businessModel} />}
           <Collapsible title="Expenses" open={openSections.expenses} onToggle={() => setOpenSections({ ...openSections, expenses: !openSections.expenses })} actions={isAdmin && (<><button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); downloadExpensePdf(); }}>Download PDF</button><button className="btn" onClick={(e) => { e.stopPropagation(); openExpenseModal(); }}>+ Add Expense</button></>)}>
             <div className="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Item</th><th>Amount</th></tr></thead><tbody>{expenses.slice(0, 10).map((e) => (<tr key={e.id} onClick={() => openExpenseRow(e)} style={{ cursor: 'pointer' }}><td>{e.date}</td><td>{e.category}</td><td>{e.item}</td><td>{fmt(e.amount)}</td></tr>))}{expenses.length === 0 && <tr><td colSpan={4} className="muted">No expenses recorded.</td></tr>}</tbody></table></div>
           </Collapsible>
