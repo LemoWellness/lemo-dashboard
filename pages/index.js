@@ -115,6 +115,7 @@ export default function Home() {
     const totalExpenses = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
     const dailyGross = Number(dailyMoney?.totals?.rsIncome) || 0;
     const dailyNet = Number(dailyMoney?.totals?.netIncome) || 0;
+    const dailyRefunds = Number(dailyMoney?.totals?.refunds) || 0;
     const lemoPayout = isRs ? dailyNet * 0.7 : income.reduce((s, i) => s + (Number(i.amount) || 0), 0);
     const totalLemoIncome = isRs ? dailyGross : lemoPayout;
     const netProfitLoss = lemoPayout - totalExpenses;
@@ -153,7 +154,7 @@ export default function Home() {
       byMonth[key].total += Number(i.amount) || 0;
     });
     return {
-      totalExpenses, totalLemoIncome, lemoPayout, netProfitLoss, roiProgress, currentMonthlyRevenue, currentMonthlyGross, currentMonthlyRefunds,
+      totalExpenses, totalLemoIncome, lemoPayout, netProfitLoss, roiProgress, currentMonthlyRevenue, currentMonthlyGross, currentMonthlyRefunds, dailyGross, dailyNet, dailyRefunds,
       breakEvenDate: breakEvenDate || 'Not Reached', daysToBreakEven, expenseBreakdown,
       monthlyIncome: Object.values(byMonth).sort((a, b) => a.key.localeCompare(b.key)),
     };
@@ -301,7 +302,7 @@ export default function Home() {
               </table></div>
             </div>
           )}
-          {metrics && (<><div className="grid-4">{selected.businessModel === 'Revenue Sharing' ? (<><Kpi label="Gross Revenue" value={fmt(metrics.currentMonthlyGross)} hint="This month Total Amount from Daily Raw Data, before refunds." /><Kpi label="Refunds" value={fmt(metrics.currentMonthlyRefunds)} hint="This month refunds from Daily Raw Data." /><Kpi label="Net Income" value={fmt(metrics.currentMonthlyRevenue)} hint="This month net after refunds from Daily Raw Data." /></>) : (<><Kpi label="Monthly Fee" value={fmt(metrics.currentMonthlyRevenue)} /><Kpi label="Total Income" value={fmt(metrics.totalLemoIncome)} /></>)}<Kpi label="Total expenses" value={fmt(metrics.totalExpenses)} /><Kpi label="Net profit / loss" value={fmt(metrics.netProfitLoss)} negative={metrics.netProfitLoss < 0} hint={selected.businessModel === 'Revenue Sharing' ? "LEMO's 70% of all-time net minus this account's expenses." : ''} /></div>
+          {metrics && (<><div className="grid-4">{selected.businessModel === 'Revenue Sharing' ? (<><Kpi label="Gross Revenue" value={fmt(metrics.dailyGross)} hint="All-time Total Amount from Daily Raw Data, before refunds." /><Kpi label="Refunds" value={fmt(metrics.dailyRefunds)} hint="All-time refunds from Daily Raw Data." /><Kpi label="Net Income" value={fmt(metrics.dailyNet)} hint="All-time net after refunds from Daily Raw Data." /></>) : (<><Kpi label="Monthly Fee" value={fmt(metrics.currentMonthlyRevenue)} /><Kpi label="Total Income" value={fmt(metrics.totalLemoIncome)} /></>)}<Kpi label="Total expenses" value={fmt(metrics.totalExpenses)} /><Kpi label="Net profit / loss" value={fmt(metrics.netProfitLoss)} negative={metrics.netProfitLoss < 0} hint={selected.businessModel === 'Revenue Sharing' ? "LEMO's 70% of all-time net minus this account's expenses." : ''} /></div>
           <div className="grid-3">
             <div className="card" title={selected.businessModel === 'Revenue Sharing' ? "ROI uses LEMO's 70% share of net session income versus this account's expenses. Not gross. Not venue/BD share." : ''}><h3 style={{ marginTop: 0 }}>ROI progress{selected.businessModel === 'Revenue Sharing' ? <Hint text="ROI uses LEMO's 70% share of net session income versus this account's expenses. Not gross. Not venue/BD share." /> : null}</h3>
               <div style={{ background: 'var(--warm-white)', border: '1px solid var(--iron)', borderRadius: 99, height: 10, overflow: 'hidden', marginBottom: 10 }}><div style={{ background: 'var(--ember)', height: '100%', width: `${(metrics.roiProgress || 0) * 100}%` }} /></div>
