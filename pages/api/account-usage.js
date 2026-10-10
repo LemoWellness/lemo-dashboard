@@ -16,7 +16,25 @@ export default withAuth(async (req, res) => {
   if (!location) return res.status(400).json({ error: 'location is required.' });
 
   const thisMonthKey = new Date().toISOString().slice(0, 7);
-  const snap = await adminDb.collection('dailyRawData').where('venueName', '==', location).get();
+  function norm(value) {
+    return String(value || '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function sameVenue(account, venue) {
+    const a = norm(account);
+    const v = norm(venue);
+    if (!a || !v) return false;
+    if (a === v) return true;
+    const shorter = a.length <= v.length ? a : v;
+    const longer = a.length <= v.length ? v : a;
+    return shorter.length >= 8 && longer.startsWith(shorter);
+  }
+  let snap = await adminDb.collection('dailyRawData').where('venueName', '==', location).get();
+  if (snap.empty) {
+    const names = await adminDb.collection('dailyRawData').select('venueName').get();
+    const hits = [...new Set(names.docs.map((d) => String(d.get('venueName') || '').trim()).filter((v) => sameVenue(location, v)))];
+    hits.sort((a, b) => Math.abs(norm(a).length - norm(location).length) - Math.abs(norm(b).length - norm(location).length));
+    if (hits[0]) snap = await adminDb.collection('dailyRawData').where('venueName', '==', hits[0]).get();
+  }
   const empty = {
     hasData: false,
     location,
@@ -42,11 +60,11 @@ export default withAuth(async (req, res) => {
     const refund = Number(row.refund) || 0;
     const net = gross - refund;
     totals.usage += Number(row.orderNumber) || 0;
-    months[mk].usage = (months[mk].usage || 0) + (Number(row.orderNumber) || 0);
     totals.refunds += refund;
     totals.rsIncome += gross;
     const mk = dateKey.slice(0, 7);
     if (!months[mk]) months[mk] = { gross: 0, net: 0, refunds: 0, usage: 0 };
+    months[mk].usage = (months[mk].usage || 0) + (Number(row.orderNumber) || 0);
     months[mk].gross += gross;
     months[mk].net += net;
     months[mk].refunds += refund;
