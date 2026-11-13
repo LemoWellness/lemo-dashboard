@@ -26,6 +26,7 @@ export default withAuth(async (req, res) => {
       active: u.active !== false,
       taskDesk: (u.role === 'Admin' || u.role === 'Tasks Admin' || u.taskAdmin || u.taskDesk === 'hq') ? 'hq' : 'contractor',
       taskAdmin: u.role === 'Admin' || u.role === 'Tasks Admin' || !!u.taskAdmin,
+      timeOffAdmin: u.role === 'Admin' || !!u.timeOffAdmin,
       lastLogin: authByUid[u.uid] || '',
       homeScreen: !!u.lastStandaloneAt,
       lastStandaloneAt: u.lastStandaloneAt || '',
@@ -35,7 +36,7 @@ export default withAuth(async (req, res) => {
   }
 
   if (req.method === 'POST') {
-    const { email, name, password, role, tabs } = req.body || {};
+    const { email, name, password, role, tabs, timeOffAdmin } = req.body || {};
     if (!email) return res.status(400).json({ error: 'Email is required.' });
     if (!password || String(password).length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
@@ -49,6 +50,7 @@ export default withAuth(async (req, res) => {
       active: true,
       taskDesk: finalRole === 'Admin' ? 'hq' : 'contractor',
       taskAdmin: finalRole === 'Admin',
+      timeOffAdmin: finalRole === 'Admin' || !!timeOffAdmin,
       createdAt: new Date().toISOString(),
     });
     return res.status(200).json({ success: true, uid: userRecord.uid });
