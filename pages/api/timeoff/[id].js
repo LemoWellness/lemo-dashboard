@@ -10,14 +10,14 @@ export default withAuth(async (req, res, session) => {
   const snap = await ref.get();
   if (!snap.exists) return res.status(404).json({ error: 'Request not found.' });
   const row = snap.data() || {};
-  const isAdmin = session.role === 'Admin';
+  const canManage = session.role === 'Admin' || !!session.timeOffAdmin;
   const isOwner = String(row.userEmail || '').toLowerCase() === String(session.email || '').toLowerCase();
 
   const { action, note } = req.body || {};
   const now = new Date().toISOString();
 
   if (action === 'approve' || action === 'deny') {
-    if (!isAdmin) return res.status(403).json({ error: 'Only an administrator can approve or deny.' });
+    if (!canManage) return res.status(403).json({ error: 'Only a Time Off admin can approve or deny.' });
     if (row.status !== 'pending') return res.status(400).json({ error: 'Only pending requests can be reviewed.' });
     await ref.update({
       status: action === 'approve' ? 'approved' : 'denied',
@@ -36,7 +36,7 @@ export default withAuth(async (req, res, session) => {
   }
 
   if (action === 'cancel') {
-    if (!isAdmin && !isOwner) return res.status(403).json({ error: 'Not allowed.' });
+    if (!canManage && !isOwner) return res.status(403).json({ error: 'Not allowed.' });
     if (row.status === 'cancelled') return res.status(400).json({ error: 'Already cancelled.' });
     await ref.update({ status: 'cancelled', reviewedBy: session.email, reviewedAt: now, reviewNote: String(note || '').trim() });
     return res.status(200).json({ success: true });
