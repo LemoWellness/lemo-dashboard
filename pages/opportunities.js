@@ -550,7 +550,7 @@ export default function Opportunities() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
           <div style={{ borderTop: '1px solid #eee' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 70px', padding: '12px', fontSize: 18, fontWeight: 700, color: '#333', borderBottom: '1px solid #ddd' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 80px', padding: '12px', fontSize: 16, fontWeight: 700, color: '#333', borderBottom: '1px solid #ddd' }}>
               <span>Venue</span>
               <span style={{ textAlign: 'center' }}>Chairs</span>
               <span style={{ textAlign: 'center' }}>Contacted</span>
@@ -566,14 +566,14 @@ export default function Opportunities() {
                     key={v.name + v.state}
                     onClick={() => setSelected(v)}
                     style={{
-                      display: 'grid', gridTemplateColumns: '1fr 90px 70px', alignItems: 'center',
+                      display: 'grid', gridTemplateColumns: '1fr 100px 80px', alignItems: 'center',
                       width: '100%', textAlign: 'left', padding: '14px 12px',
                       background: active ? '#f5f5f5' : 'transparent',
-                      border: 'none', borderBottom: '1px solid #eee', cursor: 'pointer'
+                      border: 'none', borderBottom: '1px solid #e5e5e5', cursor: 'pointer'
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 400, fontSize: 16, color: '#222' }}>{v.name}</div>
+                      <div style={{ fontWeight: 600, fontSize: 16, color: '#222' }}>{v.name}</div>
                       {location && <div style={{ fontSize: 14, fontWeight: 400, color: '#888' }}>{location}</div>}
                     </div>
                     <div style={{ textAlign: 'center', fontSize: 14, fontWeight: 400, color: '#222' }}>{hasChairs(v) ? 'Smarte Carte' : 'None'}</div>
