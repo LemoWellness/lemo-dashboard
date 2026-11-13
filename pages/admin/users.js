@@ -10,7 +10,14 @@ function fmtWhen(iso) {
   if (!iso) return 'Never';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return 'Never';
-  return d.toLocaleString();
+  return d.toLocaleString('en-US', {
+    timeZone: 'America/Los_Angeles',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 export default function ManageUsers() {
