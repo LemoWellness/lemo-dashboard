@@ -11,7 +11,7 @@ export default withAuth(async (req, res) => {
   const ref = adminDb.collection('users').doc(String(uid));
 
   if (req.method === 'PATCH') {
-    const { role, tabs, active, newPassword, taskDesk, taskAdmin } = req.body || {};
+    const { role, tabs, active, newPassword, taskDesk, taskAdmin, timeOffAdmin } = req.body || {};
     const updates = {};
     if (role) {
       if (role === 'Tasks Admin') {
@@ -26,6 +26,7 @@ export default withAuth(async (req, res) => {
       updates.tabs = 'all';
       updates.taskDesk = 'hq';
       updates.taskAdmin = true;
+      updates.timeOffAdmin = true;
     } else if (tabs !== undefined) {
       updates.tabs = Array.isArray(tabs) ? tabs : [];
     }
@@ -33,6 +34,9 @@ export default withAuth(async (req, res) => {
     if (taskAdmin !== undefined) {
       updates.taskAdmin = !!taskAdmin;
       if (updates.taskAdmin) updates.taskDesk = 'hq';
+    }
+    if (timeOffAdmin !== undefined) {
+      updates.timeOffAdmin = !!timeOffAdmin;
     }
     if (taskDesk === 'hq' || taskDesk === 'contractor') {
       if (updates.role !== 'Admin') updates.taskDesk = taskDesk;
