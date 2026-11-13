@@ -2,6 +2,8 @@ import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const VENUES = [
   {"name":"Thrive Family Fun Center","city":"","state":"","hasSmarteCarte":true,"type":"enclosed mall","owner":"","operatedBy":"","address":"","phone":"","email":"","website":"","notes":""},
@@ -382,6 +384,44 @@ export default function Opportunities() {
     try { localStorage.setItem('opportunities-notes', JSON.stringify(next)); } catch (e) {}
   };
 
+  const downloadPDF = () => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+    doc.setFontSize(14);
+    doc.text('Indoor Venues — Filtered List', 14, 15);
+    doc.setFontSize(9);
+    doc.text(`${filtered.length} venues`, 14, 21);
+
+    const rows = filtered.map(v => [
+      v.name,
+      v.city || '',
+      v.state,
+      v.hasSmarteCarte ? 'Yes' : 'No',
+      v.owner || '',
+      (v.address || '').substring(0, 40),
+      userNotes[v.name + '|' + v.state] || ''
+    ]);
+
+    doc.autoTable({
+      startY: 25,
+      head: [['Name', 'City', 'State', 'Chairs', 'Owner', 'Address', 'Notes']],
+      body: rows,
+      styles: { fontSize: 7, cellPadding: 1.5, overflow: 'linebreak' },
+      headStyles: { fillColor: [31, 78, 121], textColor: 255 },
+      columnStyles: {
+        0: { cellWidth: 35 },
+        1: { cellWidth: 22 },
+        2: { cellWidth: 12 },
+        3: { cellWidth: 14 },
+        4: { cellWidth: 28 },
+        5: { cellWidth: 40 },
+        6: { cellWidth: 30 }
+      },
+      margin: { left: 10, right: 10 }
+    });
+
+    doc.save('venues-filtered.pdf');
+  };
+
   function navigate(code) {
     if (code === 'admin-users') return router.push('/admin/users');
     if (code === 'admin-import') return router.push('/admin/import');
@@ -445,6 +485,9 @@ export default function Opportunities() {
         </label>
         <span className="muted" style={{ alignSelf: 'flex-end', paddingBottom: 6 }}>
           {filtered.length} shown
+          <button onClick={downloadPDF} style={{ marginLeft: 12, padding: '4px 10px', background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
+            Download PDF
+          </button>
         </span>
       </div>
 
