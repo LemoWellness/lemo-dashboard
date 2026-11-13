@@ -1,5 +1,6 @@
 import { adminDb } from '../../../lib/firebaseAdmin';
 import { withAuth } from '../../../lib/auth';
+import { notifyTimeOffRequested } from '../../../lib/notifications';
 
 const TYPES = ['Vacation / PTO', 'Personal', 'Sick', 'Other'];
 
@@ -55,6 +56,22 @@ export default withAuth(async (req, res, session) => {
       reviewNote: '',
     };
     const ref = await col.add(doc);
+
+    if (!isOffice) {
+      try {
+        await notifyTimeOffRequested({
+          requestId: ref.id,
+          userName: targetName,
+          userEmail: targetEmail,
+          startDate: start,
+          endDate: end,
+          type: kind,
+        });
+      } catch (err) {
+        console.error('Time off request notification failed', err);
+      }
+    }
+
     return res.status(200).json({ success: true, id: ref.id });
   }
 
