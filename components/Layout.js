@@ -40,7 +40,7 @@ export default function Layout({ active, onNavigate, children }) {
   const { user, session } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const showBell = active === 'tasks';
+  const showBell = active === 'tasks' || active === 'timeoff';
   const isTaskAdmin = session?.role === 'Admin' || !!session?.taskAdmin;
   const showPdf = PDF_PAGES.includes(active);
 
@@ -93,7 +93,7 @@ export default function Layout({ active, onNavigate, children }) {
         <button onClick={() => setMenuOpen((o) => !o)} aria-label="Menu">☰</button>
         <h2>LEMO</h2>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          {showBell && isTaskAdmin ? <MeetingNotesImport onCreated={() => router.replace('/tasks')} /> : null}
+          {showBell && isTaskAdmin && active === 'tasks' ? <MeetingNotesImport onCreated={() => router.replace('/tasks')} /> : null}
           {showBell ? <NotificationBell /> : null}
         </div>
       </div>
@@ -126,7 +126,7 @@ export default function Layout({ active, onNavigate, children }) {
       <main className="main">
         {showBell && (
           <div className="desktop-topbar" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            {isTaskAdmin ? <MeetingNotesImport onCreated={() => router.replace('/tasks')} /> : <span />}
+            {isTaskAdmin && active === 'tasks' ? <MeetingNotesImport onCreated={() => router.replace('/tasks')} /> : <span />}
             <NotificationBell />
           </div>
         )}
