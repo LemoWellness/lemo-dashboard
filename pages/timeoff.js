@@ -220,9 +220,9 @@ export default function TimeOff() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <h3 style={{ margin: 0 }}>{monthLabel(viewYear, viewMonth)}</h3>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <button className="btn btn-ghost" type="button" onClick={prevMonth} style={{ padding: '6px 10px' }}><</button>
+                  <button className="btn btn-ghost" type="button" onClick={prevMonth} style={{ padding: '6px 10px' }}>{'<'}</button>
                   <button className="btn btn-ghost" type="button" onClick={goToday} style={{ padding: '6px 10px' }}>Today</button>
-                  <button className="btn btn-ghost" type="button" onClick={nextMonth} style={{ padding: '6px 10px' }}>></button>
+                  <button className="btn btn-ghost" type="button" onClick={nextMonth} style={{ padding: '6px 10px' }}>{'>'}</button>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, fontSize: '0.75rem', color: 'var(--ash)', marginBottom: 6 }}>
