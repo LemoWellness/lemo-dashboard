@@ -36,21 +36,22 @@ export default withAuth(async (req, res) => {
   }
 
   if (req.method === 'POST') {
-    const { email, name, password, role, tabs, timeOffAdmin } = req.body || {};
+    const { email, name, password, role, tabs, timeOffAdmin, taskAdmin } = req.body || {};
     if (!email) return res.status(400).json({ error: 'Email is required.' });
     if (!password || String(password).length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
     const userRecord = await adminAuth.createUser({ email, password, displayName: name || email });
     const finalRole = role === 'Admin' ? 'Admin' : 'Viewer';
+    const isAdmin = finalRole === 'Admin';
     await adminDb.collection('users').doc(userRecord.uid).set({
       email: email.toLowerCase(),
       name: name || email,
       role: finalRole,
-      tabs: finalRole === 'Admin' ? 'all' : (Array.isArray(tabs) ? tabs : []),
+      tabs: isAdmin ? 'all' : (Array.isArray(tabs) ? tabs : []),
       active: true,
-      taskDesk: finalRole === 'Admin' ? 'hq' : 'contractor',
-      taskAdmin: finalRole === 'Admin',
-      timeOffAdmin: finalRole === 'Admin' || !!timeOffAdmin,
+      taskDesk: (isAdmin || taskAdmin) ? 'hq' : 'contractor',
+      taskAdmin: isAdmin || !!taskAdmin,
+      timeOffAdmin: isAdmin || !!timeOffAdmin,
       createdAt: new Date().toISOString(),
     });
     return res.status(200).json({ success: true, uid: userRecord.uid });
