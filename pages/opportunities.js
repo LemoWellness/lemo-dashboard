@@ -550,9 +550,10 @@ export default function Opportunities() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
           <div style={{ borderTop: '1px solid #eee' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', fontSize: 12, color: '#888', borderBottom: '1px solid #eee' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 70px', padding: '10px 12px', fontSize: 12, color: '#888', borderBottom: '1px solid #eee' }}>
               <span>Venue</span>
-              <span>Chair status</span>
+              <span style={{ textAlign: 'center' }}>Chairs</span>
+              <span style={{ textAlign: 'center' }}>Contacted</span>
             </div>
             <div style={{ maxHeight: '65vh', overflowY: 'auto' }}>
               {filtered.length === 0 && <p style={{ color: '#888', padding: 16 }}>None match.</p>}
@@ -563,7 +564,7 @@ export default function Opportunities() {
                     key={v.name + v.state}
                     onClick={() => setSelected(v)}
                     style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      display: 'grid', gridTemplateColumns: '1fr 90px 70px', alignItems: 'center',
                       width: '100%', textAlign: 'left', padding: '14px 12px',
                       background: active ? '#f5f5f5' : 'transparent',
                       border: 'none', borderBottom: '1px solid #eee', cursor: 'pointer'
@@ -573,10 +574,8 @@ export default function Opportunities() {
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{v.name}</div>
                       <div style={{ fontSize: 13, color: '#666' }}>{getField(v, 'city')}, {v.state}</div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 13 }}>{hasChairs(v) ? 'Smarte Carte' : 'None'}</div>
-                      <div style={{ fontSize: 12, color: isContacted(v) ? '#2e7d32' : '#888' }}>{isContacted(v) ? 'Contacted' : 'To contact'}</div>
-                    </div>
+                    <div style={{ textAlign: 'center', fontSize: 12 }}>{hasChairs(v) ? 'Smarte Carte' : 'None'}</div>
+                    <div style={{ textAlign: 'center', fontSize: 16 }}>{isContacted(v) ? '✓' : '✕'}</div>
                   </button>
                 );
               })}
