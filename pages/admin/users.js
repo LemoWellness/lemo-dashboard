@@ -17,7 +17,7 @@ export default function ManageUsers() {
   const router = useRouter();
   const { session } = useAuth();
   const [users, setUsers] = useState([]);
-  const [form, setForm] = useState({ email: '', name: '', password: '', role: 'Viewer', tabs: [] });
+  const [form, setForm] = useState({ email: '', name: '', password: '', role: 'Viewer', tabs: [], timeOffAdmin: false });
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
   const [editError, setEditError] = useState('');
@@ -44,7 +44,7 @@ export default function ManageUsers() {
     setError('');
     const res = await authedFetch('/api/users', { method: 'POST', body: JSON.stringify(form) });
     if (!res.ok) { setError((await res.json()).error); return; }
-    setForm({ email: '', name: '', password: '', role: 'Viewer', tabs: [] });
+    setForm({ email: '', name: '', password: '', role: 'Viewer', tabs: [], timeOffAdmin: false });
     load();
   }
 
@@ -69,6 +69,7 @@ export default function ManageUsers() {
       role: u.role === 'Admin' ? 'Admin' : 'Viewer',
       tabs: u.tabs === 'all' ? ALL_TABS.map((t) => t.code) : [...(u.tabs || [])],
       newPassword: '',
+      timeOffAdmin: !!u.timeOffAdmin,
     });
   }
 
@@ -85,7 +86,7 @@ export default function ManageUsers() {
     setEditError('');
     setEditBusy(true);
     try {
-      const payload = { role: editing.role, tabs: editing.role === 'Admin' ? 'all' : editing.tabs };
+      const payload = { role: editing.role, tabs: editing.role === 'Admin' ? 'all' : editing.tabs, timeOffAdmin: editing.role === 'Admin' || !!editing.timeOffAdmin };
       if (editing.newPassword) payload.newPassword = editing.newPassword;
       const res = await authedFetch(`/api/users/${editing.uid}`, { method: 'PATCH', body: JSON.stringify(payload) });
       const data = await res.json();
@@ -122,6 +123,9 @@ export default function ManageUsers() {
                 <input type="checkbox" checked={form.tabs.includes(t.code)} onChange={() => toggleTab(t.code)} /> {t.label}
               </label>
             ))}
+            <label style={{ marginLeft: 12 }}>
+              <input type="checkbox" checked={!!form.timeOffAdmin} onChange={(e) => setForm({ ...form, timeOffAdmin: e.target.checked })} /> Time Off admin
+            </label>
           </div>
         )}
         <button className="btn" type="submit">Create user</button>
@@ -146,6 +150,9 @@ export default function ManageUsers() {
                   <input type="checkbox" checked={editing.tabs.includes(t.code)} onChange={() => toggleEditTab(t.code)} /> {t.label}
                 </label>
               ))}
+              <label style={{ marginLeft: 12 }}>
+                <input type="checkbox" checked={!!editing.timeOffAdmin} onChange={(e) => setEditing({ ...editing, timeOffAdmin: e.target.checked })} /> Time Off admin
+              </label>
             </div>
           )}
           {editError && <p className="form-error">{editError}</p>}
@@ -157,7 +164,7 @@ export default function ManageUsers() {
       )}
       <div className="table-wrap">
       <table>
-        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tabs</th><th>Status</th><th>Last login</th><th>Home screen</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tabs</th><th>Time Off admin</th><th>Status</th><th>Last login</th><th>Home screen</th><th></th></tr></thead>
         <tbody>
           {users.map((u) => (
             <tr key={u.uid}>
@@ -165,6 +172,7 @@ export default function ManageUsers() {
               <td>{u.email}</td>
               <td>{u.role}</td>
               <td>{u.tabs === 'all' ? 'all' : (u.tabs || []).join(', ')}</td>
+              <td>{u.timeOffAdmin ? 'Yes' : 'No'}</td>
               <td>{u.active === false ? 'Deactivated' : 'Active'}</td>
               <td>{fmtWhen(u.lastLogin)}</td>
               <td>{u.homeScreen ? ('Yes' + (u.standalonePlatform ? ' (' + u.standalonePlatform + ')' : '')) : 'Unknown'}</td>
