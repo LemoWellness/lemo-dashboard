@@ -1,5 +1,6 @@
 import { adminDb } from '../../../lib/firebaseAdmin';
 import { withAuth } from '../../../lib/auth';
+import { notifyTimeOffDecided } from '../../../lib/notifications';
 
 export default withAuth(async (req, res, session) => {
   if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed.' });
@@ -19,12 +20,26 @@ export default withAuth(async (req, res, session) => {
   if (action === 'approve' || action === 'deny') {
     if (!canManage) return res.status(403).json({ error: 'Only a Time Off admin can approve or deny.' });
     if (row.status !== 'pending') return res.status(400).json({ error: 'Only pending requests can be reviewed.' });
+    const status = action === 'approve' ? 'approved' : 'denied';
     await ref.update({
-      status: action === 'approve' ? 'approved' : 'denied',
+      status,
       reviewedBy: session.email,
       reviewedAt: now,
       reviewNote: String(note || '').trim(),
     });
+    try {
+      await notifyTimeOffDecided({
+        requestId: String(id),
+        userEmail: row.userEmail,
+        userName: row.userName,
+        startDate: row.startDate,
+        endDate: row.endDate,
+        type: row.type,
+        decision: status,
+      });
+    } catch (err) {
+      console.error('Time off decision notification failed', err);
+    }
     return res.status(200).json({ success: true });
   }
 
