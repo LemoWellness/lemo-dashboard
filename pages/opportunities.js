@@ -365,6 +365,8 @@ export default function Opportunities() {
   const [edits, setEdits] = useState({});
   const [editMode, setEditMode] = useState(false);
   const [editDraft, setEditDraft] = useState({});
+  const [contacted, setContacted] = useState({});
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -374,6 +376,7 @@ export default function Opportunities() {
           const data = await res.json();
           setUserNotes(data.notes || {});
           setEdits(data.edits || {});
+          setContacted(data.contacted || {});
         }
       } catch (e) {}
     };
@@ -384,6 +387,7 @@ export default function Opportunities() {
     if (selected) {
       const key = selected.name + '|' + selected.state;
       setNoteDraft(userNotes[key] || '');
+      setDetailsOpen(false);
     }
   }, [selected, userNotes]);
 
@@ -401,6 +405,23 @@ export default function Opportunities() {
     } catch (e) {}
   };
 
+  const startEdit = () => {
+    if (!selected) return;
+    const key = selected.name + '|' + selected.state;
+    const existing = edits[key] || {};
+    setEditDraft({
+      city: existing.city || selected.city || '',
+      owner: existing.owner || selected.owner || '',
+      operatedBy: existing.operatedBy || selected.operatedBy || '',
+      address: existing.address || selected.address || '',
+      phone: existing.phone || selected.phone || '',
+      email: existing.email || selected.email || '',
+      website: existing.website || selected.website || '',
+      hasSmarteCarte: existing.hasSmarteCarte !== undefined ? existing.hasSmarteCarte : selected.hasSmarteCarte,
+    });
+    setEditMode(true);
+  };
+
   const saveEdit = async () => {
     if (!selected) return;
     const key = selected.name + '|' + selected.state;
@@ -416,278 +437,231 @@ export default function Opportunities() {
     setEditMode(false);
   };
 
-  const startEdit = () => {
+  const toggleContacted = async () => {
     if (!selected) return;
     const key = selected.name + '|' + selected.state;
-    const existing = edits[key] || {};
-    setEditDraft({
-      city: existing.city || selected.city || '',
-      owner: existing.owner || selected.owner || '',
-      operatedBy: existing.operatedBy || selected.operatedBy || '',
-      address: existing.address || selected.address || '',
-      phone: existing.phone || selected.phone || '',
-      email: existing.email || selected.email || '',
-      website: existing.website || selected.website || '',
-    });
-    setEditMode(true);
+    const next = { ...contacted, [key]: !contacted[key] };
+    setContacted(next);
+    try {
+      await fetch('/api/opportunities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contacted: next }),
+      });
+    } catch (e) {}
   };
 
   const getField = (v, field) => {
     const key = v.name + '|' + v.state;
-    return (edits[key] && edits[key][field]) || v[field] || '';
+    const e = edits[key];
+    if (e && e[field] !== undefined && e[field] !== '') return e[field];
+    return v[field] || '';
   };
+
+  const hasChairs = (v) => {
+    const key = v.name + '|' + v.state;
+    const e = edits[key];
+    if (e && e.hasSmarteCarte !== undefined) return e.hasSmarteCarte;
+    return v.hasSmarteCarte;
+  };
+
+  const isContacted = (v) => contacted[v.name + '|' + v.state] || false;
 
   const downloadPDF = () => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
     doc.setFontSize(14);
-    doc.text('Indoor Venues — Filtered List', 14, 15);
+    doc.text('Venue Directory', 14, 15);
     doc.setFontSize(9);
     doc.text(`${filtered.length} venues`, 14, 21);
-
     const rows = filtered.map(v => [
       v.name,
-      v.city || '',
+      getField(v, 'city') || '',
       v.state,
-      v.hasSmarteCarte ? 'Yes' : 'No',
-      v.owner || '',
-      (v.address || '').substring(0, 40),
+      hasChairs(v) ? 'Smarte Carte' : 'None',
+      isContacted(v) ? 'Contacted' : 'To contact',
+      getField(v, 'owner') || '',
+      (getField(v, 'address') || '').substring(0, 40),
       userNotes[v.name + '|' + v.state] || ''
     ]);
-
     doc.autoTable({
       startY: 25,
-      head: [['Name', 'City', 'State', 'Chairs', 'Owner', 'Address', 'Notes']],
+      head: [['Name', 'City', 'State', 'Chairs', 'Outreach', 'Owner', 'Address', 'Notes']],
       body: rows,
       styles: { fontSize: 7, cellPadding: 1.5, overflow: 'linebreak' },
       headStyles: { fillColor: [31, 78, 121], textColor: 255 },
-      columnStyles: {
-        0: { cellWidth: 35 },
-        1: { cellWidth: 22 },
-        2: { cellWidth: 12 },
-        3: { cellWidth: 14 },
-        4: { cellWidth: 28 },
-        5: { cellWidth: 40 },
-        6: { cellWidth: 30 }
-      },
       margin: { left: 10, right: 10 }
     });
-
-    doc.save('venues-filtered.pdf');
+    doc.save('venues.pdf');
   };
-
-  function navigate(code) {
-    if (code === 'admin-users') return router.push('/admin/users');
-    if (code === 'admin-import') return router.push('/admin/import');
-    if (code === 'loc') return router.push('/');
-    if (code === 'tasks') return router.push('/tasks');
-    if (code === 'mo') return router.push('/monthly');
-    if (code === 'financials') return router.push('/financials');
-    if (code === 'reporting') return router.push('/reporting');
-    if (code === 'risk') return router.push('/risk');
-  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return VENUES.filter((v) => {
       if (stateFilter !== 'All' && v.state !== stateFilter) return false;
-      if (chairFilter === 'Has chairs' && !v.hasSmarteCarte) return false;
-      if (chairFilter === 'No chairs' && v.hasSmarteCarte) return false;
+      if (chairFilter === 'Smarte Carte' && !hasChairs(v)) return false;
+      if (chairFilter === 'None' && hasChairs(v)) return false;
       if (ownerFilter !== 'All' && v.owner !== ownerFilter) return false;
       if (typeFilter !== 'All' && v.type !== typeFilter) return false;
-      if (q && !v.name.toLowerCase().includes(q) && !(v.city || '').toLowerCase().includes(q)) return false;
+      if (q && !v.name.toLowerCase().includes(q) && !(getField(v, 'city') || '').toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [stateFilter, chairFilter, ownerFilter, typeFilter, search]);
+  }, [stateFilter, chairFilter, ownerFilter, typeFilter, search, edits]);
+
+  if (!session) return <Layout title="Venue Directory"><p>Loading...</p></Layout>;
+
+  const email = selected ? getField(selected, 'email') : '';
+  const phone = selected ? getField(selected, 'phone') : '';
 
   return (
-    <Layout active="risk" onNavigate={navigate}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
-        <h1 style={{ margin: 0 }}>Indoor Malls & Food Halls</h1>
-      </div>
-      <p className="muted" style={{ marginTop: 0 }}>
-        Full list across all 50 states. Type and owner shown where known. Flagged if Smarte Carte has massage chairs. {VENUES.length} venues. Address and contact ready to fill.
-      </p>
-
-      <div style={{ marginBottom: 12 }}>
-        <input
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setSelected(null); }}
-          placeholder="Search venue or city"
-          style={{ width: '100%', maxWidth: 320, padding: '8px 12px', fontSize: 14, border: '1px solid var(--line)', borderRadius: 4 }}
-        />
-      </div>
-
-      <div className="inline-form">
-        <label>
-          State
-          <select value={stateFilter} onChange={(e) => { setStateFilter(e.target.value); setSelected(null); }}>
-            <option>All</option>
-            {STATES.map((s) => <option key={s}>{s}</option>)}
-          </select>
-        </label>
-        <label>
-          Type
-          <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setSelected(null); }}>
-            <option>All</option>
-            {TYPES.map((t) => <option key={t}>{t}</option>)}
-          </select>
-        </label>
-        <label>
-          Owner
-          <select value={ownerFilter} onChange={(e) => { setOwnerFilter(e.target.value); setSelected(null); }}>
-            <option>All</option>
-            {OWNERS.map((o) => <option key={o}>{o}</option>)}
-          </select>
-        </label>
-        <label>
-          Massage chairs
-          <select value={chairFilter} onChange={(e) => { setChairFilter(e.target.value); setSelected(null); }}>
-            <option>All</option>
-            <option>Has chairs</option>
-            <option>No chairs</option>
-          </select>
-        </label>
-        <span className="muted" style={{ alignSelf: 'flex-end', paddingBottom: 6 }}>
-          {filtered.length} shown
-          <button onClick={downloadPDF} style={{ marginLeft: 12, padding: '4px 10px', background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
+    <Layout title="Venue Directory">
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 600, letterSpacing: -0.5 }}>Venue Directory</h1>
+          <button onClick={downloadPDF} style={{ padding: '8px 16px', background: '#fff', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>
             Download PDF
           </button>
-        </span>
-      </div>
-
-      <div className="grid-2" style={{ alignItems: 'start' }}>
-        <div className="card" style={{ marginBottom: 0, maxHeight: '70vh', overflowY: 'auto' }}>
-          <h3 style={{ marginTop: 0 }}>Venues</h3>
-          {filtered.length === 0 && <p className="muted">None match filters.</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {filtered.map((v) => (
-              <button
-                key={v.name + v.state}
-                type="button"
-                className="btn btn-ghost"
-                style={{
-                  textAlign: 'left',
-                  background: selected?.name === v.name && selected?.state === v.state ? 'var(--ember)' : 'transparent',
-                  color: selected?.name === v.name && selected?.state === v.state ? '#fff' : 'var(--ink)',
-                  border: '1px solid var(--iron)',
-                }}
-                onClick={() => setSelected(v)}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <strong>{v.name}</strong>
-                  <span style={{
-                    fontSize: '0.7rem',
-                    padding: '2px 8px',
-                    borderRadius: 12,
-                    background: v.hasSmarteCarte ? '#fdeceb' : '#e8f5e9',
-                    color: v.hasSmarteCarte ? 'var(--ember-muted)' : '#2e7d32',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {v.hasSmarteCarte ? 'Has chairs' : 'Open'}
-                  </span>
-                  {userNotes[v.name + '|' + v.state] && <span style={{ marginLeft: 6, fontSize: 11, color: '#666' }}>note</span>}
-                </div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.85 }}>{v.city}, {v.state} · {v.type}</div>
-                {getField(v, 'owner') && <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{getField(v, 'owner')}</div>}
-              </button>
-            ))}
-          </div>
         </div>
 
-        <div className="card" style={{ marginBottom: 0 }}>
-          <h3 style={{ marginTop: 0 }}>Detail</h3>
-          {!selected && <p className="muted">Select a venue to see details.</p>}
-          {selected && (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p style={{ margin: '0 0 8px' }}><strong>{selected.name}</strong></p>
-                {!editMode && <button onClick={startEdit} style={{ padding: '4px 10px', fontSize: 12, background: 'var(--iron)', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Edit</button>}
-              </div>
-              <p className="muted" style={{ margin: '0 0 12px' }}>{getField(selected, 'city')}, {selected.state}</p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+          <input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setSelected(null); }}
+            placeholder="Search venues or cities"
+            style={{ flex: 1, minWidth: 200, padding: '10px 14px', fontSize: 14, border: '1px solid #ddd', borderRadius: 8 }}
+          />
+          <select value={stateFilter} onChange={(e) => { setStateFilter(e.target.value); setSelected(null); }} style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14 }}>
+            <option value="All">State</option>
+            {STATES.map(s => <option key={s}>{s}</option>)}
+          </select>
+          <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setSelected(null); }} style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14 }}>
+            <option value="All">Venue type</option>
+            {TYPES.map(t => <option key={t}>{t}</option>)}
+          </select>
+          <select value={ownerFilter} onChange={(e) => { setOwnerFilter(e.target.value); setSelected(null); }} style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14 }}>
+            <option value="All">Owner</option>
+            {OWNERS.map(o => <option key={o}>{o}</option>)}
+          </select>
+          <select value={chairFilter} onChange={(e) => { setChairFilter(e.target.value); setSelected(null); }} style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14 }}>
+            <option value="All">Chair status</option>
+            <option>Smarte Carte</option>
+            <option>None</option>
+          </select>
+        </div>
 
-              <div style={{ marginBottom: 12, padding: 10, background: '#f5f5f5', borderRadius: 4 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Leasing / management</div>
-                {getField(selected, 'email') && (
-                  <div style={{ marginBottom: 6 }}>
-                    <span style={{ fontSize: 13 }}>{getField(selected, 'email')}</span>
-                    <button onClick={() => navigator.clipboard.writeText(getField(selected, 'email'))} style={{ marginLeft: 8, padding: '2px 8px', fontSize: 11, background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>Copy email</button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
+          <div style={{ borderTop: '1px solid #eee' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', fontSize: 12, color: '#888', borderBottom: '1px solid #eee' }}>
+              <span>Venue</span>
+              <span>Chair status</span>
+            </div>
+            <div style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+              {filtered.length === 0 && <p style={{ color: '#888', padding: 16 }}>None match.</p>}
+              {filtered.map((v) => {
+                const active = selected?.name === v.name && selected?.state === v.state;
+                return (
+                  <button
+                    key={v.name + v.state}
+                    onClick={() => setSelected(v)}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      width: '100%', textAlign: 'left', padding: '14px 12px',
+                      background: active ? '#f5f5f5' : 'transparent',
+                      border: 'none', borderBottom: '1px solid #eee', cursor: 'pointer'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{v.name}</div>
+                      <div style={{ fontSize: 13, color: '#666' }}>{getField(v, 'city')}, {v.state}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 13 }}>{hasChairs(v) ? 'Smarte Carte' : 'None'}</div>
+                      <div style={{ fontSize: 12, color: isContacted(v) ? '#2e7d32' : '#888' }}>{isContacted(v) ? 'Contacted' : 'To contact'}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ borderLeft: '1px solid #eee', paddingLeft: 24, minHeight: 400 }}>
+            {!selected && <p style={{ color: '#888' }}>Select a venue.</p>}
+            {selected && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 600 }}>{selected.name}</h2>
+                    <div style={{ color: '#666', fontSize: 14 }}>{getField(selected, 'city')}, {selected.state}</div>
                   </div>
-                )}
-                {getField(selected, 'phone') && (
-                  <div style={{ marginBottom: 6 }}>
-                    <a href={`tel:${getField(selected, 'phone')}`} style={{ fontSize: 13 }}>{getField(selected, 'phone')}</a>
-                    <a href={`tel:${getField(selected, 'phone')}`} style={{ marginLeft: 8, padding: '2px 8px', fontSize: 11, background: 'var(--ink)', color: '#fff', borderRadius: 3, textDecoration: 'none' }}>Call</a>
-                  </div>
-                )}
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selected.name + ' ' + getField(selected, 'city') + ' ' + selected.state)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ display: 'inline-block', padding: '2px 8px', fontSize: 11, background: 'var(--ember)', color: '#fff', borderRadius: 3, textDecoration: 'none' }}
-                >
-                  Open map
-                </a>
-              </div>
-              <p style={{ margin: '0 0 8px' }}>Type: {selected.type}</p>
-              {editMode ? (
-                <>
-                  {['city','owner','operatedBy','address','phone','email','website'].map(f => (
-                    <label key={f} style={{ display: 'block', marginBottom: 8, fontSize: 13 }}>
-                      {f.charAt(0).toUpperCase() + f.slice(1)}
-                      <input
-                        value={editDraft[f] || ''}
-                        onChange={(e) => setEditDraft({ ...editDraft, [f]: e.target.value })}
-                        style={{ width: '100%', padding: 6, marginTop: 2, fontSize: 13, border: '1px solid var(--line)', borderRadius: 4 }}
-                      />
+                  {!editMode && <button onClick={startEdit} style={{ padding: '6px 14px', background: '#fff', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Edit</button>}
+                </div>
+
+                {editMode ? (
+                  <div style={{ marginTop: 16 }}>
+                    {['city','owner','operatedBy','address','phone','email','website'].map(f => (
+                      <label key={f} style={{ display: 'block', marginBottom: 10, fontSize: 13 }}>
+                        {f.charAt(0).toUpperCase() + f.slice(1)}
+                        <input value={editDraft[f] || ''} onChange={(e) => setEditDraft({ ...editDraft, [f]: e.target.value })} style={{ width: '100%', padding: 8, marginTop: 4, border: '1px solid #ddd', borderRadius: 6, fontSize: 13 }} />
+                      </label>
+                    ))}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 13 }}>
+                      <input type="checkbox" checked={editDraft.hasSmarteCarte || false} onChange={(e) => setEditDraft({ ...editDraft, hasSmarteCarte: e.target.checked })} />
+                      Has Smarte Carte chairs
                     </label>
-                  ))}
-                  <button onClick={saveEdit} style={{ padding: '6px 12px', background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>Save</button>
-                  <button onClick={() => setEditMode(false)} style={{ marginLeft: 8, padding: '6px 12px', background: 'var(--iron)', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
-                </>
-              ) : (
-                <>
-                  <p style={{ margin: '0 0 8px' }}>Owner: {getField(selected, 'owner') || '—'}</p>
-                  <p style={{ margin: '0 0 8px' }}>Operated by: {getField(selected, 'operatedBy') || '—'}</p>
-                  <p style={{ margin: '0 0 8px' }}>Address: {getField(selected, 'address') || '—'}</p>
-                  <p style={{ margin: '0 0 8px' }}>Phone: {getField(selected, 'phone') || '—'}</p>
-                  <p style={{ margin: '0 0 8px' }}>Email: {getField(selected, 'email') || '—'}</p>
-                  {getField(selected, 'website') && <p style={{ margin: '0 0 8px' }}>Website: <a href={getField(selected, 'website')} target="_blank" rel="noreferrer">{getField(selected, 'website')}</a></p>}
-                </>
-              )}
-              {selected.flag && <p style={{ margin: '8px 0', padding: '8px', background: '#fff3cd', borderRadius: 4 }}>Flag: {selected.flag}</p>}
-              <div style={{ marginTop: 12 }}>
-                <label style={{ fontSize: 13, fontWeight: 600 }}>Your note</label>
-                <textarea
-                  value={noteDraft}
-                  onChange={(e) => setNoteDraft(e.target.value)}
-                  placeholder="Add a note about this venue..."
-                  style={{ width: '100%', minHeight: 60, marginTop: 4, padding: 8, fontSize: 13, border: '1px solid var(--line)', borderRadius: 4 }}
-                />
-                <button onClick={saveNote} style={{ marginTop: 6, padding: '6px 12px', background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
-                  Save note
-                </button>
-                {userNotes[selected.name + '|' + selected.state] && (
-                  <span style={{ marginLeft: 8, fontSize: 12, color: '#2e7d32' }}>Saved</span>
+                    <button onClick={saveEdit} style={{ padding: '8px 16px', background: '#000', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Save</button>
+                    <button onClick={() => setEditMode(false)} style={{ marginLeft: 8, padding: '8px 16px', background: '#f5f5f5', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={() => setDetailsOpen(!detailsOpen)} style={{ marginTop: 12, background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#333', padding: 0 }}>
+                      {detailsOpen ? '▾' : '▸'} Property details
+                    </button>
+                    {detailsOpen && (
+                      <div style={{ marginTop: 8, fontSize: 13, color: '#444', lineHeight: 1.6 }}>
+                        <div>Type: {selected.type}</div>
+                        <div>Owner: {getField(selected, 'owner') || '—'}</div>
+                        <div>Operated by: {getField(selected, 'operatedBy') || '—'}</div>
+                        <div>Address: {getField(selected, 'address') || '—'}</div>
+                        {getField(selected, 'website') && <div>Website: <a href={getField(selected, 'website')} target="_blank" rel="noreferrer">{getField(selected, 'website')}</a></div>}
+                        {selected.flag && <div style={{ marginTop: 8, padding: 8, background: '#fff3cd', borderRadius: 6 }}>Flag: {selected.flag}</div>}
+                      </div>
+                    )}
+
+                    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #eee' }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6 }}>Leasing contact</div>
+                      <div style={{ fontSize: 13, color: '#444' }}>{getField(selected, 'owner') || 'Management'} center team</div>
+                      {email && <div style={{ fontSize: 13, color: '#666', marginBottom: 10 }}>{email}</div>}
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {email && <a href={`mailto:${email}`} style={{ padding: '8px 16px', background: '#e86a33', color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 13 }}>Send email</a>}
+                        {email && <button onClick={() => navigator.clipboard.writeText(email)} style={{ padding: '8px 16px', background: '#fff', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Copy email</button>}
+                        {phone && <a href={`tel:${phone}`} style={{ padding: '8px 16px', background: '#fff', border: '1px solid #ddd', borderRadius: 8, textDecoration: 'none', fontSize: 13, color: '#333' }}>Call</a>}
+                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selected.name + ' ' + getField(selected, 'city') + ' ' + selected.state)}`} target="_blank" rel="noreferrer" style={{ padding: '8px 16px', background: '#fff', border: '1px solid #ddd', borderRadius: 8, textDecoration: 'none', fontSize: 13, color: '#333' }}>Open map</a>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #eee' }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6 }}>Chair evidence</div>
+                      <div style={{ fontSize: 13 }}>{hasChairs(selected) ? 'Smarte Carte' : 'None'}</div>
+                    </div>
+
+                    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #eee' }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6 }}>Outreach</div>
+                      <button onClick={toggleContacted} style={{ padding: '6px 14px', background: isContacted(selected) ? '#e8f5e9' : '#fff', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>
+                        {isContacted(selected) ? 'Contacted' : 'To contact'}
+                      </button>
+                    </div>
+
+                    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #eee' }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 8 }}>Notes</div>
+                      <textarea value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder="Add a note..." style={{ width: '100%', minHeight: 70, padding: 10, border: '1px solid #ddd', borderRadius: 8, fontSize: 13, resize: 'vertical' }} />
+                      <div style={{ textAlign: 'right', marginTop: 8 }}>
+                        <button onClick={saveNote} style={{ padding: '6px 14px', background: '#fff', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Save note</button>
+                      </div>
+                    </div>
+                  </>
                 )}
-              </div>
-              <p style={{ margin: '0 0 16px' }}>
-                Smarte Carte massage chairs: <strong style={{ color: selected.hasSmarteCarte ? 'var(--ember-muted)' : '#2e7d32' }}>
-                  {selected.hasSmarteCarte ? 'Yes — skip' : 'No — potential'}
-                </strong>
-              </p>
-              <p style={{ marginTop: 12 }}>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selected.name + ' ' + selected.city)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn"
-                  style={{ display: 'inline-block', textDecoration: 'none' }}
-                >
-                  Open in Google Maps
-                </a>
-              </p>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </Layout>
