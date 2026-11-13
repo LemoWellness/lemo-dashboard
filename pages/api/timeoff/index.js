@@ -2,7 +2,7 @@ import { adminDb } from '../../../lib/firebaseAdmin';
 import { withAuth } from '../../../lib/auth';
 import { notifyTimeOffRequested } from '../../../lib/notifications';
 
-const TYPES = ['Vacation / PTO', 'Personal', 'Sick', 'Other'];
+const TYPES = ['Paid Sick Leave', 'Paid Vacation', 'Paid Holiday', 'Personal Day', 'Unpaid Leave', 'Bereavement', 'Jury Duty'];
 
 function ymd(d) {
   if (!d) return '';
@@ -35,7 +35,7 @@ export default withAuth(async (req, res, session) => {
     const start = String(startDate || '').slice(0, 10);
     const end = String(endDate || start).slice(0, 10);
     if (!start || !end || start > end) return res.status(400).json({ error: 'Valid start and end dates are required.' });
-    const kind = TYPES.includes(type) ? type : 'Vacation / PTO';
+    const kind = TYPES.includes(type) ? type : 'Paid Vacation';
     const isOffice = !!office && canManage;
     const targetEmail = isOffice && userEmail ? String(userEmail).toLowerCase() : String(session.email || '').toLowerCase();
     const targetName = isOffice && userName ? String(userName) : (session.name || session.email);
