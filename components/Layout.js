@@ -29,6 +29,13 @@ function canSeeReporting(session) {
   return tabs.includes('reporting') || tabs.includes('daily') || tabs.includes('usage');
 }
 
+function canSeeTimeOff(session) {
+  if (!session) return false;
+  if (session.role === 'Admin' || session.tabs === 'all' || session.timeOffAdmin) return true;
+  const tabs = Array.isArray(session.tabs) ? session.tabs : [];
+  return tabs.includes('timeoff');
+}
+
 export default function Layout({ active, onNavigate, children }) {
   const { user, session } = useAuth();
   const router = useRouter();
@@ -50,6 +57,7 @@ export default function Layout({ active, onNavigate, children }) {
 
   const visibleNav = NAV.filter((n) => {
     if (n.code === 'reporting') return canSeeReporting(session);
+    if (n.code === 'timeoff') return canSeeTimeOff(session);
     return session.tabs === 'all' || session.tabs.includes(n.code);
   });
 
@@ -57,7 +65,9 @@ export default function Layout({ active, onNavigate, children }) {
   const hasAccess = session.role === 'Admin' || (isAdminOnlyPage ? false : (
     active === 'reporting'
       ? canSeeReporting(session)
-      : (session.tabs === 'all' || session.tabs.includes(active))
+      : active === 'timeoff'
+        ? canSeeTimeOff(session)
+        : (session.tabs === 'all' || session.tabs.includes(active))
   ));
 
   function handleNav(code) {
