@@ -588,10 +588,10 @@ export default function Opportunities() {
             {!selected && <p style={{ color: '#888' }}>Select a venue.</p>}
             {selected && (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <div>
-                    <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 600, fontFamily: 'inherit' }}>{selected.name}</h2>
-                    <div style={{ color: '#888', fontSize: 14, fontWeight: 400 }}>{getField(selected, 'city')}, {selected.state}</div>
+                    <h2 style={{ margin: '0 0 2px', fontSize: 16, fontWeight: 700, color: '#333', fontFamily: 'inherit' }}>{selected.name}</h2>
+                    {(() => { const loc = [getField(selected, 'city'), selected.state].filter(Boolean).join(', '); return loc ? <div style={{ color: '#888', fontSize: 14, fontWeight: 400 }}>{loc}</div> : null; })()}
                   </div>
                   {!editMode && <button onClick={startEdit} style={{ padding: '6px 14px', background: '#fff', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Edit</button>}
                 </div>
