@@ -550,7 +550,7 @@ export default function Opportunities() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
           <div style={{ borderTop: '1px solid #eee' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 70px', padding: '10px 12px', fontSize: 12, color: '#888', borderBottom: '1px solid #eee' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 70px', padding: '12px', fontSize: 18, fontWeight: 700, color: '#333', borderBottom: '1px solid #ddd' }}>
               <span>Venue</span>
               <span style={{ textAlign: 'center' }}>Chairs</span>
               <span style={{ textAlign: 'center' }}>Contacted</span>
@@ -559,6 +559,8 @@ export default function Opportunities() {
               {filtered.length === 0 && <p style={{ color: '#888', padding: 16 }}>None match.</p>}
               {filtered.map((v) => {
                 const active = selected?.name === v.name && selected?.state === v.state;
+                const city = getField(v, 'city');
+                const location = [city, v.state].filter(Boolean).join(', ');
                 return (
                   <button
                     key={v.name + v.state}
@@ -571,11 +573,11 @@ export default function Opportunities() {
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{v.name}</div>
-                      <div style={{ fontSize: 13, color: '#666' }}>{getField(v, 'city')}, {v.state}</div>
+                      <div style={{ fontWeight: 400, fontSize: 16, color: '#222' }}>{v.name}</div>
+                      {location && <div style={{ fontSize: 14, fontWeight: 400, color: '#888' }}>{location}</div>}
                     </div>
-                    <div style={{ textAlign: 'center', fontSize: 12 }}>{hasChairs(v) ? 'Smarte Carte' : 'None'}</div>
-                    <div style={{ textAlign: 'center', fontSize: 16 }}>{isContacted(v) ? '✓' : '✕'}</div>
+                    <div style={{ textAlign: 'center', fontSize: 14, fontWeight: 400, color: '#222' }}>{hasChairs(v) ? 'Smarte Carte' : 'None'}</div>
+                    <div style={{ textAlign: 'center', fontSize: 16, color: isContacted(v) ? '#2e7d32' : '#999' }}>{isContacted(v) ? '✓' : '✕'}</div>
                   </button>
                 );
               })}
