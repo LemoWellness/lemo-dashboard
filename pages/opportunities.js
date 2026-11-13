@@ -360,6 +360,7 @@ export default function Opportunities() {
   const { session } = useAuth();
   const [stateFilter, setStateFilter] = useState('All');
   const [chairFilter, setChairFilter] = useState('All');
+  const [flagFilter, setFlagFilter] = useState('All');
   const [ownerFilter, setOwnerFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [search, setSearch] = useState('');
@@ -504,12 +505,14 @@ export default function Opportunities() {
       if (stateFilter !== 'All' && v.state !== stateFilter) return false;
       if (chairFilter === 'Smarte Carte' && !hasChairs(v)) return false;
       if (chairFilter === 'None' && hasChairs(v)) return false;
+      if (flagFilter === 'Flagged' && !v.flag) return false;
+      if (flagFilter === 'Not flagged' && v.flag) return false;
       if (ownerFilter !== 'All' && v.owner !== ownerFilter) return false;
       if (typeFilter !== 'All' && v.type !== typeFilter) return false;
       if (q && !v.name.toLowerCase().includes(q) && !(getField(v, 'city') || '').toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [stateFilter, chairFilter, ownerFilter, typeFilter, search, edits]);
+  }, [stateFilter, chairFilter, flagFilter, ownerFilter, typeFilter, search, edits]);
 
   if (!session) return <Layout title="Venue Directory" active="opportunities"><p>Loading...</p></Layout>;
 
@@ -552,6 +555,11 @@ export default function Opportunities() {
             <option value="All">Chair status</option>
             <option>Smarte Carte</option>
             <option>None</option>
+          </select>
+          <select value={flagFilter} onChange={(e) => { setFlagFilter(e.target.value); setSelected(null); }} style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14 }}>
+            <option value="All">Flags</option>
+            <option>Flagged</option>
+            <option>Not flagged</option>
           </select>
         </div>
 
