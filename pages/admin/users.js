@@ -4,7 +4,7 @@ import Layout from '../../components/Layout';
 import { useAuth } from '../../context/AuthContext';
 import { authedFetch } from '../../lib/firebaseClient';
 
-const ALL_TABS = [{ code: 'mo', label: 'Monthly Overview' }, { code: 'loc', label: 'Installations' }, { code: 'reporting', label: 'Reporting' }, { code: 'tasks', label: 'Tasks' }, { code: 'financials', label: 'Financials' }, { code: 'risk', label: 'Deployment Risk' }];
+const ALL_TABS = [{ code: 'mo', label: 'Monthly Overview' }, { code: 'loc', label: 'Installations' }, { code: 'reporting', label: 'Reporting' }, { code: 'tasks', label: 'Tasks' }, { code: 'financials', label: 'Financials' }, { code: 'risk', label: 'Deployment Risk' }, { code: 'opportunities', label: 'Venue Directory' }];
 
 function fmtWhen(iso) {
   if (!iso) return 'Never';
