@@ -16,6 +16,7 @@ const NAV = [
   { code: 'reporting', label: 'Reporting' },
   { code: 'loc', label: 'Installations' },
   { code: 'risk', label: 'Deployment Risk' },
+  { code: 'opportunities', label: 'Venue Directory' },
 ];
 const ADMIN_NAV = [{ code: 'admin-users', label: 'Manage Users' }, { code: 'admin-import', label: 'Import Data' }];
 const PDF_PAGES = ['mo', 'financials', 'reporting'];
@@ -62,6 +63,10 @@ export default function Layout({ active, onNavigate, children }) {
     setMenuOpen(false);
     if (code === 'reporting' || code === 'daily' || code === 'usage') {
       router.push('/reporting');
+      return;
+    }
+    if (code === 'opportunities') {
+      router.push('/opportunities');
       return;
     }
     onNavigate(code);
