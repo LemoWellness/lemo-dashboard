@@ -361,11 +361,16 @@ export default function Opportunities() {
   const [selected, setSelected] = useState(null);
   const [userNotes, setUserNotes] = useState({});
   const [noteDraft, setNoteDraft] = useState('');
+  const [edits, setEdits] = useState({});
+  const [editMode, setEditMode] = useState(false);
+  const [editDraft, setEditDraft] = useState({});
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem('opportunities-notes');
       if (stored) setUserNotes(JSON.parse(stored));
+      const storedEdits = localStorage.getItem('opportunities-edits');
+      if (storedEdits) setEdits(JSON.parse(storedEdits));
     } catch (e) {}
   }, []);
 
@@ -382,6 +387,36 @@ export default function Opportunities() {
     const next = { ...userNotes, [key]: noteDraft };
     setUserNotes(next);
     try { localStorage.setItem('opportunities-notes', JSON.stringify(next)); } catch (e) {}
+  };
+
+  const startEdit = () => {
+    if (!selected) return;
+    const key = selected.name + '|' + selected.state;
+    const existing = edits[key] || {};
+    setEditDraft({
+      city: existing.city || selected.city || '',
+      owner: existing.owner || selected.owner || '',
+      operatedBy: existing.operatedBy || selected.operatedBy || '',
+      address: existing.address || selected.address || '',
+      phone: existing.phone || selected.phone || '',
+      email: existing.email || selected.email || '',
+      website: existing.website || selected.website || '',
+    });
+    setEditMode(true);
+  };
+
+  const saveEdit = () => {
+    if (!selected) return;
+    const key = selected.name + '|' + selected.state;
+    const next = { ...edits, [key]: editDraft };
+    setEdits(next);
+    try { localStorage.setItem('opportunities-edits', JSON.stringify(next)); } catch (e) {}
+    setEditMode(false);
+  };
+
+  const getField = (v, field) => {
+    const key = v.name + '|' + v.state;
+    return (edits[key] && edits[key][field]) || v[field] || '';
   };
 
   const downloadPDF = () => {
@@ -524,7 +559,7 @@ export default function Opportunities() {
                   {userNotes[v.name + '|' + v.state] && <span style={{ marginLeft: 6, fontSize: 11, color: '#666' }}>note</span>}
                 </div>
                 <div style={{ fontSize: '0.8rem', opacity: 0.85 }}>{v.city}, {v.state} · {v.type}</div>
-                {v.owner && <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{v.owner}</div>}
+                {getField(v, 'owner') && <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{getField(v, 'owner')}</div>}
               </button>
             ))}
           </div>
@@ -535,15 +570,37 @@ export default function Opportunities() {
           {!selected && <p className="muted">Select a venue to see details.</p>}
           {selected && (
             <>
-              <p style={{ margin: '0 0 8px' }}><strong>{selected.name}</strong></p>
-              <p className="muted" style={{ margin: '0 0 12px' }}>{selected.city}, {selected.state}</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <p style={{ margin: '0 0 8px' }}><strong>{selected.name}</strong></p>
+                {!editMode && <button onClick={startEdit} style={{ padding: '4px 10px', fontSize: 12, background: 'var(--iron)', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Edit</button>}
+              </div>
+              <p className="muted" style={{ margin: '0 0 12px' }}>{getField(selected, 'city')}, {selected.state}</p>
               <p style={{ margin: '0 0 8px' }}>Type: {selected.type}</p>
-              <p style={{ margin: '0 0 8px' }}>Owner: {selected.owner || '—'}</p>
-              <p style={{ margin: '0 0 8px' }}>Operated by: {selected.operatedBy || '—'}</p>
-              <p style={{ margin: '0 0 8px' }}>Address: {selected.address || '—'}</p>
-              <p style={{ margin: '0 0 8px' }}>Phone: {selected.phone || '—'}</p>
-              <p style={{ margin: '0 0 8px' }}>Email: {selected.email || '—'}</p>
-              {selected.website && <p style={{ margin: '0 0 8px' }}>Website: <a href={selected.website} target="_blank" rel="noreferrer">{selected.website}</a></p>}
+              {editMode ? (
+                <>
+                  {['city','owner','operatedBy','address','phone','email','website'].map(f => (
+                    <label key={f} style={{ display: 'block', marginBottom: 8, fontSize: 13 }}>
+                      {f.charAt(0).toUpperCase() + f.slice(1)}
+                      <input
+                        value={editDraft[f] || ''}
+                        onChange={(e) => setEditDraft({ ...editDraft, [f]: e.target.value })}
+                        style={{ width: '100%', padding: 6, marginTop: 2, fontSize: 13, border: '1px solid var(--line)', borderRadius: 4 }}
+                      />
+                    </label>
+                  ))}
+                  <button onClick={saveEdit} style={{ padding: '6px 12px', background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>Save</button>
+                  <button onClick={() => setEditMode(false)} style={{ marginLeft: 8, padding: '6px 12px', background: 'var(--iron)', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+                </>
+              ) : (
+                <>
+                  <p style={{ margin: '0 0 8px' }}>Owner: {getField(selected, 'owner') || '—'}</p>
+                  <p style={{ margin: '0 0 8px' }}>Operated by: {getField(selected, 'operatedBy') || '—'}</p>
+                  <p style={{ margin: '0 0 8px' }}>Address: {getField(selected, 'address') || '—'}</p>
+                  <p style={{ margin: '0 0 8px' }}>Phone: {getField(selected, 'phone') || '—'}</p>
+                  <p style={{ margin: '0 0 8px' }}>Email: {getField(selected, 'email') || '—'}</p>
+                  {getField(selected, 'website') && <p style={{ margin: '0 0 8px' }}>Website: <a href={getField(selected, 'website')} target="_blank" rel="noreferrer">{getField(selected, 'website')}</a></p>}
+                </>
+              )}
               {selected.notes && <p style={{ margin: '8px 0', padding: '8px', background: '#fff3cd', borderRadius: 4 }}>Flag: {selected.notes}</p>}
               <div style={{ marginTop: 12 }}>
                 <label style={{ fontSize: 13, fontWeight: 600 }}>Your note</label>
