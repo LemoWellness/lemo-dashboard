@@ -4,7 +4,7 @@ import Layout from '../../components/Layout';
 import { useAuth } from '../../context/AuthContext';
 import { authedFetch } from '../../lib/firebaseClient';
 
-const ALL_TABS = [{ code: 'mo', label: 'Monthly Overview' }, { code: 'loc', label: 'Installations' }, { code: 'reporting', label: 'Reporting' }, { code: 'tasks', label: 'Tasks' }, { code: 'financials', label: 'Financials' }, { code: 'risk', label: 'Deployment Risk' }, { code: 'opportunities', label: 'Venue Directory' }];
+const ALL_TABS = [{ code: 'mo', label: 'Monthly Overview' }, { code: 'loc', label: 'Installations' }, { code: 'reporting', label: 'Reporting' }, { code: 'tasks', label: 'Tasks' }, { code: 'timeoff', label: 'Time Off' }, { code: 'financials', label: 'Financials' }, { code: 'risk', label: 'Deployment Risk' }, { code: 'opportunities', label: 'Venue Directory' }];
 
 function fmtWhen(iso) {
   if (!iso) return 'Never';
@@ -27,6 +27,7 @@ export default function ManageUsers() {
     if (code === 'admin-import') return router.push('/admin/import');
     if (code === 'loc') return router.push('/');
     if (code === 'tasks') return router.push('/tasks');
+    if (code === 'timeoff') return router.push('/timeoff');
     if (code === 'daily' || code === 'usage' || code === 'reporting') return router.push('/reporting');
     if (code === 'mo') return router.push('/monthly');
     if (code === 'financials') return router.push('/financials');
