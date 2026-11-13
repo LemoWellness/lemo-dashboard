@@ -17,7 +17,7 @@ export default function ManageUsers() {
   const router = useRouter();
   const { session } = useAuth();
   const [users, setUsers] = useState([]);
-  const [form, setForm] = useState({ email: '', name: '', password: '', role: 'Viewer', tabs: [], timeOffAdmin: false });
+  const [form, setForm] = useState({ email: '', name: '', password: '', role: 'Viewer', tabs: [], timeOffAdmin: false, taskAdmin: false });
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
   const [editError, setEditError] = useState('');
@@ -44,7 +44,7 @@ export default function ManageUsers() {
     setError('');
     const res = await authedFetch('/api/users', { method: 'POST', body: JSON.stringify(form) });
     if (!res.ok) { setError((await res.json()).error); return; }
-    setForm({ email: '', name: '', password: '', role: 'Viewer', tabs: [], timeOffAdmin: false });
+    setForm({ email: '', name: '', password: '', role: 'Viewer', tabs: [], timeOffAdmin: false, taskAdmin: false });
     load();
   }
 
@@ -53,8 +53,8 @@ export default function ManageUsers() {
     load();
   }
 
-  function toggleTab(code) {
-    setForm((f) => ({
+  function toggleTab(code, setter) {
+    setter((f) => ({
       ...f,
       tabs: f.tabs.includes(code) ? f.tabs.filter((t) => t !== code) : [...f.tabs, code],
     }));
@@ -70,14 +70,8 @@ export default function ManageUsers() {
       tabs: u.tabs === 'all' ? ALL_TABS.map((t) => t.code) : [...(u.tabs || [])],
       newPassword: '',
       timeOffAdmin: !!u.timeOffAdmin,
+      taskAdmin: !!u.taskAdmin,
     });
-  }
-
-  function toggleEditTab(code) {
-    setEditing((f) => ({
-      ...f,
-      tabs: f.tabs.includes(code) ? f.tabs.filter((t) => t !== code) : [...f.tabs, code],
-    }));
   }
 
   async function saveEdit(e) {
@@ -86,7 +80,12 @@ export default function ManageUsers() {
     setEditError('');
     setEditBusy(true);
     try {
-      const payload = { role: editing.role, tabs: editing.role === 'Admin' ? 'all' : editing.tabs, timeOffAdmin: editing.role === 'Admin' || !!editing.timeOffAdmin };
+      const payload = {
+        role: editing.role,
+        tabs: editing.role === 'Admin' ? 'all' : editing.tabs,
+        timeOffAdmin: editing.role === 'Admin' || !!editing.timeOffAdmin,
+        taskAdmin: editing.role === 'Admin' || !!editing.taskAdmin,
+      };
       if (editing.newPassword) payload.newPassword = editing.newPassword;
       const res = await authedFetch(`/api/users/${editing.uid}`, { method: 'PATCH', body: JSON.stringify(payload) });
       const data = await res.json();
@@ -98,6 +97,32 @@ export default function ManageUsers() {
     } finally {
       setEditBusy(false);
     }
+  }
+
+  function Permissions({ value, onChange, isAdmin }) {
+    if (isAdmin) return <p className="muted" style={{ margin: '8px 0 0' }}>Admins have access to everything.</p>;
+    return (
+      <div style={{ margin: '12px 0' }}>
+        <div className="muted" style={{ marginBottom: 6 }}>Tabs</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', marginBottom: 10 }}>
+          {ALL_TABS.map((t) => (
+            <label key={t.code} style={{ fontSize: '0.85rem' }}>
+              <input type="checkbox" checked={value.tabs.includes(t.code)} onChange={() => onChange({ ...value, tabs: value.tabs.includes(t.code) ? value.tabs.filter((c) => c !== t.code) : [...value.tabs, t.code] })} /> {t.label}
+            </label>
+          ))}
+        </div>
+        <div className="muted" style={{ marginBottom: 6 }}>Extra permissions</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
+          <label style={{ fontSize: '0.85rem' }}>
+            <input type="checkbox" checked={!!value.timeOffAdmin} onChange={(e) => onChange({ ...value, timeOffAdmin: e.target.checked })} /> Time Off admin
+          </label>
+          <label style={{ fontSize: '0.85rem' }}>
+            <input type="checkbox" checked={!!value.taskAdmin} onChange={(e) => onChange({ ...value, taskAdmin: e.target.checked })} /> Tasks admin
+          </label>
+        </div>
+        <p className="muted" style={{ margin: '8px 0 0', fontSize: '0.75rem' }}>Time Off admin can approve, deny, and record time off. Tasks admin can manage tasks.</p>
+      </div>
+    );
   }
 
   return (
@@ -115,19 +140,7 @@ export default function ManageUsers() {
             </select>
           </label>
         </div>
-        {form.role !== 'Admin' && (
-          <div style={{ margin: '10px 0' }}>
-            <span className="muted">Tabs: </span>
-            {ALL_TABS.map((t) => (
-              <label key={t.code} style={{ marginRight: 12 }}>
-                <input type="checkbox" checked={form.tabs.includes(t.code)} onChange={() => toggleTab(t.code)} /> {t.label}
-              </label>
-            ))}
-            <label style={{ marginLeft: 12 }}>
-              <input type="checkbox" checked={!!form.timeOffAdmin} onChange={(e) => setForm({ ...form, timeOffAdmin: e.target.checked })} /> Time Off admin
-            </label>
-          </div>
-        )}
+        <Permissions value={form} onChange={setForm} isAdmin={form.role === 'Admin'} />
         <button className="btn" type="submit">Create user</button>
         {error && <p className="form-error">{error}</p>}
       </form>
@@ -142,29 +155,17 @@ export default function ManageUsers() {
             </label>
             <label>New password (optional)<input type="text" value={editing.newPassword} onChange={(e) => setEditing({ ...editing, newPassword: e.target.value })} placeholder="Leave blank to keep" /></label>
           </div>
-          {editing.role !== 'Admin' && (
-            <div style={{ margin: '10px 0' }}>
-              <span className="muted">Tabs: </span>
-              {ALL_TABS.map((t) => (
-                <label key={t.code} style={{ marginRight: 12 }}>
-                  <input type="checkbox" checked={editing.tabs.includes(t.code)} onChange={() => toggleEditTab(t.code)} /> {t.label}
-                </label>
-              ))}
-              <label style={{ marginLeft: 12 }}>
-                <input type="checkbox" checked={!!editing.timeOffAdmin} onChange={(e) => setEditing({ ...editing, timeOffAdmin: e.target.checked })} /> Time Off admin
-              </label>
-            </div>
-          )}
+          <Permissions value={editing} onChange={setEditing} isAdmin={editing.role === 'Admin'} />
           {editError && <p className="form-error">{editError}</p>}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn" type="submit" disabled={editBusy}>{editBusy ? 'Saving...' : 'Save role'}</button>
+            <button className="btn" type="submit" disabled={editBusy}>{editBusy ? 'Saving...' : 'Save'}</button>
             <button className="btn" type="button" onClick={() => setEditing(null)}>Cancel</button>
           </div>
         </form>
       )}
       <div className="table-wrap">
       <table>
-        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tabs</th><th>Time Off admin</th><th>Status</th><th>Last login</th><th>Home screen</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tabs</th><th>Time Off admin</th><th>Tasks admin</th><th>Status</th><th>Last login</th><th>Home screen</th><th></th></tr></thead>
         <tbody>
           {users.map((u) => (
             <tr key={u.uid}>
@@ -173,6 +174,7 @@ export default function ManageUsers() {
               <td>{u.role}</td>
               <td>{u.tabs === 'all' ? 'all' : (u.tabs || []).join(', ')}</td>
               <td>{u.timeOffAdmin ? 'Yes' : 'No'}</td>
+              <td>{u.taskAdmin ? 'Yes' : 'No'}</td>
               <td>{u.active === false ? 'Deactivated' : 'Active'}</td>
               <td>{fmtWhen(u.lastLogin)}</td>
               <td>{u.homeScreen ? ('Yes' + (u.standalonePlatform ? ' (' + u.standalonePlatform + ')' : '')) : 'Unknown'}</td>
