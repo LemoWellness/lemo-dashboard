@@ -573,7 +573,7 @@ export default function Opportunities() {
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 16, color: '#222' }}>{v.name}</div>
+                      <div style={{ fontWeight: 500, fontSize: 15, color: '#222' }}>{v.name}</div>
                       {location && <div style={{ fontSize: 14, fontWeight: 400, color: '#888' }}>{location}</div>}
                     </div>
                     <div style={{ textAlign: 'center', fontSize: 14, fontWeight: 400, color: '#222' }}>{hasChairs(v) ? 'Smarte Carte' : 'None'}</div>
