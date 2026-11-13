@@ -550,7 +550,7 @@ export default function Opportunities() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
           <div style={{ borderTop: '1px solid #eee' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 80px', padding: '12px', fontSize: 16, fontWeight: 700, color: '#333', borderBottom: '1px solid #ddd', lineHeight: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 80px', padding: '12px', fontSize: 16, fontWeight: 700, color: '#333', borderBottom: '1px solid #ddd' }}>
               <span>Venue</span>
               <span style={{ textAlign: 'center' }}>Chairs</span>
               <span style={{ textAlign: 'center' }}>Contacted</span>
@@ -585,13 +585,13 @@ export default function Opportunities() {
           </div>
 
           <div style={{ borderLeft: '1px solid #eee', paddingLeft: 24, minHeight: 400 }}>
-            {!selected && <p style={{ color: '#888', paddingTop: 12 }}>Select a venue.</p>}
+            {!selected && <p style={{ color: '#888' }}>Select a venue.</p>}
             {selected && (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <div>
-                    <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#333', fontFamily: 'inherit', lineHeight: 1 }}>{selected.name}</h2>
-                    {(() => { const loc = [getField(selected, 'city'), selected.state].filter(Boolean).join(', '); return loc ? <div style={{ color: '#888', fontSize: 14, fontWeight: 400, marginTop: 4 }}>{loc}</div> : null; })()}
+                    <h2 style={{ margin: '0 0 2px', fontSize: 16, fontWeight: 700, color: '#333', fontFamily: 'inherit' }}>{selected.name}</h2>
+                    {(() => { const loc = [getField(selected, 'city'), selected.state].filter(Boolean).join(', '); return loc ? <div style={{ color: '#888', fontSize: 14, fontWeight: 400 }}>{loc}</div> : null; })()}
                   </div>
                   {!editMode && <button onClick={startEdit} style={{ padding: '6px 14px', background: '#fff', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Edit</button>}
                 </div>
