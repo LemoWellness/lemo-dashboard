@@ -507,13 +507,16 @@ export default function Opportunities() {
     });
   }, [stateFilter, chairFilter, ownerFilter, typeFilter, search, edits]);
 
-  if (!session) return <Layout title="Venue Directory"><p>Loading...</p></Layout>;
+  if (!session) return <Layout title="Venue Directory" active="opportunities"><p>Loading...</p></Layout>;
 
   const email = selected ? getField(selected, 'email') : '';
   const phone = selected ? getField(selected, 'phone') : '';
 
   return (
-    <Layout title="Venue Directory">
+    <Layout title="Venue Directory" active="opportunities" onNavigate={(code) => {
+      if (code === 'opportunities') return;
+      router.push(code === 'reporting' ? '/reporting' : '/');
+    }}>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 600, letterSpacing: -0.5 }}>Venue Directory</h1>
