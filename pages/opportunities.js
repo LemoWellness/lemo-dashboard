@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
@@ -357,6 +357,30 @@ export default function Opportunities() {
   const [ownerFilter, setOwnerFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [selected, setSelected] = useState(null);
+  const [userNotes, setUserNotes] = useState({});
+  const [noteDraft, setNoteDraft] = useState('');
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('opportunities-notes');
+      if (stored) setUserNotes(JSON.parse(stored));
+    } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    if (selected) {
+      const key = selected.name + '|' + selected.state;
+      setNoteDraft(userNotes[key] || '');
+    }
+  }, [selected, userNotes]);
+
+  const saveNote = () => {
+    if (!selected) return;
+    const key = selected.name + '|' + selected.state;
+    const next = { ...userNotes, [key]: noteDraft };
+    setUserNotes(next);
+    try { localStorage.setItem('opportunities-notes', JSON.stringify(next)); } catch (e) {}
+  };
 
   function navigate(code) {
     if (code === 'admin-users') return router.push('/admin/users');
@@ -454,6 +478,7 @@ export default function Opportunities() {
                   }}>
                     {v.hasSmarteCarte ? 'Has chairs' : 'Open'}
                   </span>
+                  {userNotes[v.name + '|' + v.state] && <span style={{ marginLeft: 6, fontSize: 11, color: '#666' }}>note</span>}
                 </div>
                 <div style={{ fontSize: '0.8rem', opacity: 0.85 }}>{v.city}, {v.state} · {v.type}</div>
                 {v.owner && <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{v.owner}</div>}
@@ -476,7 +501,22 @@ export default function Opportunities() {
               <p style={{ margin: '0 0 8px' }}>Phone: {selected.phone || '—'}</p>
               <p style={{ margin: '0 0 8px' }}>Email: {selected.email || '—'}</p>
               {selected.website && <p style={{ margin: '0 0 8px' }}>Website: <a href={selected.website} target="_blank" rel="noreferrer">{selected.website}</a></p>}
-              {selected.notes && <p style={{ margin: '8px 0', padding: '8px', background: '#fff3cd', borderRadius: 4 }}>Notes: {selected.notes}</p>}
+              {selected.notes && <p style={{ margin: '8px 0', padding: '8px', background: '#fff3cd', borderRadius: 4 }}>Flag: {selected.notes}</p>}
+              <div style={{ marginTop: 12 }}>
+                <label style={{ fontSize: 13, fontWeight: 600 }}>Your note</label>
+                <textarea
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  placeholder="Add a note about this venue..."
+                  style={{ width: '100%', minHeight: 60, marginTop: 4, padding: 8, fontSize: 13, border: '1px solid var(--line)', borderRadius: 4 }}
+                />
+                <button onClick={saveNote} style={{ marginTop: 6, padding: '6px 12px', background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}>
+                  Save note
+                </button>
+                {userNotes[selected.name + '|' + selected.state] && (
+                  <span style={{ marginLeft: 8, fontSize: 12, color: '#2e7d32' }}>Saved</span>
+                )}
+              </div>
               <p style={{ margin: '0 0 16px' }}>
                 Smarte Carte massage chairs: <strong style={{ color: selected.hasSmarteCarte ? 'var(--ember-muted)' : '#2e7d32' }}>
                   {selected.hasSmarteCarte ? 'Yes — skip' : 'No — potential'}
