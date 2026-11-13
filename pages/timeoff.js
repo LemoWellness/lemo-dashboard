@@ -62,7 +62,7 @@ function weekDays(ymdStr) {
 export default function TimeOff() {
   const router = useRouter();
   const { session } = useAuth();
-  const isAdmin = session?.role === 'Admin';
+  const canManage = session?.role === 'Admin' || !!session?.timeOffAdmin;
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -99,9 +99,9 @@ export default function TimeOff() {
   }
   useEffect(() => { if (session) load(); }, [session]);
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!canManage) return;
     authedFetch('/api/assignable-users').then((r) => r.json()).then((d) => setUsers(d.users || [])).catch(() => {});
-  }, [isAdmin]);
+  }, [canManage]);
 
   const approved = useMemo(() => requests.filter((r) => r.status === 'approved'), [requests]);
   const myRequests = useMemo(() => {
@@ -194,7 +194,7 @@ export default function TimeOff() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <h1 style={{ margin: 0 }}>Time Off</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {isAdmin && <button className="btn btn-ghost" type="button" onClick={() => setShowRecord(true)}>Record time off</button>}
+          {canManage && <button className="btn btn-ghost" type="button" onClick={() => setShowRecord(true)}>Record time off</button>}
           <button className="btn" type="button" onClick={() => setShowRequest(true)}>+ Request time off</button>
         </div>
       </div>
@@ -275,7 +275,7 @@ export default function TimeOff() {
                   </div>
                 </div>
               ))}
-              {isAdmin && pending.length > 0 && (
+              {canManage && pending.length > 0 && (
                 <>
                   <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid var(--iron)' }} />
                   <h3 style={{ margin: '0 0 12px' }}>Pending approvals ({pending.length})</h3>
@@ -338,7 +338,7 @@ export default function TimeOff() {
         </div>
       )}
 
-      {showRecord && isAdmin && (
+      {showRecord && canManage && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(12,10,9,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
           <form className="card" onSubmit={submitRecord} style={{ width: '90%', maxWidth: 420, maxHeight: '88vh', overflowY: 'auto' }}>
             <h3 style={{ marginTop: 0 }}>Record time off</h3>
