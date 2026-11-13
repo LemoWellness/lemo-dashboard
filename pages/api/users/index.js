@@ -1,6 +1,16 @@
 import { adminAuth, adminDb } from '../../../lib/firebaseAdmin';
 import { withAuth } from '../../../lib/auth';
 
+function toIso(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value.toDate === 'function') {
+    try { return value.toDate().toISOString(); } catch (e) { return ''; }
+  }
+  return String(value);
+}
+
 export default withAuth(async (req, res) => {
   if (req.method === 'GET') {
     const snap = await adminDb.collection('users').get();
@@ -11,27 +21,36 @@ export default withAuth(async (req, res) => {
       try {
         const result = await adminAuth.getUsers(identifiers);
         result.users.forEach((rec) => {
-          authByUid[rec.uid] = rec.metadata?.lastSignInTime || '';
+          authByUid[rec.uid] = toIso(rec.metadata?.lastSignInTime);
         });
       } catch (e) {
         console.error('users lastSignIn lookup failed', e.message);
       }
     }
-    const out = users.map((u) => ({
-      uid: u.uid,
-      email: u.email || '',
-      name: u.name || '',
-      role: u.role === 'Admin' ? 'Admin' : 'Viewer',
-      tabs: u.tabs,
-      active: u.active !== false,
-      taskDesk: (u.role === 'Admin' || u.role === 'Tasks Admin' || u.taskAdmin || u.taskDesk === 'hq') ? 'hq' : 'contractor',
-      taskAdmin: u.role === 'Admin' || u.role === 'Tasks Admin' || !!u.taskAdmin,
-      timeOffAdmin: u.role === 'Admin' || !!u.timeOffAdmin,
-      lastLogin: authByUid[u.uid] || '',
-      homeScreen: !!u.lastStandaloneAt,
-      lastStandaloneAt: u.lastStandaloneAt || '',
-      standalonePlatform: u.standalonePlatform || '',
-    }));
+    const out = users.map((u) => {
+      // Prefer the activity stamp we write on dashboard load. Fall back to
+      // Firebase's password sign-in time for accounts that have not loaded yet.
+      const seen = toIso(u.lastSeenAt);
+      const signedIn = authByUid[u.uid] || '';
+      const lastLogin = seen && signedIn
+        ? (seen > signedIn ? seen : signedIn)
+        : (seen || signedIn);
+      return {
+        uid: u.uid,
+        email: u.email || '',
+        name: u.name || '',
+        role: u.role === 'Admin' ? 'Admin' : 'Viewer',
+        tabs: u.tabs,
+        active: u.active !== false,
+        taskDesk: (u.role === 'Admin' || u.role === 'Tasks Admin' || u.taskAdmin || u.taskDesk === 'hq') ? 'hq' : 'contractor',
+        taskAdmin: u.role === 'Admin' || u.role === 'Tasks Admin' || !!u.taskAdmin,
+        timeOffAdmin: u.role === 'Admin' || !!u.timeOffAdmin,
+        lastLogin,
+        homeScreen: !!u.lastStandaloneAt,
+        lastStandaloneAt: u.lastStandaloneAt || '',
+        standalonePlatform: u.standalonePlatform || '',
+      };
+    });
     return res.status(200).json({ users: out });
   }
 
