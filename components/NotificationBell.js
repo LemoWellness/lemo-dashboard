@@ -21,6 +21,9 @@ function typeLabel(type) {
   if (type === 'privateNudge') return 'Private message reminder';
   if (type === 'taskCompleted') return 'Task completed';
   if (type === 'weeklyReport') return 'Weekly report';
+  if (type === 'timeOffRequested') return 'Time off request';
+  if (type === 'timeOffApproved') return 'Time off approved';
+  if (type === 'timeOffDenied') return 'Time off denied';
   return type || 'Notification';
 }
 
@@ -75,6 +78,14 @@ export default function NotificationBell() {
   async function openItem(n) {
     if (!n.read) await markRead(n.id);
     setOpen(false);
+    if (n.url) {
+      router.push(n.url);
+      return;
+    }
+    if (String(n.type || '').startsWith('timeOff')) {
+      router.push('/timeoff');
+      return;
+    }
     if (n.taskId) router.push(`/tasks?task=${encodeURIComponent(n.taskId)}`);
     else router.push('/tasks');
   }
