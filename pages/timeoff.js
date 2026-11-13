@@ -4,7 +4,17 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { authedFetch } from '../lib/firebaseClient';
 
-const TYPES = ['Vacation / PTO', 'Personal', 'Sick', 'Other'];
+const BENEFITS = [
+  { type: 'Paid Sick Leave', days: 5, hours: 40, allowance: '5 days (40 hours)', notes: 'California minimum for most employees' },
+  { type: 'Paid Vacation', days: 10, hours: 80, allowance: '10 days (80 hours)', notes: 'After 1 year; accrual begins at hire' },
+  { type: 'Paid Holiday', days: 8, hours: 64, allowance: '8 days', notes: 'Company-selected holidays' },
+  { type: 'Personal Day', days: 2, hours: 16, allowance: '2 days (16 hours)', notes: 'Optional benefit for flexibility' },
+  { type: 'Unpaid Leave', days: null, allowance: 'Case by case', notes: 'Subject to applicable leave laws' },
+  { type: 'Bereavement', days: 5, hours: 40, allowance: '5 days', notes: 'California requires up to 5 days; paid status depends on company policy' },
+  { type: 'Jury Duty', days: null, allowance: 'As required by law', notes: 'Company decides paid time beyond legal requirements' },
+];
+const TYPES = BENEFITS.map((b) => b.type);
+const benefitByType = Object.fromEntries(BENEFITS.map((b) => [b.type, b]));
 
 function ymd(d) {
   const dt = d instanceof Date ? d : new Date(d);
@@ -58,6 +68,13 @@ function weekDays(ymdStr) {
   const start = addDays(ymdStr, -day);
   return Array.from({ length: 7 }, (_, i) => addDays(start, i));
 }
+function daysBetween(start, end) {
+  if (!start) return 0;
+  const a = new Date(start + 'T00:00:00');
+  const b = new Date((end || start) + 'T00:00:00');
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return 0;
+  return Math.max(0, Math.round((b - a) / 86400000) + 1);
+}
 
 export default function TimeOff() {
   const router = useRouter();
@@ -71,8 +88,9 @@ export default function TimeOff() {
   const [selectedDay, setSelectedDay] = useState(todayYmd());
   const [showRequest, setShowRequest] = useState(false);
   const [showRecord, setShowRecord] = useState(false);
-  const [form, setForm] = useState({ startDate: todayYmd(), endDate: todayYmd(), type: 'Vacation / PTO', note: '' });
-  const [recordForm, setRecordForm] = useState({ userEmail: '', userName: '', startDate: todayYmd(), endDate: todayYmd(), type: 'Vacation / PTO', note: '' });
+  const [showBenefits, setShowBenefits] = useState(false);
+  const [form, setForm] = useState({ startDate: todayYmd(), endDate: todayYmd(), type: 'Paid Vacation', note: '' });
+  const [recordForm, setRecordForm] = useState({ userEmail: '', userName: '', startDate: todayYmd(), endDate: todayYmd(), type: 'Paid Vacation', note: '' });
   const [users, setUsers] = useState([]);
   const [busy, setBusy] = useState(false);
   const [reviewing, setReviewing] = useState(null);
@@ -109,6 +127,19 @@ export default function TimeOff() {
     return requests.filter((r) => String(r.userEmail || '').toLowerCase() === me).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   }, [requests, session]);
   const pending = useMemo(() => requests.filter((r) => r.status === 'pending'), [requests]);
+
+  const year = new Date().getFullYear();
+  const myUsed = useMemo(() => {
+    const used = {};
+    BENEFITS.forEach((b) => { used[b.type] = 0; });
+    myRequests.forEach((r) => {
+      if (r.status !== 'approved') return;
+      if (!r.startDate || !String(r.startDate).startsWith(String(year))) return;
+      if (used[r.type] == null) return;
+      used[r.type] += daysBetween(r.startDate, r.endDate);
+    });
+    return used;
+  }, [myRequests, year]);
 
   const today = todayYmd();
   const outToday = useMemo(() => approved.filter((r) => inRange(today, r.startDate, r.endDate)), [approved, today]);
@@ -165,7 +196,7 @@ export default function TimeOff() {
     setBusy(false);
     if (!res.ok) { setError((await res.json()).error); return; }
     setShowRequest(false);
-    setForm({ startDate: todayYmd(), endDate: todayYmd(), type: 'Vacation / PTO', note: '' });
+    setForm({ startDate: todayYmd(), endDate: todayYmd(), type: 'Paid Vacation', note: '' });
     load();
   }
   async function submitRecord(e) {
@@ -175,7 +206,7 @@ export default function TimeOff() {
     setBusy(false);
     if (!res.ok) { setError((await res.json()).error); return; }
     setShowRecord(false);
-    setRecordForm({ userEmail: '', userName: '', startDate: todayYmd(), endDate: todayYmd(), type: 'Vacation / PTO', note: '' });
+    setRecordForm({ userEmail: '', userName: '', startDate: todayYmd(), endDate: todayYmd(), type: 'Paid Vacation', note: '' });
     load();
   }
   async function doAction(id, action, note) {
@@ -188,12 +219,15 @@ export default function TimeOff() {
   }
 
   const selectedLabel = new Date(selectedDay + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  const selectedBenefit = benefitByType[form.type];
+  const recordBenefit = benefitByType[recordForm.type];
 
   return (
     <Layout active="timeoff" onNavigate={navigate}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <h1 style={{ margin: 0 }}>Time Off</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost" type="button" onClick={() => setShowBenefits((v) => !v)}>{showBenefits ? 'Hide benefits' : 'Benefits'}</button>
           {canManage && <button className="btn btn-ghost" type="button" onClick={() => setShowRecord(true)}>Record time off</button>}
           <button className="btn" type="button" onClick={() => setShowRequest(true)}>+ Request time off</button>
         </div>
@@ -204,6 +238,34 @@ export default function TimeOff() {
 
       {!loading && (
         <>
+          {showBenefits && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <h3 style={{ marginTop: 0 }}>LEMO employee benefits</h3>
+              <p className="muted" style={{ margin: '0 0 12px', fontSize: '0.8rem' }}>Recommended annual allowances. Used is approved days in {year} for you.</p>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr><th>Leave type</th><th>Allowance</th><th>Used</th><th>Notes</th></tr>
+                  </thead>
+                  <tbody>
+                    {BENEFITS.map((b) => {
+                      const used = myUsed[b.type] || 0;
+                      const remaining = b.days != null ? Math.max(0, b.days - used) : null;
+                      return (
+                        <tr key={b.type}>
+                          <td>{b.type}</td>
+                          <td>{b.allowance}</td>
+                          <td>{b.days != null ? `${used} of ${b.days}${remaining != null ? ` (${remaining} left)` : ''}` : '—'}</td>
+                          <td className="muted" style={{ fontSize: '0.8rem' }}>{b.notes}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           <div className="grid-2" style={{ marginBottom: 16 }}>
             <div className="card" style={{ marginBottom: 0 }}>
               <div className="muted" style={{ fontSize: '0.75rem' }}>Out today</div>
@@ -329,6 +391,7 @@ export default function TimeOff() {
                 {TYPES.map((t) => <option key={t}>{t}</option>)}
               </select>
             </label>
+            {selectedBenefit && <p className="muted" style={{ margin: '4px 0 8px', fontSize: '0.8rem' }}>{selectedBenefit.allowance}. {selectedBenefit.notes}</p>}
             <label className="stack-field">Note (optional)<textarea className="stack-input" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <button className="btn" type="submit" disabled={busy}>{busy ? 'Sending...' : 'Submit request'}</button>
@@ -358,6 +421,7 @@ export default function TimeOff() {
                 {TYPES.map((t) => <option key={t}>{t}</option>)}
               </select>
             </label>
+            {recordBenefit && <p className="muted" style={{ margin: '4px 0 8px', fontSize: '0.8rem' }}>{recordBenefit.allowance}. {recordBenefit.notes}</p>}
             <label className="stack-field">Note (optional)<textarea className="stack-input" value={recordForm.note} onChange={(e) => setRecordForm({ ...recordForm, note: e.target.value })} /></label>
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <button className="btn" type="submit" disabled={busy}>{busy ? 'Saving...' : 'Record'}</button>
