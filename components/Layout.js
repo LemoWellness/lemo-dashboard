@@ -11,6 +11,7 @@ import PdfButton from './PdfButton';
 
 const NAV = [
   { code: 'tasks', label: 'Tasks' },
+  { code: 'timeoff', label: 'Time Off' },
   { code: 'mo', label: 'Monthly Overview' },
   { code: 'financials', label: 'Financials' },
   { code: 'reporting', label: 'Reporting' },
@@ -67,6 +68,10 @@ export default function Layout({ active, onNavigate, children }) {
     }
     if (code === 'opportunities') {
       router.push('/opportunities');
+      return;
+    }
+    if (code === 'timeoff') {
+      router.push('/timeoff');
       return;
     }
     onNavigate(code);
