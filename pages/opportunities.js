@@ -358,6 +358,7 @@ export default function Opportunities() {
   const [chairFilter, setChairFilter] = useState('All');
   const [ownerFilter, setOwnerFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
+  const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [userNotes, setUserNotes] = useState({});
   const [noteDraft, setNoteDraft] = useState('');
@@ -486,15 +487,17 @@ export default function Opportunities() {
   }
 
   const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return VENUES.filter((v) => {
       if (stateFilter !== 'All' && v.state !== stateFilter) return false;
       if (chairFilter === 'Has chairs' && !v.hasSmarteCarte) return false;
       if (chairFilter === 'No chairs' && v.hasSmarteCarte) return false;
       if (ownerFilter !== 'All' && v.owner !== ownerFilter) return false;
       if (typeFilter !== 'All' && v.type !== typeFilter) return false;
+      if (q && !v.name.toLowerCase().includes(q) && !(v.city || '').toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [stateFilter, chairFilter, ownerFilter, typeFilter]);
+  }, [stateFilter, chairFilter, ownerFilter, typeFilter, search]);
 
   return (
     <Layout active="risk" onNavigate={navigate}>
@@ -504,6 +507,15 @@ export default function Opportunities() {
       <p className="muted" style={{ marginTop: 0 }}>
         Full list across all 50 states. Type and owner shown where known. Flagged if Smarte Carte has massage chairs. {VENUES.length} venues. Address and contact ready to fill.
       </p>
+
+      <div style={{ marginBottom: 12 }}>
+        <input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setSelected(null); }}
+          placeholder="Search venue or city"
+          style={{ width: '100%', maxWidth: 320, padding: '8px 12px', fontSize: 14, border: '1px solid var(--line)', borderRadius: 4 }}
+        />
+      </div>
 
       <div className="inline-form">
         <label>
@@ -592,6 +604,30 @@ export default function Opportunities() {
                 {!editMode && <button onClick={startEdit} style={{ padding: '4px 10px', fontSize: 12, background: 'var(--iron)', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Edit</button>}
               </div>
               <p className="muted" style={{ margin: '0 0 12px' }}>{getField(selected, 'city')}, {selected.state}</p>
+
+              <div style={{ marginBottom: 12, padding: 10, background: '#f5f5f5', borderRadius: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Leasing / management</div>
+                {getField(selected, 'email') && (
+                  <div style={{ marginBottom: 6 }}>
+                    <span style={{ fontSize: 13 }}>{getField(selected, 'email')}</span>
+                    <button onClick={() => navigator.clipboard.writeText(getField(selected, 'email'))} style={{ marginLeft: 8, padding: '2px 8px', fontSize: 11, background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>Copy email</button>
+                  </div>
+                )}
+                {getField(selected, 'phone') && (
+                  <div style={{ marginBottom: 6 }}>
+                    <a href={`tel:${getField(selected, 'phone')}`} style={{ fontSize: 13 }}>{getField(selected, 'phone')}</a>
+                    <a href={`tel:${getField(selected, 'phone')}`} style={{ marginLeft: 8, padding: '2px 8px', fontSize: 11, background: 'var(--ink)', color: '#fff', borderRadius: 3, textDecoration: 'none' }}>Call</a>
+                  </div>
+                )}
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selected.name + ' ' + getField(selected, 'city') + ' ' + selected.state)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ display: 'inline-block', padding: '2px 8px', fontSize: 11, background: 'var(--ember)', color: '#fff', borderRadius: 3, textDecoration: 'none' }}
+                >
+                  Open map
+                </a>
+              </div>
               <p style={{ margin: '0 0 8px' }}>Type: {selected.type}</p>
               {editMode ? (
                 <>
