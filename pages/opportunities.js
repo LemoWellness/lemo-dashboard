@@ -371,6 +371,8 @@ export default function Opportunities() {
   const [editMode, setEditMode] = useState(false);
   const [editDraft, setEditDraft] = useState({});
   const [contacted, setContacted] = useState({});
+  const [stages, setStages] = useState({});
+  const [stageFilter, setStageFilter] = useState('All');
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
@@ -382,6 +384,7 @@ export default function Opportunities() {
           setUserNotes(data.notes || {});
           setEdits(data.edits || {});
           setContacted(data.contacted || {});
+          setStages(data.stages || {});
         }
       } catch (e) {}
     };
@@ -472,6 +475,25 @@ export default function Opportunities() {
 
   const isContacted = (v) => contacted[v.name + '|' + v.state] || false;
 
+  const STAGES = ['To contact', 'Contacted', 'Follow-up', 'Interested', 'Not interested', 'Closed'];
+
+  const getStage = (v) => stages[v.name + '|' + v.state] || 'To contact';
+
+  const setStage = async (v, stage) => {
+    const key = v.name + '|' + v.state;
+    const next = { ...stages, [key]: stage };
+    setStages(next);
+    const nextContacted = { ...contacted, [key]: stage !== 'To contact' };
+    setContacted(nextContacted);
+    try {
+      await fetch('/api/opportunities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stages: next, contacted: nextContacted }),
+      });
+    } catch (e) {}
+  };
+
   const downloadPDF = () => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
     doc.setFontSize(14);
@@ -507,12 +529,13 @@ export default function Opportunities() {
       if (chairFilter === 'None' && hasChairs(v)) return false;
       if (flagFilter === 'Flagged' && !v.flag) return false;
       if (flagFilter === 'Not flagged' && v.flag) return false;
+      if (stageFilter !== 'All' && getStage(v) !== stageFilter) return false;
       if (ownerFilter !== 'All' && v.owner !== ownerFilter) return false;
       if (typeFilter !== 'All' && v.type !== typeFilter) return false;
       if (q && !v.name.toLowerCase().includes(q) && !(getField(v, 'city') || '').toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [stateFilter, chairFilter, flagFilter, ownerFilter, typeFilter, search, edits]);
+  }, [stateFilter, chairFilter, flagFilter, stageFilter, ownerFilter, typeFilter, search, edits, stages]);
 
   if (!session) return <Layout title="Venue Directory" active="opportunities"><p>Loading...</p></Layout>;
 
@@ -561,14 +584,18 @@ export default function Opportunities() {
             <option>Flagged</option>
             <option>Not flagged</option>
           </select>
+          <select value={stageFilter} onChange={(e) => { setStageFilter(e.target.value); setSelected(null); }} style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14 }}>
+            <option value="All">Stage</option>
+            {STAGES.map(s => <option key={s}>{s}</option>)}
+          </select>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
           <div style={{ borderTop: '1px solid #eee' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 80px', padding: '12px', fontSize: 16, fontWeight: 700, color: '#333', borderBottom: '1px solid #ddd', lineHeight: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 90px', padding: '12px', fontSize: 16, fontWeight: 700, color: '#333', borderBottom: '1px solid #ddd', lineHeight: 1 }}>
               <span>Venue</span>
               <span style={{ textAlign: 'center' }}>Chairs</span>
-              <span style={{ textAlign: 'center' }}>Contacted</span>
+              <span style={{ textAlign: 'center' }}>Stage</span>
             </div>
             <div style={{ maxHeight: '65vh', overflowY: 'auto' }}>
               {filtered.length === 0 && <p style={{ color: '#888', padding: 16 }}>None match.</p>}
@@ -581,7 +608,7 @@ export default function Opportunities() {
                     key={v.name + v.state}
                     onClick={() => setSelected(v)}
                     style={{
-                      display: 'grid', gridTemplateColumns: '1fr 100px 80px', alignItems: 'center',
+                      display: 'grid', gridTemplateColumns: '1fr 100px 90px', alignItems: 'center',
                       width: '100%', textAlign: 'left', padding: '14px 12px',
                       background: active ? '#f5f5f5' : 'transparent',
                       border: 'none', borderBottom: '1px solid #e5e5e5', cursor: 'pointer'
@@ -592,7 +619,7 @@ export default function Opportunities() {
                       {location && <div style={{ fontSize: 14, fontWeight: 400, color: '#888' }}>{location}</div>}
                     </div>
                     <div style={{ textAlign: 'center', fontSize: 14, fontWeight: 400, color: '#222' }}>{hasChairs(v) ? 'Smarte Carte' : 'None'}</div>
-                    <div style={{ textAlign: 'center', fontSize: 16, color: isContacted(v) ? '#2e7d32' : '#999' }}>{isContacted(v) ? '✓' : '✕'}</div>
+                    <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 400, color: '#444' }}>{getStage(v)}</div>
                   </button>
                 );
               })}
@@ -660,10 +687,10 @@ export default function Opportunities() {
                     </div>
 
                     <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #eee' }}>
-                      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6 }}>Outreach</div>
-                      <button onClick={toggleContacted} style={{ padding: '6px 14px', background: isContacted(selected) ? '#e8f5e9' : '#fff', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>
-                        {isContacted(selected) ? 'Contacted' : 'To contact'}
-                      </button>
+                      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6 }}>Stage</div>
+                      <select value={getStage(selected)} onChange={(e) => setStage(selected, e.target.value)} style={{ padding: '6px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 13 }}>
+                        {STAGES.map(s => <option key={s}>{s}</option>)}
+                      </select>
                     </div>
 
                     <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #eee' }}>
