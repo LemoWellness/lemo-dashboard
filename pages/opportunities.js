@@ -372,7 +372,7 @@ export default function Opportunities() {
   const [editDraft, setEditDraft] = useState({});
   const [contacted, setContacted] = useState({});
   const [stages, setStages] = useState({});
-  const [stageFilter, setStageFilter] = useState('All');
+  const [view, setView] = useState('directory');
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
@@ -529,13 +529,12 @@ export default function Opportunities() {
       if (chairFilter === 'None' && hasChairs(v)) return false;
       if (flagFilter === 'Flagged' && !v.flag) return false;
       if (flagFilter === 'Not flagged' && v.flag) return false;
-      if (stageFilter !== 'All' && getStage(v) !== stageFilter) return false;
       if (ownerFilter !== 'All' && v.owner !== ownerFilter) return false;
       if (typeFilter !== 'All' && v.type !== typeFilter) return false;
       if (q && !v.name.toLowerCase().includes(q) && !(getField(v, 'city') || '').toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [stateFilter, chairFilter, flagFilter, stageFilter, ownerFilter, typeFilter, search, edits, stages]);
+  }, [stateFilter, chairFilter, flagFilter, ownerFilter, typeFilter, search, edits]);
 
   if (!session) return <Layout title="Venue Directory" active="opportunities"><p>Loading...</p></Layout>;
 
@@ -555,6 +554,13 @@ export default function Opportunities() {
           </button>
         </div>
 
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <button onClick={() => setView('directory')} style={{ padding: '8px 16px', background: view === 'directory' ? '#000' : '#fff', color: view === 'directory' ? '#fff' : '#333', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>Directory</button>
+          <button onClick={() => setView('pipeline')} style={{ padding: '8px 16px', background: view === 'pipeline' ? '#000' : '#fff', color: view === 'pipeline' ? '#fff' : '#333', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>Pipeline</button>
+        </div>
+
+        {view === 'directory' && (
+        <>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
           <input
             value={search}
@@ -584,18 +590,14 @@ export default function Opportunities() {
             <option>Flagged</option>
             <option>Not flagged</option>
           </select>
-          <select value={stageFilter} onChange={(e) => { setStageFilter(e.target.value); setSelected(null); }} style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14 }}>
-            <option value="All">Stage</option>
-            {STAGES.map(s => <option key={s}>{s}</option>)}
-          </select>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
           <div style={{ borderTop: '1px solid #eee' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 90px', padding: '12px', fontSize: 16, fontWeight: 700, color: '#333', borderBottom: '1px solid #ddd', lineHeight: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 80px', padding: '12px', fontSize: 16, fontWeight: 700, color: '#333', borderBottom: '1px solid #ddd', lineHeight: 1 }}>
               <span>Venue</span>
               <span style={{ textAlign: 'center' }}>Chairs</span>
-              <span style={{ textAlign: 'center' }}>Stage</span>
+              <span style={{ textAlign: 'center' }}>Contacted</span>
             </div>
             <div style={{ maxHeight: '65vh', overflowY: 'auto' }}>
               {filtered.length === 0 && <p style={{ color: '#888', padding: 16 }}>None match.</p>}
@@ -608,7 +610,7 @@ export default function Opportunities() {
                     key={v.name + v.state}
                     onClick={() => setSelected(v)}
                     style={{
-                      display: 'grid', gridTemplateColumns: '1fr 100px 90px', alignItems: 'center',
+                      display: 'grid', gridTemplateColumns: '1fr 100px 80px', alignItems: 'center',
                       width: '100%', textAlign: 'left', padding: '14px 12px',
                       background: active ? '#f5f5f5' : 'transparent',
                       border: 'none', borderBottom: '1px solid #e5e5e5', cursor: 'pointer'
@@ -619,7 +621,7 @@ export default function Opportunities() {
                       {location && <div style={{ fontSize: 14, fontWeight: 400, color: '#888' }}>{location}</div>}
                     </div>
                     <div style={{ textAlign: 'center', fontSize: 14, fontWeight: 400, color: '#222' }}>{hasChairs(v) ? 'Smarte Carte' : 'None'}</div>
-                    <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 400, color: '#444' }}>{getStage(v)}</div>
+                    <div style={{ textAlign: 'center', fontSize: 16, color: isContacted(v) ? '#2e7d32' : '#999' }}>{isContacted(v) ? '✓' : '✕'}</div>
                   </button>
                 );
               })}
@@ -706,6 +708,32 @@ export default function Opportunities() {
             )}
           </div>
         </div>
+        </>
+        )}
+
+        {view === 'pipeline' && (
+          <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16 }}>
+            {STAGES.map(stage => {
+              const stageVenues = VENUES.filter(v => getStage(v) === stage);
+              return (
+                <div key={stage} style={{ minWidth: 220, flex: '0 0 220px', background: '#f9f9f9', borderRadius: 8, padding: 12 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+                    {stage} <span style={{ color: '#888', fontWeight: 400 }}>({stageVenues.length})</span>
+                  </div>
+                  <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                    {stageVenues.map(v => (
+                      <div key={v.name + v.state} onClick={() => { setSelected(v); setView('directory'); }} style={{ padding: '10px 8px', marginBottom: 6, background: '#fff', borderRadius: 6, cursor: 'pointer', border: '1px solid #eee' }}>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{v.name}</div>
+                        <div style={{ fontSize: 12, color: '#888' }}>{v.city}, {v.state}</div>
+                      </div>
+                    ))}
+                    {stageVenues.length === 0 && <div style={{ fontSize: 12, color: '#aaa', padding: 8 }}>None</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </Layout>
   );
