@@ -372,7 +372,10 @@ export default function Opportunities() {
   const [editDraft, setEditDraft] = useState({});
   const [contacted, setContacted] = useState({});
   const [stages, setStages] = useState({});
+  const [activities, setActivities] = useState({});
   const [view, setView] = useState('directory');
+  const [activityType, setActivityType] = useState('note');
+  const [activityNote, setActivityNote] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
@@ -385,6 +388,7 @@ export default function Opportunities() {
           setEdits(data.edits || {});
           setContacted(data.contacted || {});
           setStages(data.stages || {});
+          setActivities(data.activities || {});
         }
       } catch (e) {}
     };
@@ -485,14 +489,35 @@ export default function Opportunities() {
     setStages(next);
     const nextContacted = { ...contacted, [key]: stage !== 'To contact' };
     setContacted(nextContacted);
+    const entry = { date: new Date().toISOString(), user: session?.email || '', type: 'stage', note: `Stage changed to ${stage}` };
+    const nextActivities = { ...activities, [key]: [...(activities[key] || []), entry] };
+    setActivities(nextActivities);
     try {
       await fetch('/api/opportunities', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stages: next, contacted: nextContacted }),
+        body: JSON.stringify({ stages: next, contacted: nextContacted, activities: nextActivities }),
       });
     } catch (e) {}
   };
+
+  const addActivity = async () => {
+    if (!selected || !activityNote.trim()) return;
+    const key = selected.name + '|' + selected.state;
+    const entry = { date: new Date().toISOString(), user: session?.email || '', type: activityType, note: activityNote.trim() };
+    const nextActivities = { ...activities, [key]: [...(activities[key] || []), entry] };
+    setActivities(nextActivities);
+    setActivityNote('');
+    try {
+      await fetch('/api/opportunities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activities: nextActivities }),
+      });
+    } catch (e) {}
+  };
+
+  const getActivities = (v) => (activities[v.name + '|' + v.state] || []).slice().reverse();
 
   const downloadPDF = () => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
@@ -693,6 +718,30 @@ export default function Opportunities() {
                       <select value={getStage(selected)} onChange={(e) => setStage(selected, e.target.value)} style={{ padding: '6px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 13 }}>
                         {STAGES.map(s => <option key={s}>{s}</option>)}
                       </select>
+                    </div>
+
+                    <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #eee' }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 8 }}>Activity</div>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                        <select value={activityType} onChange={(e) => setActivityType(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #ddd', borderRadius: 6, fontSize: 13 }}>
+                          <option value="note">Note</option>
+                          <option value="call">Call</option>
+                          <option value="visit">Visit</option>
+                          <option value="voicemail">Voicemail</option>
+                          <option value="email">Email</option>
+                        </select>
+                        <input value={activityNote} onChange={(e) => setActivityNote(e.target.value)} placeholder="Add a note..." style={{ flex: 1, padding: '6px 10px', border: '1px solid #ddd', borderRadius: 6, fontSize: 13 }} />
+                        <button onClick={addActivity} style={{ padding: '6px 12px', background: '#000', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>Add</button>
+                      </div>
+                      <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                        {getActivities(selected).map((a, i) => (
+                          <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid #eee', fontSize: 13 }}>
+                            <div style={{ color: '#888', fontSize: 12 }}>{new Date(a.date).toLocaleDateString()} · {a.type} · {a.user}</div>
+                            <div>{a.note}</div>
+                          </div>
+                        ))}
+                        {getActivities(selected).length === 0 && <div style={{ color: '#aaa', fontSize: 13 }}>No activity yet.</div>}
+                      </div>
                     </div>
 
                     <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #eee' }}>
