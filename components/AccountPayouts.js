@@ -22,15 +22,7 @@ function monthLabel(key) {
   return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
-function isVenuePayout(category) {
-  return String(category || '') === 'Payout to Venue';
-}
-function isBdPayout(category) {
-  const c = String(category || '');
-  return c === 'Payout to BD' || c === 'Payout to BD Consultants';
-}
-
-export default function AccountPayouts({ income, expenses, dailyMonths }) {
+export default function AccountPayouts({ income, expenses, payouts, dailyMonths }) {
   const dailyKeys = Object.keys(dailyMonths || {}).filter((k) => /^\d{4}-\d{2}$/.test(k)).sort().reverse();
   const useDaily = dailyKeys.length > 0;
 
@@ -39,11 +31,11 @@ export default function AccountPayouts({ income, expenses, dailyMonths }) {
     if (!useDaily) {
       (income || []).forEach((i) => { const k = monthKey(i); if (/^\d{4}-\d{2}$/.test(k)) set.add(k); });
     }
-    (expenses || []).forEach((e) => { const k = String(e.date || '').slice(0, 7); if (/^\d{4}-\d{2}$/.test(k)) set.add(k); });
+    (payouts || []).forEach((p) => { const k = String(p.date || '').slice(0, 7); if (/^\d{4}-\d{2}$/.test(k)) set.add(k); });
     const now = new Date().toISOString().slice(0, 7);
     if (!set.has(now)) set.add(now);
     return [...set].sort().reverse();
-  }, [income, expenses, dailyKeys.join('|'), useDaily]);
+  }, [income, payouts, dailyKeys.join('|'), useDaily]);
 
   const [view, setView] = useState('payouts');
   const [period, setPeriod] = useState(months[0] || new Date().toISOString().slice(0, 7));
@@ -59,14 +51,14 @@ export default function AccountPayouts({ income, expenses, dailyMonths }) {
       const inRows = (income || []).filter((i) => range === 'all' || monthKey(i) === month);
       totalIncome = inRows.reduce((s, i) => s + (Number(i.amount) || 0), 0);
     }
-    const exRows = (expenses || []).filter((e) => range === 'all' || String(e.date || '').slice(0, 7) === month);
+    const payRows = (payouts || []).filter((p) => range === 'all' || String(p.date || '').slice(0, 7) === month);
     return {
       totalIncome,
       ...rsSplit(totalIncome),
-      venuePaid: exRows.filter((e) => isVenuePayout(e.category)).reduce((s, e) => s + (Number(e.amount) || 0), 0),
-      bdPaid: exRows.filter((e) => isBdPayout(e.category)).reduce((s, e) => s + (Number(e.amount) || 0), 0),
+      venuePaid: payRows.filter((p) => p.payee === 'Venue').reduce((s, p) => s + (Number(p.amount) || 0), 0),
+      bdPaid: payRows.filter((p) => p.payee === 'BD').reduce((s, p) => s + (Number(p.amount) || 0), 0),
     };
-  }, [income, expenses, range, month, useDaily, dailyMonths, dailyKeys.join('|')]);
+  }, [income, payouts, range, month, useDaily, dailyMonths, dailyKeys.join('|')]);
 
   const monthlyIncome = useMemo(() => {
     if (useDaily) {
