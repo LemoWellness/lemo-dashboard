@@ -8,6 +8,7 @@ import AccountPayouts from '../components/AccountPayouts';
 import AddExpenseModal from '../components/AddExpenseModal';
 import AddIncomeModal from '../components/AddIncomeModal';
 import CommunicationLogModal from '../components/CommunicationLogModal';
+import AddPayoutModal from '../components/AddPayoutModal';
 import { useAuth } from '../context/AuthContext';
 import { authedFetch } from '../lib/firebaseClient';
 
@@ -48,6 +49,7 @@ export default function Home() {
   const [income, setIncome] = useState([]);
   const [dailyMoney, setDailyMoney] = useState(null);
   const [notes, setNotes] = useState([]);
+  const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modelFilter, setModelFilter] = useState('All');
   const [stateFilter, setStateFilter] = useState('All');
@@ -58,11 +60,14 @@ export default function Home() {
   const [expForm, setExpForm] = useState({ date: '', category: '', item: '', description: '', source: '', quantity: 1, costPerUnit: '', notes: '' });
   const [incForm, setIncForm] = useState({ date: '', periodMonth: '', amount: '', notes: '' });
   const [noteForm, setNoteForm] = useState({ note: '', channel: 'Call', loggedBy: '' });
+  const [payoutForm, setPayoutForm] = useState({ date: '', payee: '', amount: '', howPaid: '', notes: '' });
   const [formError, setFormError] = useState('');
-  const [openSections, setOpenSections] = useState({ expenses: true, income: true, commlog: true });
+  const [openSections, setOpenSections] = useState({ expenses: true, income: true, payouts: true, commlog: true });
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [viewingPayout, setViewingPayout] = useState(false);
   const [viewingExpense, setViewingExpense] = useState(false);
   const [viewingIncome, setViewingIncome] = useState(false);
   const [viewingNote, setViewingNote] = useState(false);
@@ -92,6 +97,7 @@ export default function Home() {
     authedFetch(`/api/income?location=${encodeURIComponent(name)}`).then((r) => r.json()).then((d) => setIncome(d.income || []));
     authedFetch(`/api/communication-log?location=${encodeURIComponent(name)}`).then((r) => r.json()).then((d) => setNotes(d.notes || []));
     authedFetch(`/api/account-usage?location=${encodeURIComponent(name)}`).then((r) => r.json()).then((d) => setDailyMoney(d)).catch(() => setDailyMoney(null));
+    authedFetch(`/api/payouts?location=${encodeURIComponent(name)}`).then((r) => r.json()).then((d) => setPayouts(d.payouts || [])).catch(() => setPayouts([]));
   }
   useEffect(() => { if (session && selectedName) loadDetail(selectedName); }, [session, selectedName]);
   useEffect(() => {
@@ -208,6 +214,30 @@ export default function Home() {
     setNoteForm({ note: '', channel: 'Call', loggedBy: '' });
     setViewingNote(false); setShowNoteModal(false); loadDetail(selectedName);
   }
+  async function submitPayout(e) {
+    e.preventDefault(); setFormError('');
+    if (viewingPayout) return;
+    const method = payoutForm.id ? 'PUT' : 'POST';
+    const res = await authedFetch('/api/payouts', { method, body: JSON.stringify({ location: selectedName, ...payoutForm }) });
+    if (!res.ok) { setFormError((await res.json()).error); return; }
+    setPayoutForm({ date: '', payee: '', amount: '', howPaid: '', notes: '' });
+    setViewingPayout(false); setShowPayoutModal(false); loadDetail(selectedName);
+  }
+  function openPayoutModal() {
+    setPayoutForm({ date: new Date().toISOString().slice(0, 10), payee: '', amount: '', howPaid: '', notes: '' });
+    setViewingPayout(false); setFormError(''); setShowPayoutModal(true);
+  }
+  function openPayoutRow(row) {
+    setPayoutForm({
+      id: row.id,
+      date: row.date || '',
+      payee: row.payee || '',
+      amount: row.amount ?? '',
+      howPaid: row.howPaid || '',
+      notes: row.notes || '',
+    });
+    setViewingPayout(true); setFormError(''); setShowPayoutModal(true);
+  }
   function openExpenseModal() { setExpForm({ date: new Date().toISOString().slice(0, 10), category: '', item: '', description: '', source: '', quantity: 1, costPerUnit: '', notes: '' }); setViewingExpense(false); setFormError(''); setShowExpenseModal(true); }
   function openIncomeModal() {
     const today = new Date().toISOString().slice(0, 10);
@@ -302,7 +332,7 @@ export default function Home() {
             <div className="card"><h3 style={{ marginTop: 0 }}>Expense categories (all-time)</h3>{metrics.expenseBreakdown.length > 0 ? (<ResponsiveContainer width="100%" height={200}><PieChart><Pie data={metrics.expenseBreakdown} dataKey="total" nameKey="category" outerRadius="75%" label={(e) => e.category}>{metrics.expenseBreakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}</Pie><Tooltip formatter={(v) => fmt(v)} /></PieChart></ResponsiveContainer>) : <p className="muted">No expenses yet.</p>}</div>
             {selected.businessModel !== 'Revenue Sharing' && (<div className="card"><h3 style={{ marginTop: 0 }}>Monthly income</h3>{metrics.monthlyIncome.length > 0 ? (<ResponsiveContainer width="100%" height={220}><BarChart data={metrics.monthlyIncome}><XAxis dataKey="label" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip formatter={(v) => fmt(v)} /><Bar dataKey="total" fill="#E85D20" /></BarChart></ResponsiveContainer>) : <p className="muted">No income yet.</p>}</div>)}
           </div></>)}
-          {selected.businessModel === 'Revenue Sharing' && <AccountPayouts income={income} expenses={expenses} dailyMonths={dailyMoney?.months} />}
+          {selected.businessModel === 'Revenue Sharing' && <AccountPayouts income={income} expenses={expenses} payouts={payouts} dailyMonths={dailyMoney?.months} />}
           {dailyMoney?.hasData && (
             <div className="card">
               <h3 style={{ marginTop: 0 }}>Usage</h3>
@@ -326,6 +356,24 @@ export default function Home() {
           <Collapsible title="Income" open={openSections.income} onToggle={() => setOpenSections({ ...openSections, income: !openSections.income })} actions={isAdmin && selected.businessModel === 'Corporate Wellness' && (<button className="btn" onClick={(e) => { e.stopPropagation(); openIncomeModal(); }}>+ Add Income</button>)}>
             <div className="table-wrap"><table>{selected.businessModel === 'Revenue Sharing' ? (<><thead><tr><th>Month</th><th>Gross</th><th>Refunds</th><th>Net</th><th>Source</th></tr></thead><tbody>{Object.keys((dailyMoney && dailyMoney.months) || {}).sort().reverse().map((key) => { const m = dailyMoney.months[key]; return (<tr key={key}><td>{key}</td><td>{fmt(m.gross)}</td><td>{fmt(m.refunds)}</td><td>{fmt(m.net)}</td><td>Synced from Daily Raw Data</td></tr>); })}{!(dailyMoney && dailyMoney.months && Object.keys(dailyMoney.months).length) && <tr><td colSpan={5} className="muted">No Daily Raw Data for this account.</td></tr>}</tbody></>) : (<><thead><tr><th>Date received</th><th>Paying for</th><th>Amount</th><th>Notes</th></tr></thead><tbody>{income.slice(0, 10).map((i) => (<tr key={i.id} onClick={() => openIncomeRow(i)} style={{ cursor: 'pointer' }}><td>{i.date}</td><td>{formatPayingFor(i)}</td><td>{fmt(i.amount)}</td><td>{i.notes}</td></tr>))}{income.length === 0 && <tr><td colSpan={4} className="muted">No income recorded.</td></tr>}</tbody></>)}</table></div>
           </Collapsible>
+          {selected.businessModel === 'Revenue Sharing' && (
+            <Collapsible title="Venue & BD Payments" open={openSections.payouts} onToggle={() => setOpenSections({ ...openSections, payouts: !openSections.payouts })} actions={isAdmin && (<button className="btn" onClick={(e) => { e.stopPropagation(); openPayoutModal(); }}>+ Add Payment</button>)}>
+              <div className="table-wrap"><table>
+                <thead><tr><th>Date</th><th>Payee</th><th>Amount</th><th>How Paid</th></tr></thead>
+                <tbody>
+                  {payouts.slice(0, 20).map((p) => (
+                    <tr key={p.id} onClick={() => openPayoutRow(p)} style={{ cursor: 'pointer' }}>
+                      <td>{p.date}</td>
+                      <td>{p.payee === 'Venue' ? 'Venue' : 'BD Consultant'}</td>
+                      <td>{fmt(p.amount)}</td>
+                      <td>{p.howPaid || '-'}</td>
+                    </tr>
+                  ))}
+                  {payouts.length === 0 && <tr><td colSpan={4} className="muted">No venue or BD payments recorded.</td></tr>}
+                </tbody>
+              </table></div>
+            </Collapsible>
+          )}
           <Collapsible title="Communication Log" open={openSections.commlog} onToggle={() => setOpenSections({ ...openSections, commlog: !openSections.commlog })} actions={<button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); openNoteModal(); }}>+ Communication Log</button>}>
             {notes.map((n) => (<p key={n.id} onClick={() => openNoteRow(n)} style={{ cursor: 'pointer' }}><strong>{n.date}</strong> ({n.channel}) - {n.note} <span className="muted">- {n.loggedBy}</span></p>))}{notes.length === 0 && <p className="muted">No notes logged yet.</p>}
           </Collapsible>
@@ -388,6 +436,7 @@ export default function Home() {
       {showExpenseModal && <AddExpenseModal venue={selectedName} form={expForm} error={formError} readOnly={viewingExpense} canEdit={isAdmin} onEdit={() => setViewingExpense(false)} onChange={setExpForm} onClose={() => { setShowExpenseModal(false); setViewingExpense(false); }} onSubmit={submitExpense} />}
       {showIncomeModal && <AddIncomeModal venue={selectedName} monthlyFee={Number(selected?.monthlyFee) || 0} form={incForm} error={formError} readOnly={viewingIncome} canEdit={isAdmin} onEdit={() => setViewingIncome(false)} onChange={setIncForm} onClose={() => { setShowIncomeModal(false); setViewingIncome(false); }} onSubmit={submitIncome} />}
       {showNoteModal && <CommunicationLogModal venue={selectedName} form={noteForm} error={formError} readOnly={viewingNote} canEdit={!!session} onEdit={() => setViewingNote(false)} onChange={setNoteForm} onClose={() => { setShowNoteModal(false); setViewingNote(false); }} onSubmit={submitNote} />}
+      {showPayoutModal && <AddPayoutModal venue={selectedName} form={payoutForm} error={formError} readOnly={viewingPayout} canEdit={isAdmin} onEdit={() => setViewingPayout(false)} onChange={setPayoutForm} onClose={() => { setShowPayoutModal(false); setViewingPayout(false); }} onSubmit={submitPayout} />}
     </Layout>
   );
 }
